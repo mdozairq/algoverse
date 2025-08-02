@@ -51,7 +51,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
   }
 
   const getMenuItems = () => {
-    if (!role) return []
+    if (!role || typeof role !== 'string') return []
     
     switch (role) {
       case "admin":
@@ -87,6 +87,16 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
   }
 
   const menuItems = getMenuItems() || []
+  
+  // Early return if no role is provided (prevents SSR issues)
+  if (!role) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Loading...</h1>
+        <p className="text-gray-600 dark:text-gray-400">Please wait while we load your dashboard.</p>
+      </div>
+    </div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -104,7 +114,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
 
             <SidebarContent>
               <SidebarMenu>
-                {menuItems.map((item) => (
+                {menuItems && menuItems.length > 0 && menuItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild>
                       <Link

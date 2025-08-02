@@ -530,7 +530,12 @@ export default function UserDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-      <AtomicSwapModal isOpen={isSwapModalOpen} onClose={() => setIsSwapModalOpen(false)} />
+      <AtomicSwapModal 
+        isOpen={isSwapModalOpen} 
+        onClose={() => setIsSwapModalOpen(false)}
+        nftToSwap={myNFTs[0]}
+        userNFTs={myNFTs}
+      />
     </DashboardLayout>
   )
 }
