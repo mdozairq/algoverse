@@ -4,17 +4,20 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "./theme-toggle"
 
 interface HeaderProps {
   showSearch?: boolean
   showAuthButtons?: boolean
   className?: string
+  showThemeToggle?: boolean
 }
 
 export default function Header({ 
   showSearch = true, 
   showAuthButtons = true, 
-  className = "" 
+  className = "",
+  showThemeToggle = true
 }: HeaderProps) {
   return (
     <motion.header
@@ -99,6 +102,9 @@ export default function Header({
             >
               <Search className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </motion.button>
+          )}
+          {showThemeToggle && (
+              <ThemeToggle/>
           )}
           
           {showAuthButtons && (
