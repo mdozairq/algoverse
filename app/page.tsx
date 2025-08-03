@@ -51,15 +51,15 @@ export default function HomePage() {
         <Header showSearch={false} />
 
         {/* Hero Section */}
-        <section className="py-32 px-6">
-          <div className="container mx-auto text-center">
+        <section className="py-16 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+          <div className="container-responsive text-center">
             <div className="max-w-4xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               >
-                <h1 className="text-8xl md:text-9xl font-black tracking-tighter leading-none mb-8">
+                <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black tracking-tighter leading-none mb-6 sm:mb-8">
                   <motion.div
                     initial={{ opacity: 0, x: -50 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -91,13 +91,13 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.6 }}
-                className="mt-16"
+                className="mt-12 sm:mt-16"
               >
                 <Link href="/events">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
                       variant="outline"
-                      className="border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-full px-8 py-3 text-sm font-medium tracking-wide transition-all duration-300 bg-white dark:bg-gray-800"
+                      className="border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-full px-6 sm:px-8 py-3 text-sm font-medium tracking-wide transition-all duration-300 bg-white dark:bg-gray-800 w-full sm:w-auto"
                     >
                       VIEW ALL EVENTS
                     </Button>
@@ -113,27 +113,27 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 0.6 }}
-          className="fixed bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none"
+          className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 flex flex-col sm:flex-row justify-between items-end pointer-events-none space-y-1 sm:space-y-0"
         >
-          <p className="text-sm text-gray-500 dark:text-gray-400">Where blockchain meets events</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Made reality by EventNFT®</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Where blockchain meets events</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Made reality by EventNFT®</p>
         </motion.div>
 
         {/* Featured Events Section */}
-        <section className="py-24 px-6 bg-gray-100 dark:bg-gray-800">
-          <div className="container mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-gray-100 dark:bg-gray-800">
+          <div className="container-responsive">
             <FadeIn>
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+              <div className="text-center mb-12 sm:mb-16">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
                   FEATURED EXPERIENCES
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto">
+                <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-2xl mx-auto px-4">
                   Discover exclusive events and experiences, secured by blockchain technology
                 </p>
               </div>
             </FadeIn>
 
-            <StaggerContainer className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <StaggerContainer className="grid-responsive-3 max-w-6xl mx-auto">
               {featuredEvents.map((event, index) => (
                 <StaggerItem key={event.id}>
                   <FloatingCard>
@@ -151,30 +151,30 @@ export default function HomePage() {
                           {event.category}
                         </Badge>
                       </motion.div>
-                      <CardHeader className="p-6">
-                        <CardTitle className="text-xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">
+                      <CardHeader className="p-4 sm:p-6">
+                        <CardTitle className="text-lg sm:text-xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">
                           {event.title}
                         </CardTitle>
-                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                             {event.date}
                           </div>
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
                             {event.location}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4" />
+                            <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                             {event.available} available
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-6 pt-0">
-                        <div className="flex justify-between items-center">
-                          <span className="text-2xl font-black text-gray-900 dark:text-white">{event.price}</span>
+                      <CardContent className="p-4 sm:p-6 pt-0">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                          <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{event.price}</span>
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full px-6 py-2 text-sm font-medium">
+                            <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full px-4 sm:px-6 py-2 text-xs sm:text-sm font-medium w-full sm:w-auto">
                               VIEW
                             </Button>
                           </motion.div>
@@ -190,21 +190,21 @@ export default function HomePage() {
 
         {/* About Section */}
         <SlideUp>
-          <section className="py-24 px-6 bg-gray-50 dark:bg-gray-900">
-            <div className="container mx-auto">
-              <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
+          <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
+            <div className="container-responsive">
+              <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
                 <motion.div
                   initial={{ opacity: 0, x: -50 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.8 }}
                   viewport={{ once: true }}
                 >
-                  <h2 className="text-5xl font-black tracking-tight mb-8 text-gray-900 dark:text-white">
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 sm:mb-8 text-gray-900 dark:text-white">
                     THE FUTURE OF
                     <br />
                     EVENT TICKETS
                   </h2>
-                  <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed mb-8">
+                  <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-400 leading-relaxed mb-6 sm:mb-8">
                     EventNFT revolutionizes how we experience events. Built on Algorand blockchain, our platform ensures
                     authenticity, enables seamless trading, and creates lasting digital memories of your experiences.
                   </p>
@@ -249,15 +249,15 @@ export default function HomePage() {
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="py-24 px-6 bg-gray-900 text-white dark:bg-black"
+          className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-gray-900 text-white dark:bg-black"
         >
-          <div className="container mx-auto text-center">
+          <div className="container-responsive text-center">
             <motion.h2
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-5xl font-black tracking-tight mb-8"
+              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 sm:mb-8"
             >
               READY TO START
               <br />
@@ -268,7 +268,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto"
+              className="text-base sm:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-12 max-w-2xl mx-auto px-4"
             >
               Join thousands of users already trading event NFTs on our platform
             </motion.p>
@@ -277,11 +277,11 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
               viewport={{ once: true }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center px-4"
             >
               <Link href="/marketplace">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button className="bg-white text-black hover:bg-gray-200 rounded-full px-8 py-3 text-sm font-medium">
+                  <Button className="bg-white text-black hover:bg-gray-200 rounded-full px-6 sm:px-8 py-3 text-sm font-medium w-full sm:w-auto">
                     EXPLORE MARKETPLACE
                   </Button>
                 </motion.div>
@@ -290,7 +290,7 @@ export default function HomePage() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     variant="outline"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white rounded-full px-8 py-3 text-sm font-medium bg-transparent"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white rounded-full px-6 sm:px-8 py-3 text-sm font-medium bg-transparent w-full sm:w-auto"
                   >
                     BECOME A MERCHANT
                   </Button>

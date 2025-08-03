@@ -104,7 +104,7 @@ export default function MerchantAuthPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-2xl">
           <FadeIn>
             <Link
@@ -126,7 +126,7 @@ export default function MerchantAuthPage() {
               >
                 <Store className="w-8 h-8 text-white dark:text-black" />
               </motion.div>
-              <h1 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
                 MERCHANT
                 <br />
                 APPLICATION
@@ -139,7 +139,7 @@ export default function MerchantAuthPage() {
 
           <SlideUp delay={0.2}>
             <Card className="border-0 shadow-lg rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-8 space-y-6">
+              <CardContent className="p-4 sm:p-6 lg:p-8 space-y-6">
                 {/* Progress Indicator */}
                 <div className="flex items-center justify-center mb-8">
                   {[1, 2, 3].map((stepNumber) => (
@@ -177,7 +177,7 @@ export default function MerchantAuthPage() {
                 >
                   {step === 1 && (
                     <div className="space-y-6">
-                      <h2 className="text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
+                      <h2 className="text-lg sm:text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
                         Business Information
                       </h2>
                       <div className="space-y-4">
@@ -259,7 +259,7 @@ export default function MerchantAuthPage() {
 
                   {step === 2 && (
                     <div className="space-y-6">
-                      <h2 className="text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
+                      <h2 className="text-lg sm:text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
                         Account Setup
                       </h2>
                       <div className="space-y-4">
@@ -311,7 +311,7 @@ export default function MerchantAuthPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
                         <Button
                           onClick={() => setStep(1)}
                           variant="outline"
@@ -331,7 +331,7 @@ export default function MerchantAuthPage() {
 
                   {step === 3 && (
                     <div className="space-y-6">
-                      <h2 className="text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
+                      <h2 className="text-lg sm:text-xl font-black text-center mb-6 text-gray-900 dark:text-white">
                         Verification Documents
                       </h2>
                       <div className="space-y-4">
@@ -365,7 +365,7 @@ export default function MerchantAuthPage() {
                           </ul>
                         </div>
                       </div>
-                      <div className="flex gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
                         <Button
                           onClick={() => setStep(2)}
                           variant="outline"

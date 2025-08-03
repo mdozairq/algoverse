@@ -112,7 +112,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <Sidebar className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+          <Sidebar className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:block">
             <SidebarHeader className="border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 px-4 py-3">
                 {role === "admin" && <Shield className="w-6 h-6 text-red-600" />}
@@ -178,7 +178,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
 
           <SidebarInset className="flex-1">
             <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-200 dark:border-gray-700 px-4 bg-white dark:bg-gray-800">
-              <SidebarTrigger className="-ml-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white" />
+              <SidebarTrigger className="-ml-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white md:hidden" />
               <div className="ml-auto flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -192,7 +192,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="hidden sm:inline-flex rounded-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     View Marketplace
                   </Button>
@@ -200,7 +200,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
               </div>
             </header>
 
-            <main className="flex-1 p-6">{children}</main>
+            <main className="flex-1 p-4 sm:p-6">{children}</main>
           </SidebarInset>
         </div>
       </SidebarProvider>

@@ -9,7 +9,7 @@ import { PageTransition, FadeIn } from "@/components/animations/page-transition"
 export default function UserAuthPage() {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md">
           <FadeIn>
             <Link
@@ -23,7 +23,7 @@ export default function UserAuthPage() {
 
           <FadeIn delay={0.1}>
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
                 USER
                 <br />
                 ACCESS
@@ -36,7 +36,7 @@ export default function UserAuthPage() {
 
           <FadeIn delay={0.2}>
             <Card className="border-0 shadow-lg rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-8">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
                 <WalletConnect />
               </CardContent>
             </Card>

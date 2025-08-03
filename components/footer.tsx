@@ -13,9 +13,9 @@ export default function Footer({
   className = "" 
 }: FooterProps) {
   const footerContent = (
-    <footer className={`py-16 px-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 ${className}`}>
-      <div className="container mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-12">
+    <footer className={`py-12 sm:py-16 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 ${className}`}>
+      <div className="container-responsive">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
           <div>
             <span className="text-xl font-black tracking-tight mb-4 block text-gray-900 dark:text-white">
               EVENTNFT.
@@ -93,9 +93,9 @@ export default function Footer({
             </ul>
           </div>
         </div>
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <p className="text-sm text-gray-500 dark:text-gray-500">&copy; 2024 EventNFT. All rights reserved.</p>
-          <div className="flex items-center gap-6 mt-4 md:mt-0">
+          <div className="flex items-center gap-4 sm:gap-6">
             <Link
               href="/privacy"
               className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"

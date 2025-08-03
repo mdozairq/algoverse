@@ -71,11 +71,11 @@ export function WalletConnect() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">Connect Your Wallet</h2>
-        <p className="text-gray-400">Choose your preferred Algorand wallet to get started</p>
-      </div>
+          <div className="space-y-4 sm:space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Connect Your Wallet</h2>
+          <p className="text-sm sm:text-base text-gray-400">Choose your preferred Algorand wallet to get started</p>
+        </div>
 
       <div className="grid gap-4">
         <AnimatePresence mode="wait">
@@ -93,12 +93,12 @@ export function WalletConnect() {
                 }`}
                 onClick={() => !loading && connectionStatus === "idle" && handleConnect(wallet.id)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-lg bg-gradient-to-r ${wallet.color} text-white`}>{wallet.icon}</div>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className={`p-2 sm:p-3 rounded-lg bg-gradient-to-r ${wallet.color} text-white`}>{wallet.icon}</div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-white">{wallet.name}</h3>
-                      <p className="text-sm text-gray-400">{wallet.description}</p>
+                      <h3 className="text-sm sm:text-base font-semibold text-white">{wallet.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-400">{wallet.description}</p>
                     </div>
                     <div className="flex items-center">
                       {selectedWallet === wallet.id && connectionStatus === "connecting" && (

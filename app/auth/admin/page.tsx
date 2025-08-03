@@ -57,7 +57,7 @@ export default function AdminAuthPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md">
           <FadeIn>
             <Link
@@ -76,7 +76,7 @@ export default function AdminAuthPage() {
                   <Shield className="w-8 h-8 text-white" />
                 </div>
               </ScaleIn>
-              <h1 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
                 ADMIN
                 <br />
                 ACCESS
@@ -87,7 +87,7 @@ export default function AdminAuthPage() {
 
           <FadeIn delay={0.2}>
             <Card className="border-0 shadow-lg rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-8">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
