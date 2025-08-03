@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import Footer from "@/components/footer"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -129,6 +130,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </div>
   )
 }

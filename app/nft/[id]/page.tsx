@@ -32,6 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { RequestChangeModal } from "@/components/nft/request-change-modal"
+import Footer from "@/components/footer"
 
 export default function NFTDetailPage() {
   const params = useParams()
@@ -519,6 +520,7 @@ export default function NFTDetailPage() {
         onClose={() => setIsChangeRequestModalOpen(false)}
         nft={nft}
       />
+      <Footer />
     </div>
   )
 }

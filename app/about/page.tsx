@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Zap, Smartphone, RefreshCw, Award, Globe, ArrowRight, CheckCircle } from "lucide-react"
 import Header from "@/components/header"
+import Footer from "@/components/footer"
 import { motion } from "framer-motion"
 
 export default function AboutPage() {
@@ -473,7 +474,7 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.6 }}
             viewport={{ once: true }}
           >
-            <Link href="/auth/signup">
+            <Link href="/auth/user">
               <motion.div
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
@@ -484,7 +485,7 @@ export default function AboutPage() {
                 </Button>
               </motion.div>
             </Link>
-            <Link href="/marketplace">
+            <Link href="/events">
               <motion.div
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
@@ -502,99 +503,7 @@ export default function AboutPage() {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <motion.footer 
-        className="py-16 px-6 border-t border-gray-200 bg-white"
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true, amount: 0.3 }}
-      >
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
-            <div>
-              <span className="text-xl font-black tracking-tight mb-4 block">EVENTNFT.</span>
-              <p className="text-gray-600 text-sm">The decentralized marketplace for event tickets and experiences.</p>
-            </div>
-            <div>
-              <h3 className="font-bold mb-4 text-sm tracking-wide">PLATFORM</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="/marketplace" className="hover:text-black transition-colors">
-                    Marketplace
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/events" className="hover:text-black transition-colors">
-                    Events
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/insights" className="hover:text-black transition-colors">
-                    Insights
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/about" className="hover:text-black transition-colors">
-                    About
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-bold mb-4 text-sm tracking-wide">FOR MERCHANTS</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="/auth/signup" className="hover:text-black transition-colors">
-                    Become a Merchant
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard/merchant" className="hover:text-black transition-colors">
-                    Dashboard
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/docs" className="hover:text-black transition-colors">
-                    Documentation
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-bold mb-4 text-sm tracking-wide">SUPPORT</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="/help" className="hover:text-black transition-colors">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-black transition-colors">
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-black transition-colors">
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-500">&copy; 2024 EventNFT. All rights reserved.</p>
-            <div className="flex items-center gap-6 mt-4 md:mt-0">
-              <Link href="/privacy" className="text-sm text-gray-500 hover:text-black transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="text-sm text-gray-500 hover:text-black transition-colors">
-                Terms
-              </Link>
-            </div>
-          </div>
-        </div>
-      </motion.footer>
+      <Footer />
     </div>
   )
 }

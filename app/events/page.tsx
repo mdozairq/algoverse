@@ -11,6 +11,7 @@ import Link from "next/link"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import { FloatingCard } from "@/components/animations/card-hover"
 import Header from "@/components/header"
+import Footer from "@/components/footer"
 
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -422,6 +423,7 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+      <Footer />
     </PageTransition>
   )
 }

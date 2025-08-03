@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import Footer from "@/components/footer"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -177,7 +178,7 @@ export default function SignupPage() {
                 <Checkbox
                   id="terms"
                   checked={acceptTerms}
-                  onCheckedChange={setAcceptTerms}
+                  onCheckedChange={(checked) => setAcceptTerms(checked === true)}
                   className="border-gray-600 data-[state=checked]:bg-white data-[state=checked]:text-black"
                 />
                 <Label htmlFor="terms" className="text-sm text-gray-400">
@@ -225,6 +226,7 @@ export default function SignupPage() {
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </div>
   )
 }

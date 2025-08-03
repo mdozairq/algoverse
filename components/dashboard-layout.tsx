@@ -47,7 +47,17 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
 
   const handleLogout = () => {
     logout()
-    router.push("/auth/login") // Redirect to login page after logout
+    switch(role){
+      case "admin":
+        router.push("/auth/admin")
+        break
+      case "merchant":
+        router.push("/auth/merchant")
+        break
+      case "user":
+        router.push("/auth/user")
+        break
+    }
   }
 
   const getMenuItems = () => {
