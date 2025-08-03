@@ -19,31 +19,20 @@ export async function POST(request: NextRequest) {
     // Create user document in Firestore
     if (role === "merchant") {
       await FirebaseService.createMerchant({
-        uid: userRecord.uid,
         businessName,
+        email,
         description: "",
-        category: Array.isArray(category) ? category : [category],
-        verified: false,
+        category: Array.isArray(category) ? category[0] : category,
         walletAddress: walletAddress || "",
-        totalRevenue: 0,
-        totalEvents: 0,
-        totalSales: 0,
-        rating: 0,
-        reviewCount: 0,
-        marketplaceEnabled: false,
+        isApproved: false,
       })
     } else {
       await FirebaseService.createUser({
-        uid: userRecord.uid,
         email,
-        displayName: displayName || "",
+        name: displayName || "",
         role: role || "user",
         walletAddress: walletAddress || "",
-        verified: false,
-        loyaltyPoints: 0,
-        totalSpent: 0,
-        eventsAttended: 0,
-        nftsOwned: 0,
+        isVerified: false,
       })
     }
 

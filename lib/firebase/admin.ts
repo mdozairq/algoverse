@@ -32,8 +32,8 @@ const createMockFirebaseAdmin = () => {
 
 // Initialize Firebase Admin only if environment variables are properly set
 let app
-let adminDb
-let adminAuth
+let adminDb : any
+let adminAuth : any
 
 if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
   try {

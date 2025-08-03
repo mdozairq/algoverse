@@ -16,7 +16,8 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   connectWallet: (address: string) => Promise<void>
-  loginWithEmail: (email: string, password: string, role?: string) => Promise<void>
+  loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<void>
+  registerMerchant: (data: any) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -42,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(mockUser)
       localStorage.setItem("eventnft_user", JSON.stringify(mockUser))
+      // Set cookie for middleware
+      document.cookie = `eventnft_user=${JSON.stringify(mockUser)}; path=/; max-age=86400`
     } catch (error) {
       console.error("Wallet connection failed:", error)
       throw error
@@ -50,24 +53,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const loginWithEmail = async (email: string, password: string, role = "user") => {
+  const loginWithEmail = async (email: string, password: string, role = "user", adminKey?: string) => {
     setLoading(true)
     try {
-      // Simulate login delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, role, adminKey }),
+      })
 
-      const mockUser: User = {
-        id: Math.random().toString(36).substring(7),
-        email,
-        role: role as "user" | "merchant" | "admin",
-        name: email.split("@")[0],
-        isVerified: role === "admin" || role === "merchant",
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed")
       }
 
-      setUser(mockUser)
-      localStorage.setItem("eventnft_user", JSON.stringify(mockUser))
+      const userData = data.user
+      const user: User = {
+        id: userData.uid,
+        email: userData.email,
+        walletAddress: userData.walletAddress,
+        role: userData.role,
+        name: userData.displayName || userData.businessName,
+        isVerified: userData.verified || userData.role === "admin",
+      }
+
+      setUser(user)
+      localStorage.setItem("eventnft_user", JSON.stringify(user))
+      // Set cookie for middleware
+      document.cookie = `eventnft_user=${JSON.stringify(user)}; path=/; max-age=86400`
     } catch (error) {
       console.error("Email login failed:", error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const registerMerchant = async (data: any) => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          role: "merchant",
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Registration failed")
+      }
+
+      // Don't automatically log in after registration
+      // User will need to wait for admin approval
+    } catch (error) {
+      console.error("Merchant registration failed:", error)
       throw error
     } finally {
       setLoading(false)
@@ -77,6 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("eventnft_user")
+    // Remove cookie for middleware
+    document.cookie = "eventnft_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
   }
 
   // Check for existing session on mount
@@ -97,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     connectWallet,
     loginWithEmail,
+    registerMerchant,
     logout,
     isAuthenticated: !!user,
   }

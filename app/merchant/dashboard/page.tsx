@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Header from "@/components/header"
+import AuthGuard from "@/components/auth-guard"
 import {
   Plus,
   Eye,
@@ -96,7 +97,8 @@ export default function MerchantDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+    <AuthGuard requiredRole="merchant">
+      <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -525,5 +527,6 @@ export default function MerchantDashboard() {
         </Tabs>
       </div>
     </div>
+    </AuthGuard>
   )
 }

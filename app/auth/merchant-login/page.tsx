@@ -1,35 +1,32 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Shield, Key } from "lucide-react"
-import { PageTransition, FadeIn, ScaleIn } from "@/components/animations/page-transition"
+import { ArrowLeft, Store } from "lucide-react"
+import { PageTransition, FadeIn } from "@/components/animations/page-transition"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
 
-export default function AdminAuthPage() {
+export default function MerchantLoginPage() {
   const router = useRouter()
   const { loginWithEmail, loading } = useAuth()
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    adminKey: "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     try {
-      if (!formData.email || !formData.password || !formData.adminKey) {
+      if (!formData.email || !formData.password) {
         toast({
           title: "Validation Error",
           description: "Please fill in all fields",
@@ -38,18 +35,18 @@ export default function AdminAuthPage() {
         return
       }
 
-      await loginWithEmail(formData.email, formData.password, "admin", formData.adminKey)
+      await loginWithEmail(formData.email, formData.password, "merchant")
       
       toast({
         title: "Login Successful",
-        description: "Welcome back, Administrator!",
+        description: "Welcome back to your merchant dashboard!",
       })
 
-      router.push("/dashboard/admin")
+      router.push("/merchant/dashboard")
     } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid credentials",
+        description: error.message || "Invalid credentials or account not yet approved",
         variant: "destructive",
       })
     }
@@ -71,17 +68,22 @@ export default function AdminAuthPage() {
 
           <FadeIn delay={0.1}>
             <div className="text-center mb-8">
-              <ScaleIn>
-                <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-8 h-8 text-white" />
-                </div>
-              </ScaleIn>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="w-16 h-16 bg-black dark:bg-white rounded-full flex items-center justify-center mx-auto mb-4"
+              >
+                <Store className="w-8 h-8 text-white dark:text-black" />
+              </motion.div>
               <h1 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
-                ADMIN
+                MERCHANT
                 <br />
-                ACCESS
+                LOGIN
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">Secure administrative access to the platform</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Access your merchant dashboard
+              </p>
             </div>
           </FadeIn>
 
@@ -95,14 +97,14 @@ export default function AdminAuthPage() {
                     transition={{ delay: 0.3, duration: 0.5 }}
                   >
                     <Label htmlFor="email" className="text-sm font-medium text-gray-900 dark:text-gray-300">
-                      Admin Email
+                      Business Email
                     </Label>
                     <Input
                       id="email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="Enter admin email"
+                      placeholder="Enter your business email"
                       className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       required
                     />
@@ -121,61 +123,41 @@ export default function AdminAuthPage() {
                       type="password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Enter password"
+                      placeholder="Enter your password"
                       className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       required
                     />
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                  >
-                    <Label
-                      htmlFor="adminKey"
-                      className="text-sm font-medium flex items-center gap-2 text-gray-900 dark:text-gray-300"
-                    >
-                      <Key className="w-4 h-4" />
-                      Admin Master Key
-                    </Label>
-                    <Input
-                      id="adminKey"
-                      type="password"
-                      value={formData.adminKey}
-                      onChange={(e) => setFormData({ ...formData, adminKey: e.target.value })}
-                      placeholder="Enter master key"
-                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      Master key required for administrative access
-                    </p>
                   </motion.div>
 
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.5 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
                   >
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-red-600 text-white hover:bg-red-700 rounded-full py-3 text-sm font-medium"
+                      className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full py-3 text-sm font-medium"
                       size="lg"
                     >
-                      {loading ? "SIGNING IN..." : "ADMIN SIGN IN"}
+                      {loading ? "SIGNING IN..." : "MERCHANT SIGN IN"}
                     </Button>
                   </motion.div>
 
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.7, duration: 0.5 }}
-                    className="bg-red-900/20 border border-red-700 rounded-lg p-4"
+                    transition={{ delay: 0.6, duration: 0.5 }}
+                    className="text-center"
                   >
-                    <p className="text-xs text-red-300 text-center">
-                      ⚠️ Administrative access is restricted and monitored. Unauthorized access attempts will be logged.
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Don't have a merchant account?{" "}
+                      <Link
+                        href="/auth/merchant"
+                        className="text-black dark:text-white hover:underline font-medium"
+                      >
+                        Apply here
+                      </Link>
                     </p>
                   </motion.div>
                 </form>
@@ -186,4 +168,4 @@ export default function AdminAuthPage() {
       </div>
     </PageTransition>
   )
-}
+} 

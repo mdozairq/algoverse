@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, Clock, Eye } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
+import AuthGuard from "@/components/auth-guard"
 
 export default function AdminDashboard() {
   const stats = [
@@ -100,8 +101,9 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <DashboardLayout role="admin">
-      <div className="space-y-8 bg-gray-50 dark:bg-gray-900 p-8">
+    <AuthGuard requiredRole="admin">
+      <DashboardLayout role="admin">
+        <div className="space-y-8 bg-gray-50 dark:bg-gray-900 p-8">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Admin Dashboard</h1>
@@ -410,6 +412,7 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </AuthGuard>
   )
 }

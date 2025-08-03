@@ -11,8 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Store, Upload } from "lucide-react"
 import { PageTransition, FadeIn, SlideUp } from "@/components/animations/page-transition"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function MerchantAuthPage() {
+  const router = useRouter()
+  const { registerMerchant, loading } = useAuth()
+  const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     businessName: "",
@@ -41,8 +47,59 @@ export default function MerchantAuthPage() {
   }
 
   const handleSubmit = async () => {
-    // Submit merchant application
-    console.log("Submitting merchant application:", formData)
+    try {
+      // Validate form data
+      if (!formData.businessName || !formData.email || !formData.password || !formData.category || !formData.description) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "Passwords do not match",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (formData.password.length < 6) {
+        toast({
+          title: "Weak Password",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        })
+        return
+      }
+
+      await registerMerchant({
+        email: formData.email,
+        password: formData.password,
+        displayName: formData.businessName,
+        businessName: formData.businessName,
+        description: formData.description,
+        category: formData.category,
+        walletAddress: formData.walletAddress,
+      })
+
+      toast({
+        title: "Application Submitted",
+        description: "Your merchant application has been submitted for review. You'll receive an email once approved.",
+      })
+
+      // Redirect to a pending page or home
+      router.push("/")
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to submit application",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -318,10 +375,22 @@ export default function MerchantAuthPage() {
                         </Button>
                         <Button
                           onClick={handleSubmit}
+                          disabled={loading}
                           className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full py-3 text-sm font-medium"
                         >
-                          SUBMIT APPLICATION
+                          {loading ? "SUBMITTING..." : "SUBMIT APPLICATION"}
                         </Button>
+                      </div>
+                      <div className="text-center mt-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Already have a merchant account?{" "}
+                          <Link
+                            href="/auth/merchant-login"
+                            className="text-black dark:text-white hover:underline font-medium"
+                          >
+                            Sign in here
+                          </Link>
+                        </p>
                       </div>
                     </div>
                   )}

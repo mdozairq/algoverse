@@ -26,6 +26,7 @@ import {
   Edit,
 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
+import AuthGuard from "@/components/auth-guard"
 import { AtomicSwapModal } from "@/components/nft/atomic-swap-modal"
 
 export default function UserDashboard() {
@@ -164,8 +165,9 @@ export default function UserDashboard() {
   }
 
   return (
-    <DashboardLayout role="user">
-      <div className="space-y-8 bg-gray-50 dark:bg-gray-900 p-8">
+    <AuthGuard requiredRole="user">
+      <DashboardLayout role="user">
+        <div className="space-y-8 bg-gray-50 dark:bg-gray-900 p-8">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -536,6 +538,7 @@ export default function UserDashboard() {
         nftToSwap={myNFTs[0]}
         userNFTs={myNFTs}
       />
-    </DashboardLayout>
+      </DashboardLayout>
+    </AuthGuard>
   )
 }
