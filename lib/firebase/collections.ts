@@ -1,5 +1,5 @@
-// Mock Firestore collections for demo purposes
-import { mockDb } from "./config"
+// Firestore collections using real Firebase Admin SDK
+import { adminDb } from "./admin"
 
 export interface User {
   id: string
@@ -47,10 +47,10 @@ export interface Merchant {
   createdAt: Date
 }
 
-// Mock collection services
+// Real Firestore collection services
 export const usersCollection = {
   async create(userData: Omit<User, "id" | "createdAt">): Promise<string> {
-    const doc = await mockDb.collection("users").add({
+    const doc = await adminDb.collection("users").add({
       ...userData,
       createdAt: new Date(),
     })
@@ -58,7 +58,7 @@ export const usersCollection = {
   },
 
   async getById(id: string): Promise<User | null> {
-    const doc = await mockDb.collection("users").doc(id).get()
+    const doc = await adminDb.collection("users").doc(id).get()
     if (doc.exists) {
       return { id, ...doc.data() } as User
     }
@@ -66,7 +66,7 @@ export const usersCollection = {
   },
 
   async getByEmail(email: string): Promise<User | null> {
-    const snapshot = await mockDb.collection("users").where("email", "==", email).get()
+    const snapshot = await adminDb.collection("users").where("email", "==", email).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
       return { id: doc.id, ...doc.data() } as User
@@ -75,13 +75,13 @@ export const usersCollection = {
   },
 
   async update(id: string, updates: Partial<User>): Promise<void> {
-    await mockDb.collection("users").doc(id).update(updates)
+    await adminDb.collection("users").doc(id).update(updates)
   },
 }
 
 export const eventsCollection = {
   async create(eventData: Omit<Event, "id" | "createdAt">): Promise<string> {
-    const doc = await mockDb.collection("events").add({
+    const doc = await adminDb.collection("events").add({
       ...eventData,
       createdAt: new Date(),
     })
@@ -89,7 +89,7 @@ export const eventsCollection = {
   },
 
   async getById(id: string): Promise<Event | null> {
-    const doc = await mockDb.collection("events").doc(id).get()
+    const doc = await adminDb.collection("events").doc(id).get()
     if (doc.exists) {
       return { id, ...doc.data() } as Event
     }
@@ -97,23 +97,23 @@ export const eventsCollection = {
   },
 
   async getByMerchant(merchantId: string): Promise<Event[]> {
-    const snapshot = await mockDb.collection("events").where("merchantId", "==", merchantId).get()
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Event)
+    const snapshot = await adminDb.collection("events").where("merchantId", "==", merchantId).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
   },
 
   async getAll(): Promise<Event[]> {
-    const snapshot = await mockDb.collection("events").where("availableSupply", ">", 0).get()
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Event)
+    const snapshot = await adminDb.collection("events").where("availableSupply", ">", 0).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
   },
 
   async update(id: string, updates: Partial<Event>): Promise<void> {
-    await mockDb.collection("events").doc(id).update(updates)
+    await adminDb.collection("events").doc(id).update(updates)
   },
 }
 
 export const nftsCollection = {
   async create(nftData: Omit<NFT, "id" | "createdAt">): Promise<string> {
-    const doc = await mockDb.collection("nfts").add({
+    const doc = await adminDb.collection("nfts").add({
       ...nftData,
       createdAt: new Date(),
     })
@@ -121,7 +121,7 @@ export const nftsCollection = {
   },
 
   async getById(id: string): Promise<NFT | null> {
-    const doc = await mockDb.collection("nfts").doc(id).get()
+    const doc = await adminDb.collection("nfts").doc(id).get()
     if (doc.exists) {
       return { id, ...doc.data() } as NFT
     }
@@ -129,18 +129,18 @@ export const nftsCollection = {
   },
 
   async getByOwner(ownerId: string): Promise<NFT[]> {
-    const snapshot = await mockDb.collection("nfts").where("ownerId", "==", ownerId).get()
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as NFT)
+    const snapshot = await adminDb.collection("nfts").where("ownerId", "==", ownerId).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
   },
 
   async update(id: string, updates: Partial<NFT>): Promise<void> {
-    await mockDb.collection("nfts").doc(id).update(updates)
+    await adminDb.collection("nfts").doc(id).update(updates)
   },
 }
 
 export const merchantsCollection = {
   async create(merchantData: Omit<Merchant, "id" | "createdAt">): Promise<string> {
-    const doc = await mockDb.collection("merchants").add({
+    const doc = await adminDb.collection("merchants").add({
       ...merchantData,
       createdAt: new Date(),
       isApproved: false,
@@ -149,7 +149,7 @@ export const merchantsCollection = {
   },
 
   async getById(id: string): Promise<Merchant | null> {
-    const doc = await mockDb.collection("merchants").doc(id).get()
+    const doc = await adminDb.collection("merchants").doc(id).get()
     if (doc.exists) {
       return { id, ...doc.data() } as Merchant
     }
@@ -157,17 +157,17 @@ export const merchantsCollection = {
   },
 
   async getPending(): Promise<Merchant[]> {
-    const snapshot = await mockDb.collection("merchants").where("isApproved", "==", false).get()
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Merchant)
+    const snapshot = await adminDb.collection("merchants").where("isApproved", "==", false).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Merchant)
   },
 
   async getApproved(): Promise<Merchant[]> {
-    const snapshot = await mockDb.collection("merchants").where("isApproved", "==", true).get()
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Merchant)
+    const snapshot = await adminDb.collection("merchants").where("isApproved", "==", true).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Merchant)
   },
 
   async update(id: string, updates: Partial<Merchant>): Promise<void> {
-    await mockDb.collection("merchants").doc(id).update(updates)
+    await adminDb.collection("merchants").doc(id).update(updates)
   },
 }
 
@@ -243,5 +243,25 @@ export class FirebaseService {
 
   static async updateMerchant(id: string, updates: Partial<Merchant>): Promise<void> {
     return merchantsCollection.update(id, updates)
+  }
+
+  // Additional methods for events
+  static async getFeaturedEvents(limit: number = 10): Promise<Event[]> {
+    const snapshot = await adminDb.collection("events").where("featured", "==", true).get()
+    return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+  }
+
+  static async getTrendingEvents(limit: number = 10): Promise<Event[]> {
+    const snapshot = await adminDb.collection("events").where("trending", "==", true).get()
+    return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+  }
+
+  static async getMerchantByUid(uid: string): Promise<Merchant | null> {
+    const snapshot = await adminDb.collection("merchants").where("uid", "==", uid).get()
+    if (snapshot.docs.length > 0) {
+      const doc = snapshot.docs[0]
+      return { id: doc.id, ...doc.data() } as Merchant
+    }
+    return null
   }
 }
