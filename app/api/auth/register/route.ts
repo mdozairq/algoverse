@@ -4,27 +4,27 @@ import { FirebaseService } from "@/lib/firebase/collections"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, displayName, role, walletAddress, businessName, category } = await request.json()
+    const { email, password, displayName, role, walletAddress, businessName, category, description } = await request.json()
 
-    // Create user in Firebase Auth
-    const userRecord = await adminAuth.createUser({
-      email,
-      password,
-      displayName,
-    })
+    // Check if user already exists
+    const existingUser = await FirebaseService.getUserByEmail(email)
+    if (existingUser) {
+      return NextResponse.json({ error: "User already exists with this email" }, { status: 400 })
+    }
 
-    // Set custom claims for role
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role })
+    // Generate a unique ID for the user
+    const userId = `${role}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
     // Create user document in Firestore
     if (role === "merchant") {
       await FirebaseService.createMerchant({
-        businessName,
+        businessName: businessName || displayName,
         email,
-        description: "",
-        category: Array.isArray(category) ? category[0] : category,
+        description: description || "",
+        category: Array.isArray(category) ? category[0] : category || "Other",
         walletAddress: walletAddress || "",
         isApproved: false,
+        uid: userId,
       })
     } else {
       await FirebaseService.createUser({
@@ -38,10 +38,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      message: role === "merchant" 
+        ? "Merchant application submitted successfully. You'll receive an email once approved."
+        : "User account created successfully.",
       user: {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName,
+        uid: userId,
+        email,
+        displayName,
         role,
       },
     })
