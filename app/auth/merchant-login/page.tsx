@@ -1,17 +1,19 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Store } from "lucide-react"
-import { PageTransition, FadeIn } from "@/components/animations/page-transition"
+import { ArrowLeft, Store, Mail, Lock } from "lucide-react"
+import { PageTransition, FadeIn, ScaleIn } from "@/components/animations/page-transition"
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 export default function MerchantLoginPage() {
   const router = useRouter()
@@ -39,14 +41,14 @@ export default function MerchantLoginPage() {
       
       toast({
         title: "Login Successful",
-        description: "Welcome back to your merchant dashboard!",
+        description: "Welcome back, Merchant!",
       })
 
-      router.push("/merchant/dashboard")
+      router.push("/dashboard/merchant")
     } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid credentials or account not yet approved",
+        description: error.message || "Invalid credentials",
         variant: "destructive",
       })
     }
@@ -54,7 +56,7 @@ export default function MerchantLoginPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md">
           <FadeIn>
             <Link
@@ -68,28 +70,23 @@ export default function MerchantLoginPage() {
 
           <FadeIn delay={0.1}>
             <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-16 h-16 bg-black dark:bg-white rounded-full flex items-center justify-center mx-auto mb-4"
-              >
-                <Store className="w-8 h-8 text-white dark:text-black" />
-              </motion.div>
-              <h1 className="text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+              <ScaleIn>
+                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Store className="w-8 h-8 text-white" />
+                </div>
+              </ScaleIn>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
                 MERCHANT
                 <br />
-                LOGIN
+                SIGN IN
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Access your merchant dashboard
-              </p>
+              <p className="text-gray-600 dark:text-gray-400">Access your merchant dashboard</p>
             </div>
           </FadeIn>
 
           <FadeIn delay={0.2}>
             <Card className="border-0 shadow-lg rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-8">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -137,7 +134,7 @@ export default function MerchantLoginPage() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full py-3 text-sm font-medium"
+                      className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-full py-3 text-sm font-medium"
                       size="lg"
                     >
                       {loading ? "SIGNING IN..." : "MERCHANT SIGN IN"}
@@ -154,10 +151,21 @@ export default function MerchantLoginPage() {
                       Don't have a merchant account?{" "}
                       <Link
                         href="/auth/merchant"
-                        className="text-black dark:text-white hover:underline font-medium"
+                        className="text-blue-600 hover:text-blue-700 font-medium"
                       >
                         Apply here
                       </Link>
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                    className="bg-blue-900/20 border border-blue-700 rounded-lg p-4"
+                  >
+                    <p className="text-xs text-blue-300 text-center">
+                      💼 Merchant accounts require admin approval before you can access the dashboard.
                     </p>
                   </motion.div>
                 </form>
@@ -168,4 +176,4 @@ export default function MerchantLoginPage() {
       </div>
     </PageTransition>
   )
-} 
+}

@@ -1,232 +1,267 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { ArrowLeft, User, Mail, Lock } from "lucide-react"
+import { PageTransition, FadeIn, ScaleIn } from "@/components/animations/page-transition"
+import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import Footer from "@/components/footer"
 
-export default function SignupPage() {
+export default function UserSignupPage() {
+  const router = useRouter()
+  const { loginWithEmail, loading } = useAuth()
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    walletAddress: "",
   })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
-  const [error, setError] = useState("")
-  const { loginWithEmail, loading } = useAuth()
-  const router = useRouter()
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    if (!acceptTerms) {
-      setError("Please accept the terms and conditions")
-      return
-    }
-
+    
     try {
-      await loginWithEmail(formData.email, formData.password)
+      if (!formData.name || !formData.email || !formData.password) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "Passwords do not match",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (formData.password.length < 6) {
+        toast({
+          title: "Weak Password",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Register user
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          displayName: formData.name,
+          role: "user",
+          walletAddress: formData.walletAddress,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Registration failed")
+      }
+
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created successfully!",
+      })
+
+      // Auto-login after registration
+      await loginWithEmail(formData.email, formData.password, "user")
       router.push("/dashboard/user")
-    } catch (err) {
-      setError("Failed to create account")
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      })
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Back to home
-          </Link>
+    <PageTransition>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-md">
+          <FadeIn>
+            <Link
+              href="/"
+              className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-8 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to home
+            </Link>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <div className="text-center mb-8">
+              <ScaleIn>
+                <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-8 h-8 text-white" />
+                </div>
+              </ScaleIn>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+                CREATE
+                <br />
+                ACCOUNT
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">Join the NFT marketplace community</p>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.2}>
+            <Card className="border-0 shadow-lg rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                  >
+                    <Label htmlFor="name" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Full Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Enter your full name"
+                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4, duration: 0.5 }}
+                  >
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Email Address *
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="Enter your email"
+                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                  >
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Password *
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Create a password"
+                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6, duration: 0.5 }}
+                  >
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Confirm Password *
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      placeholder="Confirm your password"
+                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                  >
+                    <Label htmlFor="walletAddress" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Algorand Wallet Address (Optional)
+                    </Label>
+                    <Input
+                      id="walletAddress"
+                      type="text"
+                      value={formData.walletAddress}
+                      onChange={(e) => setFormData({ ...formData, walletAddress: e.target.value })}
+                      placeholder="Enter your Algorand wallet address"
+                      className="rounded-full h-12 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      You can add this later in your profile settings
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8, duration: 0.5 }}
+                  >
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-green-600 text-white hover:bg-green-700 rounded-full py-3 text-sm font-medium"
+                      size="lg"
+                    >
+                      {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+                    </Button>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.9, duration: 0.5 }}
+                    className="text-center"
+                  >
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Already have an account?{" "}
+                      <Link
+                        href="/auth/user"
+                        className="text-green-600 hover:text-green-700 font-medium"
+                      >
+                        Sign in here
+                      </Link>
+                    </p>
+                  </motion.div>
+                </form>
+              </CardContent>
+            </Card>
+          </FadeIn>
         </div>
-
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-white">Create Account</CardTitle>
-            <CardDescription className="text-gray-400">Join EventNFT and start collecting</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-white">
-                    First Name
-                  </Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-white">
-                    Last Name
-                  </Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-white">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-white">
-                  Confirm Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={acceptTerms}
-                  onCheckedChange={(checked) => setAcceptTerms(checked === true)}
-                  className="border-gray-600 data-[state=checked]:bg-white data-[state=checked]:text-black"
-                />
-                <Label htmlFor="terms" className="text-sm text-gray-400">
-                  I agree to the{" "}
-                  <Link href="/terms" className="text-white hover:underline">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="text-white hover:underline">
-                    Privacy Policy
-                  </Link>
-                </Label>
-              </div>
-
-              {error && <div className="text-red-400 text-sm text-center">{error}</div>}
-
-              <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200" disabled={loading}>
-                {loading ? "Creating account..." : "Create Account"}
-              </Button>
-            </form>
-
-            <Separator className="bg-gray-700" />
-
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-gray-800"
-              >
-                Continue with Google
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-gray-800"
-              >
-                Continue with GitHub
-              </Button>
-            </div>
-
-            <div className="text-center text-sm text-gray-400">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-white hover:underline">
-                Sign in
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-      <Footer />
-    </div>
+    </PageTransition>
   )
 }

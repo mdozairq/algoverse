@@ -31,35 +31,53 @@ const createMockFirebaseAdmin = () => {
 }
 
 // Initialize Firebase Admin only if environment variables are properly set
-let app
-let adminDb : any
-let adminAuth : any
+let app: any
+let adminDb: any
+let adminAuth: any
+let isInitialized = false
 
-if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-  try {
-    const firebaseAdminConfig = {
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      }),
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
+function initializeFirebaseAdmin() {
+  if (isInitialized) return { adminDb, adminAuth }
+  
+  console.log("Initializing Firebase Admin...")
+  console.log("Environment check:")
+  console.log("- FIREBASE_PROJECT_ID:", !!process.env.FIREBASE_PROJECT_ID)
+  console.log("- FIREBASE_CLIENT_EMAIL:", !!process.env.FIREBASE_CLIENT_EMAIL)
+  console.log("- FIREBASE_PRIVATE_KEY:", !!process.env.FIREBASE_PRIVATE_KEY)
+
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    try {
+      const firebaseAdminConfig = {
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        }),
+        // databaseURL: process.env.FIREBASE_DATABASE_URL,
+      }
+      app = getApps().length === 0 ? initializeApp(firebaseAdminConfig) : getApps()[0]
+      adminDb = getFirestore(app)
+      adminAuth = getAuth(app)
+      console.log("✅ Firebase Admin initialized successfully with real Firestore")
+    } catch (error) {
+      console.warn("Firebase Admin initialization failed, using mock:", error)
+      const mock = createMockFirebaseAdmin()
+      adminDb = mock.firestore()
+      adminAuth = mock.auth()
     }
-    app = getApps().length === 0 ? initializeApp(firebaseAdminConfig) : getApps()[0]
-    adminDb = getFirestore(app)
-    adminAuth = getAuth(app)
-  } catch (error) {
-    console.warn("Firebase Admin initialization failed, using mock:", error)
+  } else {
+    console.warn("Firebase environment variables not set, using mock configuration")
     const mock = createMockFirebaseAdmin()
     adminDb = mock.firestore()
     adminAuth = mock.auth()
   }
-} else {
-  console.warn("Firebase environment variables not set, using mock configuration")
-  const mock = createMockFirebaseAdmin()
-  adminDb = mock.firestore()
-  adminAuth = mock.auth()
+  
+  isInitialized = true
+  return { adminDb, adminAuth }
 }
+
+// Initialize immediately
+const { adminDb: _adminDb, adminAuth: _adminAuth } = initializeFirebaseAdmin()
 
 export { adminDb, adminAuth }
 
