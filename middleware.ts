@@ -29,14 +29,46 @@ export function middleware(request: NextRequest) {
   // Check if user is trying to access protected routes
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
   
-  if (isProtectedRoute && !user) {
-    // Redirect to appropriate auth page based on the route
-    if (pathname.startsWith("/dashboard/admin") || pathname.startsWith("/admin/dashboard")) {
-      return NextResponse.redirect(new URL("/auth/admin", request.url))
-    } else if (pathname.startsWith("/dashboard/merchant") || pathname.startsWith("/merchant/dashboard")) {
-      return NextResponse.redirect(new URL("/auth/merchant", request.url))
-    } else {
-      return NextResponse.redirect(new URL("/auth/user", request.url))
+  if (isProtectedRoute) {
+    if (!user) {
+      // Redirect to appropriate auth page based on the route
+      if (pathname.startsWith("/dashboard/admin") || pathname.startsWith("/admin/dashboard")) {
+        return NextResponse.redirect(new URL("/auth/admin", request.url))
+      } else if (pathname.startsWith("/dashboard/merchant") || pathname.startsWith("/merchant/dashboard")) {
+        return NextResponse.redirect(new URL("/auth/merchant-login", request.url))
+      } else {
+        return NextResponse.redirect(new URL("/auth/user", request.url))
+      }
+    }
+
+    // Check role-based access
+    try {
+      const userData = JSON.parse(user)
+      const userRole = userData.role
+
+      // Admin routes - only admin can access
+      if ((pathname.startsWith("/dashboard/admin") || pathname.startsWith("/admin/dashboard")) && userRole !== "admin") {
+        return NextResponse.redirect(new URL("/auth/admin", request.url))
+      }
+
+      // Merchant routes - only merchant can access
+      if ((pathname.startsWith("/dashboard/merchant") || pathname.startsWith("/merchant/dashboard")) && userRole !== "merchant") {
+        return NextResponse.redirect(new URL("/auth/merchant-login", request.url))
+      }
+
+      // User routes - only user can access
+      if ((pathname.startsWith("/dashboard/user") || pathname.startsWith("/user/dashboard")) && userRole !== "user") {
+        return NextResponse.redirect(new URL("/auth/user", request.url))
+      }
+    } catch (error) {
+      // Invalid user data, redirect to appropriate auth page
+      if (pathname.startsWith("/dashboard/admin") || pathname.startsWith("/admin/dashboard")) {
+        return NextResponse.redirect(new URL("/auth/admin", request.url))
+      } else if (pathname.startsWith("/dashboard/merchant") || pathname.startsWith("/merchant/dashboard")) {
+        return NextResponse.redirect(new URL("/auth/merchant-login", request.url))
+      } else {
+        return NextResponse.redirect(new URL("/auth/user", request.url))
+      }
     }
   }
 

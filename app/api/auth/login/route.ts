@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 })
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         ...userData,
@@ -62,6 +62,26 @@ export async function POST(request: NextRequest) {
         isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
       },
     })
+
+    // Set the user cookie for middleware authentication
+    const userCookie = {
+      ...userData,
+      uid: userData.id || email,
+      email: (userData as any)?.email,
+      displayName: (userData as any)?.displayName || (userData as any)?.businessName || (userData as any)?.name,
+      role: (userData as any).role,
+      walletAddress: userData.walletAddress,
+      isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
+    }
+
+    response.cookies.set('eventnft_user', JSON.stringify(userCookie), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 7 days
+    })
+
+    return response
   } catch (error: any) {
     console.error("Login error:", error)
     return NextResponse.json({ error: error.message || "Login failed" }, { status: 400 })
