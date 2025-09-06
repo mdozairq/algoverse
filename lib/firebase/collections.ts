@@ -45,6 +45,7 @@ export interface Merchant {
   walletAddress: string
   isApproved: boolean
   createdAt: Date
+  uid: string
 }
 
 // Real Firestore collection services
