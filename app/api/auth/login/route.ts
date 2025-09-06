@@ -14,42 +14,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sign in with Firebase Auth
-    const userRecord = await adminAuth.getUserByEmail(email)
+    // For demo purposes, we'll simulate authentication by checking Firestore directly
+    // In production, you would use Firebase Auth for actual authentication
+    let userData = null
     
-    // Verify user exists and has correct role
-    const customClaims = userRecord.customClaims || {}
-    if (role && customClaims.role !== role) {
-      return NextResponse.json({ error: "Invalid role for this account" }, { status: 403 })
-    }
-
-    // Get user data from Firestore
-    let userData
     if (role === "merchant") {
-      userData = await FirebaseService.getMerchant(userRecord.uid)
-    } else if (role === "admin") {
-      userData = await FirebaseService.getUser(userRecord.uid)
+      // Try to find merchant by email in both collections
+      userData = await FirebaseService.getUserByEmail(email)
+      if (!userData) {
+        // If not found in users, try merchants collection
+        const merchants = await FirebaseService.getApprovedMerchants()
+        userData = merchants.find(m => m.email === email)
+      }
     } else {
-      userData = await FirebaseService.getUser(userRecord.uid)
+      userData = await FirebaseService.getUserByEmail(email)
     }
 
     if (!userData) {
-      return NextResponse.json({ error: "User data not found" }, { status: 404 })
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Check if merchant is verified (for merchant login)
-    if (role === "merchant" && !userData.verified) {
-      return NextResponse.json({ error: "Merchant account not yet verified" }, { status: 403 })
+    // Check if merchant is approved (for merchant login)
+    if (role === "merchant" && !(userData as any).isApproved) {
+      return NextResponse.json({ error: "Merchant account not yet approved" }, { status: 403 })
+    }
+
+    // Simulate password verification (in production, use Firebase Auth)
+    const expectedPasswords: Record<string, string> = {
+      "admin@eventnft.app": "Admin123!",
+      "merchant@eventnft.app": "Merchant123!",
+      "user@eventnft.app": "User123!"
+    }
+
+    if (expectedPasswords[email] !== password) {
+      return NextResponse.json({ error: "Invalid password" }, { status: 401 })
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName,
-        role: customClaims.role || "user",
         ...userData,
+        uid: userData.id || email,
+        email: (userData as any)?.email,
+        displayName: (userData as any)?.displayName || (userData as any)?.businessName || (userData as any)?.name,
+        role: (userData as any).role,
+        walletAddress: userData.walletAddress,
+        isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
       },
     })
   } catch (error: any) {
