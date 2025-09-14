@@ -9,6 +9,7 @@ export interface User {
   walletAddress?: string
   createdAt: Date
   isVerified?: boolean
+  uid?: string
 }
 
 export interface Event {
@@ -24,6 +25,8 @@ export interface Event {
   totalSupply: number
   availableSupply: number
   createdAt: Date
+  featured?: boolean
+  trending?: boolean
 }
 
 export interface NFT {
@@ -34,6 +37,7 @@ export interface NFT {
   metadata: Record<string, any>
   createdAt: Date
   isUsed?: boolean
+  listedForSale?: boolean
 }
 
 export interface Merchant {
@@ -247,12 +251,12 @@ export class FirebaseService {
   }
 
   // Additional methods for events
-  static async getFeaturedEvents(limit: number = 10): Promise<Event[]> {
+  static async getFeaturedEvents(limit = 10): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("featured", "==", true).get()
     return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
   }
 
-  static async getTrendingEvents(limit: number = 10): Promise<Event[]> {
+  static async getTrendingEvents(limit = 10): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("trending", "==", true).get()
     return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
   }
@@ -262,6 +266,31 @@ export class FirebaseService {
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
       return { id: doc.id, ...doc.data() } as Merchant
+    }
+    return null
+  }
+
+  // Additional methods for NFTs
+  static async getAllNFTs(): Promise<NFT[]> {
+    const snapshot = await adminDb.collection("nfts").get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+  }
+
+  static async getNFTsByEvent(eventId: string): Promise<NFT[]> {
+    const snapshot = await adminDb.collection("nfts").where("eventId", "==", eventId).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+  }
+
+  static async getNFTsForSale(): Promise<NFT[]> {
+    const snapshot = await adminDb.collection("nfts").where("listedForSale", "==", true).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+  }
+
+  static async getUserByUid(uid: string): Promise<User | null> {
+    const snapshot = await adminDb.collection("users").where("uid", "==", uid).get()
+    if (snapshot.docs.length > 0) {
+      const doc = snapshot.docs[0]
+      return { id: doc.id, ...doc.data() } as User
     }
     return null
   }

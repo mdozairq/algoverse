@@ -42,18 +42,3 @@ export function FloatingCard({ children, className = "" }: { children: ReactNode
     </motion.div>
   )
 }
-
-export function PulseCard({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div
-      whileHover={{
-        scale: 1.05,
-        transition: { duration: 0.2, ease: "easeInOut" },
-      }}
-      whileTap={{ scale: 0.95 }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
-}

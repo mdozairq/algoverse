@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -18,19 +20,25 @@ export default function AuthGuard({ children, requiredRole, fallbackPath }: Auth
     if (!loading) {
       // If not authenticated, redirect to appropriate auth page
       if (!isAuthenticated) {
-        const authPath = fallbackPath || (requiredRole === "admin" ? "/auth/admin" : 
-                                        requiredRole === "merchant" ? "/auth/merchant-login" : 
-                                        "/auth/user")
+        const authPath =
+          fallbackPath ||
+          (requiredRole === "admin"
+            ? "/auth/admin"
+            : requiredRole === "merchant"
+              ? "/auth/merchant/signin"
+              : "/auth/user")
         router.push(authPath)
         return
       }
 
-      // If role is required and user doesn't have the required role
       if (requiredRole && user?.role !== requiredRole) {
         // Redirect to appropriate dashboard based on user's actual role
-        const dashboardPath = user?.role === "admin" ? "/dashboard/admin" :
-                            user?.role === "merchant" ? "/dashboard/merchant" :
-                            "/dashboard/user"
+        const dashboardPath =
+          user?.role === "admin"
+            ? "/dashboard/admin"
+            : user?.role === "merchant"
+              ? "/dashboard/merchant"
+              : "/dashboard/user"
         router.push(dashboardPath)
         return
       }
@@ -51,10 +59,10 @@ export default function AuthGuard({ children, requiredRole, fallbackPath }: Auth
   }
 
   // If not authenticated or wrong role, don't render children
-  if (!isAuthenticated || (requiredRole && user?.role !== requiredRole)) {
+  if (!isAuthenticated || (requiredRole && user?.role !== requiredRole && user?.role !== "admin")) {
     return null
   }
 
   // User is authenticated and has the required role
   return <>{children}</>
-} 
+}

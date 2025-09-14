@@ -8,9 +8,9 @@ This guide will help you set up all the required environment variables for the N
 
 Run the setup script to automatically generate a `.env.local` file with secure defaults:
 
-```bash
+\`\`\`bash
 node scripts/setup-env.js
-```
+\`\`\`
 
 ### Option 2: Manual Setup
 
@@ -115,7 +115,7 @@ If you want to use a custom marketplace application:
 - Store production keys in a secure vault (AWS Secrets Manager, Azure Key Vault, etc.)
 
 ### 3. Firebase Security Rules
-```javascript
+\`\`\`javascript
 // Example Firestore security rules
 rules_version = '2';
 service cloud.firestore {
@@ -138,7 +138,7 @@ service cloud.firestore {
     }
   }
 }
-```
+\`\`\`
 
 ### 4. Algorand Wallet Security
 - Use hardware wallets for production
@@ -149,9 +149,9 @@ service cloud.firestore {
 ## 🧪 Testing Your Setup
 
 ### 1. Test Firebase Connection
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 Navigate to `/auth/admin` and try to log in with admin credentials.
 
 ### 2. Test Algorand Connection
@@ -210,4 +210,4 @@ When deploying to production:
 
 ---
 
-**Need help?** Check the troubleshooting section or open an issue in the repository. 
+**Need help?** Check the troubleshooting section or open an issue in the repository.

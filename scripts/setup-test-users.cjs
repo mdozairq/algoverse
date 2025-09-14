@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// Load environment variables from .env file first
 function loadEnvFile() {
   const fs = require('fs');
   const path = require('path');
@@ -26,12 +25,12 @@ function loadEnvFile() {
   return envVars;
 }
 
-// Load environment variables
 const env = loadEnvFile();
 Object.assign(process.env, env);
 
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const bcrypt = require("bcryptjs");
 
 console.log('👥 NFT Marketplace - Test Users Setup');
 console.log('=====================================\n');
@@ -61,7 +60,10 @@ try {
   process.exit(1);
 }
 
-// Test users data
+async function hashPassword(password) {
+  return await bcrypt.hash(password, 12);
+}
+
 const testUsers = [
   {
     email: "admin@eventnft.app",
@@ -70,6 +72,7 @@ const testUsers = [
     role: "admin",
     uid: "admin-user-001",
     data: {
+      id: "admin-user-001",
       email: "admin@eventnft.app",
       displayName: "Admin User",
       role: "admin",
@@ -85,6 +88,7 @@ const testUsers = [
     role: "merchant",
     uid: "merchant-user-001",
     data: {
+      id: "merchant-user-001",
       businessName: "Music Festival Co.",
       email: "merchant@eventnft.app",
       category: "Entertainment",
@@ -92,7 +96,6 @@ const testUsers = [
       walletAddress: "MERCHANT_WALLET_ADDRESS",
       isApproved: true,
       uid: "merchant-user-001",
-
       role: "merchant",
       createdAt: new Date(),
     }
@@ -104,6 +107,7 @@ const testUsers = [
     role: "user",
     uid: "regular-user-001",
     data: {
+      id: "regular-user-001",
       email: "user@eventnft.app",
       displayName: "Regular User",
       role: "user",
@@ -123,12 +127,15 @@ async function createTestUsers() {
       const existingUser = await db.collection('users').where('email', '==', user.email).get();
       
       if (existingUser.empty) {
+        const hashedPassword = await hashPassword(user.password);
+        const userData = { ...user.data, password: hashedPassword };
+        
         // Create user document in Firestore
-        await db.collection('users').doc(user.uid).set(user.data);
+        await db.collection('users').doc(user.uid).set(userData);
         
         // Create merchant document if it's a merchant
         if (user.role === 'merchant') {
-          await db.collection('merchants').doc(user.uid).set(user.data);
+          await db.collection('merchants').doc(user.uid).set(userData);
         }
         
         console.log(`✅ Created ${user.role} user: ${user.email}`);
@@ -162,10 +169,10 @@ async function displayCredentials() {
   console.log('   URL: http://localhost:3000/auth/user\n');
   
   console.log('📝 NOTES:');
-  console.log('- All users are pre-created in Firestore');
-  console.log('- Admin and User accounts are verified');
-  console.log('- Merchant account is approved');
-  console.log('- Use these credentials to test the authentication system');
+  console.log('- All passwords are now securely hashed using bcrypt');
+  console.log('- JWT tokens are used for session management');
+  console.log('- HTTP-only cookies provide secure authentication');
+  console.log('- Use these credentials to test the new authentication system');
 }
 
 // Main execution

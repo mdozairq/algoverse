@@ -90,109 +90,110 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-/* Responsive utilities */
+/* Enhanced theme consistency utilities */
 @layer utilities {
-  /* Mobile-first responsive text sizes */
-  .text-responsive-xs {
-    @apply text-xs sm:text-sm;
+  /* Theme-aware background utilities */
+  .bg-theme-primary {
+    @apply bg-white dark:bg-gray-900;
   }
-  
-  .text-responsive-sm {
-    @apply text-sm sm:text-base;
+
+  .bg-theme-secondary {
+    @apply bg-gray-50 dark:bg-gray-800;
   }
-  
-  .text-responsive-base {
-    @apply text-base sm:text-lg;
+
+  .bg-theme-tertiary {
+    @apply bg-gray-100 dark:bg-gray-700;
   }
-  
-  .text-responsive-lg {
-    @apply text-lg sm:text-xl;
+
+  /* Theme-aware text utilities */
+  .text-theme-primary {
+    @apply text-gray-900 dark:text-white;
   }
-  
-  .text-responsive-xl {
-    @apply text-xl sm:text-2xl;
+
+  .text-theme-secondary {
+    @apply text-gray-600 dark:text-gray-300;
   }
-  
-  .text-responsive-2xl {
-    @apply text-2xl sm:text-3xl;
+
+  .text-theme-muted {
+    @apply text-gray-500 dark:text-gray-400;
   }
-  
-  .text-responsive-3xl {
-    @apply text-3xl sm:text-4xl;
+
+  /* Theme-aware border utilities */
+  .border-theme {
+    @apply border-gray-200 dark:border-gray-700;
   }
-  
+
+  .border-theme-light {
+    @apply border-gray-100 dark:border-gray-800;
+  }
+
+  /* Theme-aware hover states */
+  .hover-theme {
+    @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+  }
+
+  .hover-theme-light {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-900;
+  }
+
   /* Responsive spacing */
   .p-responsive {
     @apply p-4 sm:p-6 lg:p-8;
   }
-  
+
   .px-responsive {
     @apply px-4 sm:px-6 lg:px-8;
   }
-  
+
   .py-responsive {
     @apply py-4 sm:py-6 lg:py-8;
   }
-  
+
   /* Responsive grid layouts */
   .grid-responsive {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
   }
-  
+
   .grid-responsive-2 {
     @apply grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6;
   }
-  
+
   .grid-responsive-3 {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
   }
-  
+
   /* Mobile-friendly container */
   .container-responsive {
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
-  
+
   /* Responsive card layouts */
   .card-responsive {
     @apply p-4 sm:p-6 lg:p-8;
   }
-  
+
   /* Mobile navigation adjustments */
   .mobile-nav {
     @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-50 md:hidden;
   }
-  
+
   /* Tablet and desktop navigation */
   .desktop-nav {
     @apply hidden md:block;
   }
-}
 
-/* Mobile-specific styles */
-@media (max-width: 640px) {
-  /* Improve touch targets */
-  button, a, [role="button"] {
-    @apply min-h-[44px] min-w-[44px];
+  /* Accessibility utilities */
+  .min-touch-target-height {
+    min-height: 44px;
   }
-  
-  /* Better mobile spacing */
-  .space-y-mobile > * + * {
-    @apply mt-3;
+
+  .min-touch-target-width {
+    min-width: 44px;
   }
-  
-  /* Mobile-friendly form inputs */
-  input, textarea, select {
-    @apply text-base;
-  }
-  
-  /* Prevent zoom on input focus */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  textarea {
-    @apply text-base;
+
+  .min-touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Zap, Smartphone, RefreshCw, Award, Globe, ArrowRight, CheckCircle } from "lucide-react"
@@ -9,6 +10,8 @@ import Footer from "@/components/footer"
 import { motion } from "framer-motion"
 
 export default function AboutPage() {
+  const router = useRouter()
+  
   const features = [
     {
       icon: Shield,
@@ -343,7 +346,15 @@ export default function AboutPage() {
                       whileTap={{ scale: 0.98 }}
                       transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                      <Button className="w-full bg-black text-white hover:bg-gray-800 rounded-full">
+                      <Button className="w-full bg-black text-white hover:bg-gray-800 rounded-full" onClick={() => {
+                        if (role.title === "For Event Organizers") {
+                          router.push("/auth/merchant/signup")
+                        } else if (role.title === "For Event Attendees") {
+                          router.push("/auth/user/signup")
+                        } else if (role.title === "For Platform Admins") {
+                          router.push("/auth/admin")
+                        }
+                      }}>
                         {role.cta}
                         <motion.div
                           whileHover={{ x: 5 }}

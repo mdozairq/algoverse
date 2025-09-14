@@ -140,4 +140,4 @@ try {
 } catch (error) {
   console.error('❌ Error creating .env.local file:', error.message);
   process.exit(1);
-} 
+}

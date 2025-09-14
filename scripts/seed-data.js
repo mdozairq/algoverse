@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
-const { initializeApp, getApps, cert } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { initializeApp, getApps, cert } = require("firebase-admin/app")
+const { getFirestore } = require("firebase-admin/firestore")
+const bcrypt = require("bcryptjs")
 
-console.log('🌱 NFT Marketplace - Data Seeding Script');
-console.log('========================================\n');
+console.log("🌱 NFT Marketplace - Data Seeding Script")
+console.log("========================================\n")
 
 // Initialize Firebase Admin
-let app;
-let db;
+let app
+let db
 
 try {
   if (getApps().length === 0) {
@@ -18,23 +19,28 @@ try {
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
       }),
-    };
-    app = initializeApp(firebaseAdminConfig);
+    }
+    app = initializeApp(firebaseAdminConfig)
   } else {
-    app = getApps()[0];
+    app = getApps()[0]
   }
-  
-  db = getFirestore(app);
-  console.log('✅ Firebase Admin initialized successfully');
+
+  db = getFirestore(app)
+  console.log("✅ Firebase Admin initialized successfully")
 } catch (error) {
-  console.error('❌ Failed to initialize Firebase Admin:', error.message);
-  process.exit(1);
+  console.error("❌ Failed to initialize Firebase Admin:", error.message)
+  process.exit(1)
 }
 
-// Sample data
+async function hashPassword(password) {
+  return await bcrypt.hash(password, 12)
+}
+
 const sampleUsers = [
   {
+    id: "admin-user-001",
     email: "admin@eventnft.app",
+    password: "Admin123!",
     displayName: "Admin User",
     role: "admin",
     walletAddress: "ADMIN_WALLET_ADDRESS",
@@ -42,7 +48,9 @@ const sampleUsers = [
     createdAt: new Date(),
   },
   {
+    id: "merchant-user-001",
     email: "merchant@eventnft.app",
+    password: "Merchant123!",
     displayName: "Event Organizer",
     role: "merchant",
     walletAddress: "MERCHANT_WALLET_ADDRESS",
@@ -50,37 +58,45 @@ const sampleUsers = [
     createdAt: new Date(),
   },
   {
+    id: "regular-user-001",
     email: "user@eventnft.app",
+    password: "User123!",
     displayName: "Regular User",
     role: "user",
     walletAddress: "USER_WALLET_ADDRESS",
     isVerified: true,
     createdAt: new Date(),
   },
-];
+]
 
 const sampleMerchants = [
   {
+    id: "merchant-user-001",
     businessName: "Music Festival Co.",
     email: "merchant@eventnft.app",
+    password: "Merchant123!",
     category: "Entertainment",
     description: "Leading music festival organizer",
     walletAddress: "MERCHANT_WALLET_ADDRESS",
     isApproved: true,
-    uid: "merchant-uid-1",
+    role: "merchant",
+    uid: "merchant-user-001",
     createdAt: new Date(),
   },
   {
+    id: "tech-merchant-002",
     businessName: "Tech Conference Inc.",
     email: "tech@eventnft.app",
+    password: "TechConf123!",
     category: "Technology",
     description: "Premium tech conferences and workshops",
     walletAddress: "TECH_MERCHANT_WALLET",
     isApproved: true,
-    uid: "merchant-uid-2",
+    role: "merchant",
+    uid: "tech-merchant-002",
     createdAt: new Date(),
   },
-];
+]
 
 const sampleEvents = [
   {
@@ -131,7 +147,7 @@ const sampleEvents = [
     status: "approved",
     createdAt: new Date(),
   },
-];
+]
 
 const sampleNFTs = [
   {
@@ -168,68 +184,79 @@ const sampleNFTs = [
     isUsed: false,
     createdAt: new Date(),
   },
-];
+]
 
 // Seeding functions
 async function seedUsers() {
-  console.log('👥 Seeding users...');
+  console.log("👥 Seeding users...")
   for (const user of sampleUsers) {
     try {
-      await db.collection('users').add(user);
-      console.log(`  ✅ Added user: ${user.email}`);
+      const hashedPassword = await hashPassword(user.password)
+      const userData = { ...user, password: hashedPassword }
+      delete userData.password // Remove plain text password from display
+
+      await db
+        .collection("users")
+        .doc(user.id)
+        .set({ ...user, password: hashedPassword })
+      console.log(`  ✅ Added user: ${user.email}`)
     } catch (error) {
-      console.error(`  ❌ Failed to add user ${user.email}:`, error.message);
+      console.error(`  ❌ Failed to add user ${user.email}:`, error.message)
     }
   }
 }
 
 async function seedMerchants() {
-  console.log('🏪 Seeding merchants...');
+  console.log("🏪 Seeding merchants...")
   for (const merchant of sampleMerchants) {
     try {
-      await db.collection('merchants').add(merchant);
-      console.log(`  ✅ Added merchant: ${merchant.businessName}`);
+      const hashedPassword = await hashPassword(merchant.password)
+      await db
+        .collection("merchants")
+        .doc(merchant.id)
+        .set({ ...merchant, password: hashedPassword })
+      console.log(`  ✅ Added merchant: ${merchant.businessName}`)
     } catch (error) {
-      console.error(`  ❌ Failed to add merchant ${merchant.businessName}:`, error.message);
+      console.error(`  ❌ Failed to add merchant ${merchant.businessName}:`, error.message)
     }
   }
 }
 
 async function seedEvents() {
-  console.log('🎫 Seeding events...');
+  console.log("🎫 Seeding events...")
   for (const event of sampleEvents) {
     try {
-      await db.collection('events').add(event);
-      console.log(`  ✅ Added event: ${event.title}`);
+      await db.collection("events").add(event)
+      console.log(`  ✅ Added event: ${event.title}`)
     } catch (error) {
-      console.error(`  ❌ Failed to add event ${event.title}:`, error.message);
+      console.error(`  ❌ Failed to add event ${event.title}:`, error.message)
     }
   }
 }
 
 async function seedNFTs() {
-  console.log('🎨 Seeding NFTs...');
+  console.log("🎨 Seeding NFTs...")
   for (const nft of sampleNFTs) {
     try {
-      await db.collection('nfts').add(nft);
-      console.log(`  ✅ Added NFT: ${nft.metadata.name}`);
+      await db.collection("nfts").add(nft)
+      console.log(`  ✅ Added NFT: ${nft.metadata.name}`)
     } catch (error) {
-      console.error(`  ❌ Failed to add NFT ${nft.metadata.name}:`, error.message);
+      console.error(`  ❌ Failed to add NFT ${nft.metadata.name}:`, error.message)
     }
   }
 }
 
 async function checkExistingData() {
-  console.log('🔍 Checking existing data...');
-  
-  const collections = ['users', 'merchants', 'events', 'nfts'];
-  
+  console.log("🔍 Checking existing data...")
+
+  const collections = ["users", "merchants", "events", "nfts"]
+
   for (const collection of collections) {
     try {
-      const snapshot = await db.collection(collection).limit(1).get();
-      console.log(`  📊 ${collection}: ${snapshot.size > 0 ? 'Has data' : 'Empty'}`);
+      const snapshot = await db.collection(collection).limit(1).get()
+      console.log(`  📊 ${collection}: ${snapshot.size > 0 ? "Has data" : "Empty"}`)
     } catch (error) {
-      console.error(`  ❌ Error checking ${collection}:`, error.message);
+      console.error(`  ❌ Error checking ${collection}:`, error.message)
     }
   }
 }
@@ -237,26 +264,25 @@ async function checkExistingData() {
 // Main execution
 async function main() {
   try {
-    await checkExistingData();
-    
-    console.log('\n🌱 Starting data seeding...\n');
-    
-    await seedUsers();
-    await seedMerchants();
-    await seedEvents();
-    await seedNFTs();
-    
-    console.log('\n✅ Data seeding completed successfully!');
-    console.log('\n📋 Next steps:');
-    console.log('1. Check your Firestore console to verify the data');
-    console.log('2. Test your application to see the seeded data');
-    console.log('3. The mock data should now be replaced with real Firestore data');
-    
+    await checkExistingData()
+
+    console.log("\n🌱 Starting data seeding...\n")
+
+    await seedUsers()
+    await seedMerchants()
+    await seedEvents()
+    await seedNFTs()
+
+    console.log("\n✅ Data seeding completed successfully!")
+    console.log("\n📋 Next steps:")
+    console.log("1. Check your Firestore console to verify the data")
+    console.log("2. Test your application with the new authentication system")
+    console.log("3. All passwords are now securely hashed in the database")
   } catch (error) {
-    console.error('❌ Error during seeding:', error);
-    process.exit(1);
+    console.error("❌ Error during seeding:", error)
+    process.exit(1)
   }
 }
 
 // Run the script
-main();
+main()
