@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { useAuth } from "@/lib/auth/auth-context"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,21 +12,34 @@ import Link from "next/link"
 export default function EventCheckinPage() {
   const params = useParams()
   const eventId = params.id
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
   const [currentTime, setCurrentTime] = useState(new Date())
   const [checkinStatus, setCheckinStatus] = useState<"idle" | "success" | "failed" | "used">("idle")
+  const [event, setEvent] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Mock event data
-  const event = {
-    id: eventId,
-    name: "Summer Music Festival VIP",
-    date: "July 15, 2024",
-    time: "7:00 PM",
-    venue: "Central Park, NYC",
-    ticketId: "NFT-VIP-12345",
-    qrCodeUrl: "/placeholder.svg?height=300&width=300&text=QR Code", // Placeholder for QR code
-    eventDateTime: new Date("2024-07-15T19:00:00"), // For timer calculation
-    isUsed: false, // Simulate if the ticket has been used
-  }
+  // Load event data
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) {
+      setLoading(false)
+      return
+    }
+
+    const loadEvent = async () => {
+      try {
+        const response = await fetch(`/api/events/${eventId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setEvent(data.event)
+        }
+      } catch (error) {
+        console.error('Error loading event:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadEvent()
+  }, [eventId, isAuthenticated, authLoading])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -34,27 +48,57 @@ export default function EventCheckinPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const timeRemaining = event.eventDateTime.getTime() - currentTime.getTime()
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 dark:border-white mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading event...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Event Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">The event you're looking for doesn't exist.</p>
+          <Link href="/dashboard/user">
+            <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const eventDateTime = new Date(event.date)
+  const timeRemaining = eventDateTime.getTime() - currentTime.getTime()
   const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24))
   const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000)
 
-  const handleCheckIn = () => {
-    // Simulate check-in process
-    if (event.isUsed) {
-      setCheckinStatus("used")
-      return
+  const handleCheckIn = async () => {
+    try {
+      setCheckinStatus("idle")
+      // In a real app, this would call a check-in API
+      const success = Math.random() > 0.2 // Simulate success/failure
+      setTimeout(() => {
+        if (success) {
+          setCheckinStatus("success")
+          // In a real app, update event.isUsed in backend
+        } else {
+          setCheckinStatus("failed")
+        }
+      }, 1500)
+    } catch (error) {
+      console.error('Check-in error:', error)
+      setCheckinStatus("failed")
     }
-    const success = Math.random() > 0.2 // Simulate success/failure
-    setTimeout(() => {
-      if (success) {
-        setCheckinStatus("success")
-        // In a real app, update event.isUsed in backend
-      } else {
-        setCheckinStatus("failed")
-      }
-    }, 1500)
   }
 
   return (
@@ -64,7 +108,7 @@ export default function EventCheckinPage() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link
-              href="/user/dashboard"
+              href="/dashboard/user"
               className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -84,8 +128,8 @@ export default function EventCheckinPage() {
         >
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 p-6">
             <CardHeader className="pb-4">
-              <CardTitle className="text-3xl font-black">{event.name}</CardTitle>
-              <p className="text-gray-600 dark:text-gray-400">{event.ticketId}</p>
+              <CardTitle className="text-3xl font-black">{event.title}</CardTitle>
+              <p className="text-gray-600 dark:text-gray-400">Event ID: {event.id}</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-center gap-4 text-gray-600 dark:text-gray-300">
@@ -95,7 +139,7 @@ export default function EventCheckinPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
-                  <span>{event.venue}</span>
+                  <span>{event.location}</span>
                 </div>
               </div>
 
@@ -118,8 +162,8 @@ export default function EventCheckinPage() {
               <div className="relative w-full max-w-[250px] mx-auto aspect-square bg-white p-4 rounded-lg flex items-center justify-center">
                 {checkinStatus === "idle" && (
                   <img
-                    src={event.qrCodeUrl || "/placeholder.svg"}
-                    alt="QR Code"
+                    src={event.imageUrl || "/placeholder.svg?height=300&width=300&text=QR Code"}
+                    alt="Event QR Code"
                     className="w-full h-full object-contain"
                   />
                 )}

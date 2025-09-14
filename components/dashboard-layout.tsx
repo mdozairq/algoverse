@@ -31,6 +31,7 @@ import {
   LogOut,
   Shield,
   DollarSign,
+  Activity,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -75,11 +76,11 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
       case "user":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/user" },
-          { icon: Wallet, label: "My NFTs", href: "/dashboard/user?tab=nfts" }, // Link to specific tab
-          { icon: Calendar, label: "Events", href: "/dashboard/user?tab=events" }, // Link to specific tab
-          { icon: Trophy, label: "Rewards", href: "/dashboard/user?tab=rewards" }, // Link to specific tab
-          { icon: BarChart3, label: "Activity", href: "/dashboard/user?tab=activity" }, // Link to specific tab
-          { icon: Settings, label: "Profile Settings", href: "/dashboard/user?tab=profile" }, // Link to specific tab
+          { icon: Wallet, label: "My NFTs", href: "/dashboard/user/nfts" },
+          { icon: Calendar, label: "My Events", href: "/dashboard/user/events" },
+          { icon: Activity, label: "Activity", href: "/dashboard/user/activity" },
+          { icon: Trophy, label: "Rewards", href: "/dashboard/user/rewards" },
+          { icon: Settings, label: "Profile", href: "/dashboard/user/profile" },
         ]
       default:
         return []
