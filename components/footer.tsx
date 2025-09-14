@@ -18,10 +18,10 @@ export default function Footer({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
           <div>
             <span className="text-xl font-black tracking-tight mb-4 block text-gray-900 dark:text-white">
-              EVENTNFT.
+              ALGOVERSE.
             </span>
             <p className="text-gray-600 dark:text-gray-400 text-sm">
-              The decentralized marketplace for event tickets and experiences.
+              The decentralized marketplace for event tickets and experiences. Powered by Algorand.
             </p>
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function Footer({
           </div>
         </div>
         <div className="border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-          <p className="text-sm text-gray-500 dark:text-gray-500">&copy; 2024 EventNFT. All rights reserved.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">&copy; 2024 AlgoVerse. All rights reserved.</p>
           <div className="flex items-center gap-4 sm:gap-6">
             <Link
               href="/privacy"

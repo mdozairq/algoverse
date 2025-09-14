@@ -1,6 +1,6 @@
-# NFT Marketplace V18 - Environment Setup Guide
+# AlgoVerse - Environment Setup Guide
 
-This guide will help you set up all the required environment variables for the NFT Marketplace application.
+This guide will help you set up all the required environment variables for the AlgoVerse NFT marketplace application.
 
 ## 🚀 Quick Start
 

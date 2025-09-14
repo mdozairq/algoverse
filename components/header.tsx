@@ -43,7 +43,7 @@ export default function Header({
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
-              EVENTNFT.
+              ALGOVERSE.
             </motion.span>
           </Link>
         </motion.div>

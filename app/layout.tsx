@@ -10,8 +10,8 @@ import { ThemeWrapper } from "@/components/theme-wrapper"
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: "EventNFT Marketplace",
-  description: "Decentralized NFT marketplace for event tickets and passes",
+  title: "AlgoVerse - Powered by Algorand",
+  description: "Decentralized NFT marketplace for event tickets and passes on Algorand blockchain",
   generator: "v0.dev",
 }
 

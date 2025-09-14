@@ -88,7 +88,10 @@ export default function HomePage() {
           className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 flex flex-col sm:flex-row justify-between items-end pointer-events-none space-y-1 sm:space-y-0"
         >
           <p className="text-xs sm:text-sm text-theme-muted">Where blockchain meets events</p>
-          <p className="text-xs sm:text-sm text-theme-muted">Made reality by EventNFT®</p>
+          <div className="text-right">
+            <p className="text-xs sm:text-sm text-theme-muted">Made reality by AlgoVerse®</p>
+            <p className="text-xs text-theme-muted/70">Powered by Algorand</p>
+          </div>
         </motion.div>
 
         {/* Featured Events Section */}
@@ -205,7 +208,7 @@ export default function HomePage() {
                     EVENT TICKETS
                   </h2>
                   <p className="text-base sm:text-lg lg:text-xl text-theme-secondary leading-relaxed mb-6 sm:mb-8">
-                    EventNFT revolutionizes how we experience events. Built on Algorand blockchain, our platform ensures
+                    AlgoVerse revolutionizes how we experience events. Built on Algorand blockchain, our platform ensures
                     authenticity, enables seamless trading, and creates lasting digital memories of your experiences.
                   </p>
                   <div className="space-y-4">

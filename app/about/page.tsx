@@ -138,14 +138,22 @@ export default function AboutPage() {
               </motion.div>
             </motion.h1>
             <motion.p 
-              className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12"
+              className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1 }}
             >
-              EventNFT revolutionizes the event industry by transforming tickets into tradeable digital assets on the
+              AlgoVerse revolutionizes the event industry by transforming tickets into tradeable digital assets on the
               Algorand blockchain. Secure, authentic, and infinitely more valuable than traditional tickets.
             </motion.p>
+            <motion.div 
+              className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
+            >
+              POWERED BY ALGORAND
+            </motion.div>
             <motion.div 
               className="flex flex-col sm:flex-row gap-4 justify-center"
               initial={{ opacity: 0, y: 20 }}
@@ -295,7 +303,7 @@ export default function AboutPage() {
           >
             <h2 className="text-5xl font-black tracking-tight mb-6 text-black dark:text-white">FOR EVERYONE</h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Whether you're organizing events, attending them, or managing the platform, EventNFT provides powerful
+              Whether you're organizing events, attending them, or managing the platform, AlgoVerse provides powerful
               tools tailored to your needs.
             </p>
           </motion.div>
