@@ -65,6 +65,9 @@ export const usersCollection = {
   },
 
   async getById(id: string): Promise<User | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("users").doc(id).get()
     if (doc.exists) {
       return { id, ...doc.data() } as User
@@ -96,6 +99,9 @@ export const eventsCollection = {
   },
 
   async getById(id: string): Promise<Event | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("events").doc(id).get()
     if (doc.exists) {
       return { ...doc.data(), id } as Event
@@ -128,6 +134,9 @@ export const nftsCollection = {
   },
 
   async getById(id: string): Promise<NFT | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("nfts").doc(id).get()
     if (doc.exists) {
       return { ...doc.data(), id } as NFT
@@ -156,6 +165,9 @@ export const merchantsCollection = {
   },
 
   async getById(id: string): Promise<Merchant | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("merchants").doc(id).get()
     if (doc.exists) {
       return { ...doc.data(), id } as Merchant

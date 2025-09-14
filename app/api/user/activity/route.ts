@@ -8,7 +8,6 @@ export const GET = withAuth(async (req: AuthenticatedRequest): Promise<NextRespo
     // In a real app, you'd fetch user activity from a dedicated collection
     // For now, return mock data based on user's NFTs and events
     const nfts = await FirebaseService.getNFTsByOwner(userId)
-    const events = await FirebaseService.getUserEvents(userId)
     
     const activities = [
       {

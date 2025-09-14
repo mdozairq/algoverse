@@ -9,8 +9,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Get merchant info
-    const merchant = await FirebaseService.getMerchantById(event.merchantId)
+    // Get merchant info only if merchantId is valid
+    let merchant = null
+    if (event.merchantId && event.merchantId.trim() !== "") {
+      try {
+        merchant = await FirebaseService.getMerchantById(event.merchantId)
+      } catch (merchantError) {
+        console.warn("Failed to fetch merchant info:", merchantError)
+        // Continue without merchant info
+      }
+    }
 
     return NextResponse.json({
       event: {

@@ -98,7 +98,7 @@ export default function AboutPage() {
       <Header showSearch={false} />
       
       {/* Hero Section */}
-      <section className="py-24 px-6">
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6">
         <motion.div 
           className="container mx-auto text-center"
           initial={{ opacity: 0, y: 50 }}
@@ -107,7 +107,7 @@ export default function AboutPage() {
         >
           <div className="max-w-4xl mx-auto">
             <motion.h1 
-              className="text-7xl md:text-8xl font-black tracking-tighter leading-none mb-8"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter leading-none mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.2 }}
@@ -138,7 +138,7 @@ export default function AboutPage() {
               </motion.div>
             </motion.h1>
             <motion.p 
-              className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8"
+              className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-0"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1 }}
@@ -147,7 +147,7 @@ export default function AboutPage() {
               Algorand blockchain. Secure, authentic, and infinitely more valuable than traditional tickets.
             </motion.p>
             <motion.div 
-              className="text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide"
+              className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.2 }}
@@ -155,7 +155,7 @@ export default function AboutPage() {
               POWERED BY ALGORAND
             </motion.div>
             <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.2 }}
@@ -166,7 +166,7 @@ export default function AboutPage() {
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                  <Button className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full px-8 py-3 text-sm font-medium">
+                  <Button className="w-full sm:w-auto bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full px-6 sm:px-8 py-3 text-xs sm:text-sm font-medium">
                     EXPLORE MARKETPLACE
                   </Button>
                 </motion.div>
@@ -179,7 +179,7 @@ export default function AboutPage() {
                 >
                   <Button
                     variant="outline"
-                    className="border-black dark:border-white text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black rounded-full px-8 py-3 text-sm font-medium bg-white dark:bg-transparent"
+                    className="w-full sm:w-auto border-black dark:border-white text-black dark:text-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black rounded-full px-6 sm:px-8 py-3 text-xs sm:text-sm font-medium bg-white dark:bg-transparent"
                   >
                     START BUILDING
                   </Button>
@@ -191,7 +191,7 @@ export default function AboutPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 px-6 bg-white dark:bg-gray-800">
+      <section className="py-12 sm:py-16 px-4 sm:px-6 bg-white dark:bg-gray-800">
         <motion.div 
           className="container mx-auto"
           initial={{ opacity: 0, y: 50 }}
@@ -199,7 +199,7 @@ export default function AboutPage() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true, amount: 0.3 }}
         >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-4xl mx-auto">
             {stats.map((stat, index) => (
               <motion.div 
                 key={index} 
@@ -211,7 +211,7 @@ export default function AboutPage() {
                 whileHover={{ scale: 1.05, y: -5 }}
               >
                 <motion.div 
-                  className="text-4xl font-black mb-2"
+                  className="text-2xl sm:text-3xl md:text-4xl font-black mb-2"
                   initial={{ scale: 0 }}
                   whileInView={{ scale: 1 }}
                   transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 15 }}
@@ -219,7 +219,7 @@ export default function AboutPage() {
                 >
                   {stat.value}
                 </motion.div>
-                <div className="text-gray-600 dark:text-gray-300 font-medium">{stat.label}</div>
+                <div className="text-sm sm:text-base text-gray-600 dark:text-gray-300 font-medium">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -227,7 +227,7 @@ export default function AboutPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 px-6 bg-gray-100 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-gray-100 dark:bg-gray-900">
         <motion.div 
           className="container mx-auto"
           initial={{ opacity: 0, y: 50 }}
@@ -236,20 +236,20 @@ export default function AboutPage() {
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.div 
-            className="text-center mb-16"
+            className="text-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-5xl font-black tracking-tight mb-6 text-black dark:text-white">BUILT FOR THE FUTURE</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 sm:mb-6 text-black dark:text-white">BUILT FOR THE FUTURE</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4 sm:px-0">
               Our platform combines cutting-edge blockchain technology with intuitive user experience to create the most
               advanced event ticketing system ever built.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -286,7 +286,7 @@ export default function AboutPage() {
       </section>
 
       {/* Role-Based Sections */}
-      <section className="py-24 px-6 bg-white dark:bg-gray-800">
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-white dark:bg-gray-800">
         <motion.div 
           className="container mx-auto"
           initial={{ opacity: 0, y: 50 }}
@@ -295,20 +295,20 @@ export default function AboutPage() {
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.div 
-            className="text-center mb-16"
+            className="text-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-5xl font-black tracking-tight mb-6 text-black dark:text-white">FOR EVERYONE</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 sm:mb-6 text-black dark:text-white">FOR EVERYONE</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4 sm:px-0">
               Whether you're organizing events, attending them, or managing the platform, AlgoVerse provides powerful
               tools tailored to your needs.
             </p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto">
             {roles.map((role, index) => (
               <motion.div
                 key={index}
@@ -381,7 +381,7 @@ export default function AboutPage() {
       </section>
 
       {/* Technology Section */}
-      <section className="py-24 px-6 bg-gray-100 dark:bg-gray-900">
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-gray-100 dark:bg-gray-900">
         <motion.div 
           className="container mx-auto"
           initial={{ opacity: 0, y: 50 }}
@@ -389,19 +389,19 @@ export default function AboutPage() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true, amount: 0.3 }}
         >
-          <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-5xl font-black tracking-tight mb-8 text-black dark:text-white">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-6 sm:mb-8 text-black dark:text-white">
                 POWERED BY
                 <br />
                 ALGORAND
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-6 sm:mb-8">
                 Built on the Algorand blockchain for instant finality, minimal fees, and carbon-negative transactions.
                 Our smart contracts ensure secure, transparent, and efficient NFT operations.
               </p>
@@ -458,7 +458,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-6 bg-black dark:bg-gray-900 text-white">
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-black dark:bg-gray-900 text-white">
         <motion.div 
           className="container mx-auto text-center"
           initial={{ opacity: 0, y: 50 }}
@@ -467,7 +467,7 @@ export default function AboutPage() {
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.h2 
-            className="text-5xl font-black tracking-tight mb-8"
+            className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-6 sm:mb-8"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -478,7 +478,7 @@ export default function AboutPage() {
             GET STARTED?
           </motion.h2>
             <motion.p 
-              className="text-xl text-gray-300 dark:text-gray-400 mb-12 max-w-2xl mx-auto"
+              className="text-base sm:text-lg md:text-xl text-gray-300 dark:text-gray-400 mb-8 sm:mb-12 max-w-2xl mx-auto px-4 sm:px-0"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -487,7 +487,7 @@ export default function AboutPage() {
             Join the revolution in event ticketing. Create, trade, and experience events like never before.
           </motion.p>
           <motion.div 
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -499,7 +499,7 @@ export default function AboutPage() {
                 whileTap={{ scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                <Button className="bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full px-8 py-3 text-sm font-medium">
+                <Button className="w-full sm:w-auto bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full px-6 sm:px-8 py-3 text-xs sm:text-sm font-medium">
                   CREATE ACCOUNT
                 </Button>
               </motion.div>
@@ -512,7 +512,7 @@ export default function AboutPage() {
               >
                 <Button
                   variant="outline"
-                  className="border-white dark:border-gray-300 text-white dark:text-gray-300 hover:bg-white dark:hover:bg-gray-300 hover:text-black dark:hover:text-black rounded-full px-8 py-3 text-sm font-medium bg-transparent"
+                  className="w-full sm:w-auto border-white dark:border-gray-300 text-white dark:text-gray-300 hover:bg-white dark:hover:bg-gray-300 hover:text-black dark:hover:text-black rounded-full px-6 sm:px-8 py-3 text-xs sm:text-sm font-medium bg-transparent"
                 >
                   BROWSE EVENTS
                 </Button>
