@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   connectWallet: (address: string) => Promise<void>
-  loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<void>
+  loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<User>
   registerMerchant: (data: any) => Promise<void>
   logout: () => Promise<void>
   isAuthenticated: boolean
@@ -69,6 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithEmail = async (email: string, password: string, role = "user", adminKey?: string) => {
     setLoading(true)
     try {
+      // Always logout first to clear any existing session
+      await logout()
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,6 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(data.user)
+      
+      // Return the user data so components can handle redirects
+      return data.user
     } catch (error) {
       console.error("Email login failed:", error)
       throw error
@@ -114,12 +120,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" })
+      // Clear user state immediately for better UX
       setUser(null)
+      
+      // Then call logout API to clear server-side session
+      await fetch("/api/auth/logout", { method: "POST" })
     } catch (error) {
       console.error("Logout failed:", error)
-      // Clear user state even if API call fails
-      setUser(null)
+      // User state is already cleared above
     }
   }
 

@@ -15,14 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function HomePage() {
   const { featuredEvents, loading } = useData()
-  const { toast } = useToast()
   
-  const testToast = () => {
-    toast({
-      title: "Test Toast",
-      description: "This is a test toast notification to verify the toast system is working!",
-    })
-  }
 
   return (
     <PageTransition>
@@ -82,17 +75,6 @@ export default function HomePage() {
                     </Button>
                   </motion.div>
                 </Link>
-                
-                {/* Test Toast Button */}
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    onClick={testToast}
-                    variant="outline"
-                    className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-full px-6 sm:px-8 py-3 text-sm font-medium tracking-wide transition-all duration-300 bg-transparent w-full sm:w-auto"
-                  >
-                    TEST TOAST
-                  </Button>
-                </motion.div>
               </motion.div>
             </div>
           </div>

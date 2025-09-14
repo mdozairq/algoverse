@@ -51,16 +51,27 @@ export async function POST(request: NextRequest) {
       role: (userData as any).role,
       walletAddress: userData.walletAddress,
       isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
+      uid: (userData as any).uid,
     }
 
     const token = await signJWT(jwtPayload)
 
-    const response = NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       user: jwtPayload,
     })
 
-    response.cookies.set("auth-token", token, {
+    // Clear any existing auth token cookie first, then set the new one
+    successResponse.cookies.set("auth-token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    })
+
+    // Set the new auth token cookie
+    successResponse.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest) {
       path: "/",
     })
 
-    return response
+    return successResponse
   } catch (error: any) {
     console.error("Login error:", error)
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })

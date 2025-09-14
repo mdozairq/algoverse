@@ -10,6 +10,7 @@ export interface User {
   createdAt: Date
   isVerified?: boolean
   uid?: string
+  password?: string
 }
 
 export interface Event {
@@ -50,6 +51,7 @@ export interface Merchant {
   isApproved: boolean
   createdAt: Date
   uid: string
+  updatedAt?: Date
 }
 
 // Real Firestore collection services
@@ -74,7 +76,7 @@ export const usersCollection = {
     const snapshot = await adminDb.collection("users").where("email", "==", email).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
-      return { id: doc.id, ...doc.data() } as User
+      return { ...doc.data(), id: doc.id } as User
     }
     return null
   },
@@ -96,19 +98,19 @@ export const eventsCollection = {
   async getById(id: string): Promise<Event | null> {
     const doc = await adminDb.collection("events").doc(id).get()
     if (doc.exists) {
-      return { id, ...doc.data() } as Event
+      return { ...doc.data(), id } as Event
     }
     return null
   },
 
   async getByMerchant(merchantId: string): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("merchantId", "==", merchantId).get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   },
 
   async getAll(): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("availableSupply", ">", 0).get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   },
 
   async update(id: string, updates: Partial<Event>): Promise<void> {
@@ -128,14 +130,14 @@ export const nftsCollection = {
   async getById(id: string): Promise<NFT | null> {
     const doc = await adminDb.collection("nfts").doc(id).get()
     if (doc.exists) {
-      return { id, ...doc.data() } as NFT
+      return { ...doc.data(), id } as NFT
     }
     return null
   },
 
   async getByOwner(ownerId: string): Promise<NFT[]> {
     const snapshot = await adminDb.collection("nfts").where("ownerId", "==", ownerId).get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as NFT)
   },
 
   async update(id: string, updates: Partial<NFT>): Promise<void> {
@@ -156,19 +158,19 @@ export const merchantsCollection = {
   async getById(id: string): Promise<Merchant | null> {
     const doc = await adminDb.collection("merchants").doc(id).get()
     if (doc.exists) {
-      return { id, ...doc.data() } as Merchant
+      return { ...doc.data(), id } as Merchant
     }
     return null
   },
 
   async getPending(): Promise<Merchant[]> {
     const snapshot = await adminDb.collection("merchants").where("isApproved", "==", false).get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Merchant)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Merchant)
   },
 
   async getApproved(): Promise<Merchant[]> {
     const snapshot = await adminDb.collection("merchants").where("isApproved", "==", true).get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as Merchant)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Merchant)
   },
 
   async update(id: string, updates: Partial<Merchant>): Promise<void> {
@@ -253,19 +255,19 @@ export class FirebaseService {
   // Additional methods for events
   static async getFeaturedEvents(limit = 10): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("featured", "==", true).get()
-    return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+    return snapshot.docs.slice(0, limit).map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   }
 
   static async getTrendingEvents(limit = 10): Promise<Event[]> {
     const snapshot = await adminDb.collection("events").where("trending", "==", true).get()
-    return snapshot.docs.slice(0, limit).map((doc: any) => ({ id: doc.id, ...doc.data() }) as Event)
+    return snapshot.docs.slice(0, limit).map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   }
 
   static async getMerchantByUid(uid: string): Promise<Merchant | null> {
     const snapshot = await adminDb.collection("merchants").where("uid", "==", uid).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
-      return { id: doc.id, ...doc.data() } as Merchant
+      return { ...doc.data(), id: doc.id } as Merchant
     }
     return null
   }
@@ -273,7 +275,7 @@ export class FirebaseService {
   // Additional methods for NFTs
   static async getAllNFTs(): Promise<NFT[]> {
     const snapshot = await adminDb.collection("nfts").get()
-    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as NFT)
   }
 
   static async getNFTsByEvent(eventId: string): Promise<NFT[]> {
@@ -290,7 +292,7 @@ export class FirebaseService {
     const snapshot = await adminDb.collection("users").where("uid", "==", uid).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
-      return { id: doc.id, ...doc.data() } as User
+      return { ...doc.data(), id: doc.id } as User
     }
     return null
   }

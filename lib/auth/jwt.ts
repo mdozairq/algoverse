@@ -8,6 +8,7 @@ export interface JWTPayload {
   role: "user" | "merchant" | "admin"
   walletAddress?: string
   isVerified: boolean
+  uid?: string
 }
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
@@ -19,6 +20,11 @@ export async function signJWT(payload: JWTPayload): Promise<string> {
 }
 
 export async function verifyJWT(token: string): Promise<JWTPayload> {
-  const { payload } = await jwtVerify(token, secret)
-  return payload as JWTPayload
+  try {
+    const { payload } = await jwtVerify(token, secret)
+    return payload as JWTPayload
+  } catch (error) {
+    console.error("JWT verification failed:", error)
+    throw error
+  }
 }

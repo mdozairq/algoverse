@@ -25,26 +25,23 @@ export async function POST(request: NextRequest) {
 
     if (role === "merchant") {
       await FirebaseService.createMerchant({
-        id: userId,
         businessName: businessName || displayName,
         email,
-        password: hashedPassword,
         description: description || "",
         category: Array.isArray(category) ? category[0] : category || "Other",
         walletAddress: walletAddress || "",
         isApproved: false,
-        role: "merchant",
         uid: userId,
       })
     } else {
       await FirebaseService.createUser({
-        id: userId,
         email,
         password: hashedPassword,
         name: displayName || "",
         role: role || "user",
         walletAddress: walletAddress || "",
         isVerified: false,
+        uid: userId,
       })
     }
 

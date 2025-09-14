@@ -66,11 +66,11 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
       case "merchant":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/merchant" },
-          { icon: Calendar, label: "My Events", href: "/merchant/events" },
-          { icon: Plus, label: "Create Event", href: "/merchant/create-event" },
-          { icon: Store, label: "Marketplace", href: "/merchant/create-marketplace" },
-          { icon: BarChart3, label: "Analytics", href: "/merchant/analytics" },
-          { icon: Settings, label: "Settings", href: "/merchant/settings" },
+          { icon: Calendar, label: "My Events", href: "/dashboard/merchant#events" },
+          { icon: Plus, label: "Create Event", href: "/dashboard/merchant/create-event" },
+          { icon: Store, label: "Create Marketplace", href: "/dashboard/merchant/create-marketplace" },
+          { icon: BarChart3, label: "Analytics", href: "/dashboard/merchant/analytics" },
+          { icon: Settings, label: "Settings", href: "/dashboard/merchant#settings" },
         ]
       case "user":
         return [

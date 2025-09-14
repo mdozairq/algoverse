@@ -8,13 +8,14 @@ export interface AuthenticatedRequest extends NextRequest {
     role: string
     walletAddress?: string
     isVerified: boolean
+    uid?: string
   }
 }
 
 // Verify auth token utility
 export async function verifyAuthToken(
   request: NextRequest,
-): Promise<{ userId: string; role: string; email: string } | null> {
+): Promise<{ userId: string; role: string; email: string; uid?: string } | null> {
   try {
     let token = request.headers.get("authorization")?.replace("Bearer ", "")
 
@@ -32,6 +33,7 @@ export async function verifyAuthToken(
       userId: payload.userId,
       role: payload.role,
       email: payload.email,
+      uid: (payload as any).uid,
     }
   } catch (error) {
     console.error("Error verifying auth token:", error)
@@ -101,6 +103,7 @@ export const withAuth = (handler: (req: AuthenticatedRequest) => Promise<NextRes
         role: payload.role,
         walletAddress: payload.walletAddress,
         isVerified: payload.isVerified,
+        uid: (payload as any).uid,
       }
 
       return handler(authenticatedReq)

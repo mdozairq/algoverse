@@ -68,7 +68,19 @@ export function WalletConnect() {
 
       // Redirect after success animation
       setTimeout(() => {
-        router.push("/dashboard")
+        // Get the current user after wallet connection to determine role
+        fetch("/api/auth/me")
+          .then(res => res.json())
+          .then(data => {
+            if (data.user) {
+              router.push(`/dashboard/${data.user.role}`)
+            } else {
+              router.push("/dashboard")
+            }
+          })
+          .catch(() => {
+            router.push("/dashboard")
+          })
       }, 1500)
     } catch (error: any) {
       console.error("Wallet connection failed:", error)

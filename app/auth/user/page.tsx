@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,13 +16,25 @@ import { useRouter } from "next/navigation"
 
 export default function UserAuthPage() {
   const router = useRouter()
-  const { loginWithEmail, loading } = useAuth()
+  const { loginWithEmail, loading, logout } = useAuth()
   const { toast } = useToast()
   const [authMethod, setAuthMethod] = useState<"wallet" | "email">("wallet")
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
+
+  // Clear any existing session when accessing user auth page
+  useEffect(() => {
+    const clearSession = async () => {
+      try {
+        await logout()
+      } catch (error) {
+        console.log("No existing session to clear")
+      }
+    }
+    clearSession()
+  }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,14 +49,14 @@ export default function UserAuthPage() {
         return
       }
 
-      await loginWithEmail(formData.email, formData.password, "user")
+      const user = await loginWithEmail(formData.email, formData.password, "user")
       
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       })
 
-      router.push("/dashboard")
+      router.push(`/dashboard/${user.role}`)
     } catch (error: any) {
       let errorMessage = "Invalid credentials"
       

@@ -24,6 +24,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import DashboardLayout from "@/components/dashboard-layout"
+import AuthGuard from "@/components/auth-guard"
+import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
 
 interface TicketTier {
@@ -82,26 +84,36 @@ export default function CreateEventPage() {
     setStep(step - 1)
   }
 
-  const handleSubmit = () => {
-    console.log("Event Data:", {
-      eventName,
-      eventDescription,
-      eventCategory,
-      eventDate,
-      eventTime,
-      eventLocation,
-      eventVenue,
-      eventImage,
-      eventWebsite,
-      ticketTiers,
-      enableResale,
-      royaltyFee,
-    })
-    // Simulate API call
-    alert("Event created successfully!")
+  const { toast } = useToast()
+
+  const handleSubmit = async () => {
+    try {
+      const totalSupply = ticketTiers.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0)
+      const price = `${ticketTiers[0]?.price || "0"} ALGO`
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: eventName,
+          description: eventDescription,
+          category: eventCategory,
+          date: eventDate ? format(eventDate, "PPP") : "",
+          location: eventLocation,
+          imageUrl: "/placeholder.svg",
+          totalSupply,
+          price,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to create event")
+      toast({ title: "Event created", description: "Your event has been created successfully." })
+    } catch (error: any) {
+      toast({ title: "Creation failed", description: error.message, variant: "destructive" })
+    }
   }
 
   return (
+    <AuthGuard requiredRole="merchant">
     <DashboardLayout role="merchant">
       <div className="space-y-8 bg-gray-50 dark:bg-gray-900 p-8">
         {/* Header */}
@@ -528,5 +540,6 @@ export default function CreateEventPage() {
         </Card>
       </div>
     </DashboardLayout>
+    </AuthGuard>
   )
 }

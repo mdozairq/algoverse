@@ -26,8 +26,15 @@ export default function MerchantLoginPage() {
 
   // Clear any existing session when accessing merchant login page
   useEffect(() => {
-    logout()
-  }, [logout])
+    const clearSession = async () => {
+      try {
+        await logout()
+      } catch (error) {
+        console.log("No existing session to clear")
+      }
+    }
+    clearSession()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,14 +49,14 @@ export default function MerchantLoginPage() {
         return
       }
 
-      await loginWithEmail(formData.email, formData.password, "merchant")
+      const user = await loginWithEmail(formData.email, formData.password, "merchant")
       
       toast({
         title: "Login Successful",
         description: "Welcome back, Merchant!",
       })
 
-      router.push("/dashboard")
+      router.push(`/dashboard/${user.role}`)
     } catch (error: any) {
       let errorMessage = "Invalid credentials"
       

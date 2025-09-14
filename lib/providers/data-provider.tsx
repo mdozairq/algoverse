@@ -87,7 +87,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
 
   const [events, setEvents] = useState<Event[]>([])
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([])
@@ -213,18 +213,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }
 
   const refreshAll = async () => {
-    await Promise.all([refreshEvents(), refreshNFTs(), refreshMerchants(), refreshAnalytics()])
+    await Promise.all([refreshEvents(), refreshNFTs(), refreshMerchants()])
+    // Only fetch analytics if user is authenticated
+    if (isAuthenticated) {
+      await refreshAnalytics()
+    }
   }
 
   useEffect(() => {
-    refreshAll()
-  }, [])
+    // Only fetch data after auth loading is complete
+    if (!authLoading) {
+      refreshAll()
+    }
+  }, [authLoading])
 
   useEffect(() => {
     if (isAuthenticated) {
       // Refetch user-specific data when auth state changes
       refreshEvents()
       refreshNFTs()
+      refreshAnalytics() // Fetch analytics when authenticated
     }
   }, [isAuthenticated, user?.userId])
 

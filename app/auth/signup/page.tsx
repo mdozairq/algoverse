@@ -83,8 +83,8 @@ export default function UserSignupPage() {
       })
 
       // Auto-login after registration
-      await loginWithEmail(formData.email, formData.password, "user")
-      router.push("/dashboard")
+      const user = await loginWithEmail(formData.email, formData.password, "user")
+      router.push(`/dashboard/${user.role}`)
     } catch (error: any) {
       let errorMessage = "Failed to create account"
       

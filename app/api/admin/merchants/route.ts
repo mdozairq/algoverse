@@ -19,20 +19,36 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
   try {
     const { merchantId, approved } = await request.json()
 
+    // Resolve the correct document ID. merchantId may be a doc ID or a UID from older data.
+    let target = await FirebaseService.getMerchantById(merchantId)
+    if (!target) {
+      // Fallback: try by UID
+      const byUid = await FirebaseService.getMerchantByUid(merchantId)
+      if (byUid) {
+        target = byUid
+      }
+    }
+
+    if (!target) {
+      return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
+    }
+
     // Update merchant verification status
-    await FirebaseService.updateMerchant(merchantId, {
-      verified: approved,
-      marketplaceEnabled: approved,
+    await FirebaseService.updateMerchant(target.id, {
+      isApproved: approved,
+      updatedAt: new Date(),
     })
 
     // Update user custom claims if approved
-    if (approved) {
-      const merchant = await FirebaseService.getMerchantById(merchantId)
-      if (merchant) {
-        await adminAuth.setCustomUserClaims(merchant.uid, {
+    if (approved && target.uid) {
+      try {
+        await adminAuth.setCustomUserClaims(target.uid, {
           role: "merchant",
           verified: true,
         })
+      } catch (e) {
+        // In local/mock environments, Admin Auth may not be fully configured.
+        console.warn("Skipping setCustomUserClaims due to admin auth config:", e)
       }
     }
 
