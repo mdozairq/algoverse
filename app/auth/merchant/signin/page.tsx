@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,12 +17,17 @@ import { useRouter } from "next/navigation"
 
 export default function MerchantLoginPage() {
   const router = useRouter()
-  const { loginWithEmail, loading } = useAuth()
+  const { loginWithEmail, loading, logout } = useAuth()
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
+
+  // Clear any existing session when accessing merchant login page
+  useEffect(() => {
+    logout()
+  }, [logout])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,11 +49,25 @@ export default function MerchantLoginPage() {
         description: "Welcome back, Merchant!",
       })
 
-      router.push("/dashboard/merchant")
+      router.push("/dashboard")
     } catch (error: any) {
+      let errorMessage = "Invalid credentials"
+      
+      if (error.message) {
+        if (error.message.includes("User not found")) {
+          errorMessage = "No merchant account found with this email address"
+        } else if (error.message.includes("Invalid password")) {
+          errorMessage = "Incorrect password. Please try again"
+        } else if (error.message.includes("Merchant account not yet approved")) {
+          errorMessage = "Your merchant account is pending approval. Please wait for admin approval"
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid credentials",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -150,7 +169,7 @@ export default function MerchantLoginPage() {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Don't have a merchant account?{" "}
                       <Link
-                        href="/auth/merchant"
+                        href="/auth/merchant/signup"
                         className="text-blue-600 hover:text-blue-700 font-medium"
                       >
                         Apply here

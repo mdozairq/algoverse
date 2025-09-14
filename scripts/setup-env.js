@@ -106,7 +106,7 @@ NODE_ENV=development
 # =============================================================================
 `;
 
-  const envPath = path.join(process.cwd(), '.env.local');
+  const envPath = path.join(process.cwd(), '.env');
   
   if (fs.existsSync(envPath)) {
     console.log('⚠️  .env.local already exists. Backing up to .env.local.backup');

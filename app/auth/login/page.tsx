@@ -12,25 +12,60 @@ import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 import Footer from "@/components/footer"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
   const { loginWithEmail, loading } = useAuth()
+  const { toast } = useToast()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
 
     try {
+      if (!email || !password) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all fields",
+          variant: "destructive",
+        })
+        return
+      }
+
       await loginWithEmail(email, password)
-      router.push("/dashboard/user")
-    } catch (err) {
-      setError("Invalid email or password")
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      })
+
+      router.push("/dashboard")
+    } catch (error: any) {
+      let errorMessage = "Invalid email or password"
+      
+      if (error.message) {
+        if (error.message.includes("User not found")) {
+          errorMessage = "No account found with this email address"
+        } else if (error.message.includes("Invalid password")) {
+          errorMessage = "Incorrect password. Please try again"
+        } else if (error.message.includes("Merchant account not yet approved")) {
+          errorMessage = "Your merchant account is pending approval"
+        } else if (error.message.includes("Invalid admin master key")) {
+          errorMessage = "Invalid admin master key"
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast({
+        title: "Login Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -91,7 +126,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {error && <div className="text-red-400 text-sm text-center">{error}</div>}
 
               <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}

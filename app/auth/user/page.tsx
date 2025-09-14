@@ -44,11 +44,25 @@ export default function UserAuthPage() {
         description: "Welcome back!",
       })
 
-      router.push("/dashboard/user")
+      router.push("/dashboard")
     } catch (error: any) {
+      let errorMessage = "Invalid credentials"
+      
+      if (error.message) {
+        if (error.message.includes("User not found")) {
+          errorMessage = "No account found with this email address"
+        } else if (error.message.includes("Invalid password")) {
+          errorMessage = "Incorrect password. Please try again"
+        } else if (error.message.includes("Merchant account not yet approved")) {
+          errorMessage = "Your merchant account is pending approval"
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid credentials",
+        description: errorMessage,
         variant: "destructive",
       })
     }

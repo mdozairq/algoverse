@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Wallet, Smartphone, Globe, Check, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 interface WalletOption {
   id: string
@@ -45,6 +46,7 @@ export function WalletConnect() {
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle")
   const { connectWallet, loading } = useAuth()
+  const { toast } = useToast()
   const router = useRouter()
 
   const handleConnect = async (walletId: string) => {
@@ -59,14 +61,39 @@ export function WalletConnect() {
 
       setConnectionStatus("connected")
 
+      toast({
+        title: "Wallet Connected",
+        description: "Your wallet has been connected successfully!",
+      })
+
       // Redirect after success animation
       setTimeout(() => {
-        router.push("/user/dashboard")
+        router.push("/dashboard")
       }, 1500)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Wallet connection failed:", error)
       setConnectionStatus("idle")
       setSelectedWallet(null)
+      
+      let errorMessage = "Failed to connect wallet. Please try again."
+      
+      if (error.message) {
+        if (error.message.includes("User rejected")) {
+          errorMessage = "Wallet connection was rejected. Please try again."
+        } else if (error.message.includes("Network error")) {
+          errorMessage = "Network error. Please check your connection and try again."
+        } else if (error.message.includes("Wallet not found")) {
+          errorMessage = "Wallet not found. Please install a compatible wallet."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 

@@ -84,11 +84,25 @@ export default function UserSignupPage() {
 
       // Auto-login after registration
       await loginWithEmail(formData.email, formData.password, "user")
-      router.push("/dashboard/user")
+      router.push("/dashboard")
     } catch (error: any) {
+      let errorMessage = "Failed to create account"
+      
+      if (error.message) {
+        if (error.message.includes("User already exists")) {
+          errorMessage = "An account with this email already exists. Please try logging in instead"
+        } else if (error.message.includes("Invalid email")) {
+          errorMessage = "Please enter a valid email address"
+        } else if (error.message.includes("Password too weak")) {
+          errorMessage = "Password must be at least 6 characters long"
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Registration Failed",
-        description: error.message || "Failed to create account",
+        description: errorMessage,
         variant: "destructive",
       })
     }

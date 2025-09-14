@@ -100,7 +100,7 @@ export default function MerchantAuthPage() {
       router.push("/")
     } catch (error: any) {
       let errorMessage = "Failed to submit application"
-      
+
       if (error.message) {
         if (error.message.includes("User already exists")) {
           errorMessage = "A merchant account with this email already exists. Please try logging in instead"
@@ -114,7 +114,7 @@ export default function MerchantAuthPage() {
           errorMessage = error.message
         }
       }
-      
+
       toast({
         title: "Registration Failed",
         description: errorMessage,
@@ -172,11 +172,10 @@ export default function MerchantAuthPage() {
                           opacity: step >= stepNumber ? 1 : 0.5,
                         }}
                         transition={{ duration: 0.3 }}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          step >= stepNumber
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= stepNumber
                             ? "bg-black text-white dark:bg-white dark:text-black"
                             : "bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-400"
-                        }`}
+                          }`}
                       >
                         {stepNumber}
                       </motion.div>
@@ -402,23 +401,23 @@ export default function MerchantAuthPage() {
                           {loading ? "SUBMITTING..." : "SUBMIT APPLICATION"}
                         </Button>
                       </div>
-                      <div className="text-center mt-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Already have a merchant account?{" "}
-                          <Link
-                            href="/auth/merchant-login"
-                            className="text-black dark:text-white hover:underline font-medium"
-                          >
-                            Sign in here
-                          </Link>
-                        </p>
-                      </div>
                     </div>
                   )}
                 </motion.div>
               </CardContent>
             </Card>
           </SlideUp>
+          <div className="text-center mt-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Already have a merchant account?{" "}
+              <Link
+                href="/auth/merchant/signin"
+                className="text-black dark:text-white hover:underline font-medium"
+              >
+                Sign in here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </PageTransition>

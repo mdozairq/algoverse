@@ -59,7 +59,7 @@ export default function Footer({
               </li>
               <li>
                 <Link
-                  href="/merchant/dashboard"
+                  href="/dashboard"
                   className="hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   Dashboard

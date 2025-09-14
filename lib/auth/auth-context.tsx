@@ -28,6 +28,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Function to get cookie value by name
+  const getCookie = (name: string): string | null => {
+    if (typeof document === 'undefined') return null;
+    
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      const cookieValue = parts.pop()?.split(';').shift();
+      return cookieValue || null;
+    }
+    return null;
+  };
+
   const connectWallet = async (address: string) => {
     setLoading(true)
     try {
@@ -129,18 +142,91 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     document.cookie = "eventnft_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
   }
 
-  // Check for existing session on mount
+  // Check for existing session on mount - from both localStorage and cookies
   useEffect(() => {
-    const savedUser = localStorage.getItem("eventnft_user")
-    if (savedUser) {
+    const initializeAuth = () => {
+      setLoading(true);
+      
+      // First check localStorage
+      const savedUser = localStorage.getItem("eventnft_user");
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error("Failed to parse saved user from localStorage:", error);
+          localStorage.removeItem("eventnft_user");
+        }
+      }
+      
+      // If not in localStorage, check cookies (for SSR compatibility)
+      const userCookie = getCookie("eventnft_user");
+      if (userCookie) {
+        try {
+          const parsedUser = JSON.parse(decodeURIComponent(userCookie));
+          setUser(parsedUser);
+          // Also save to localStorage for future use
+          localStorage.setItem("eventnft_user", JSON.stringify(parsedUser));
+        } catch (error) {
+          console.error("Failed to parse user from cookie:", error);
+          // Clean up invalid cookie
+          document.cookie = "eventnft_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Sync authentication state between tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "eventnft_user") {
+        if (e.newValue) {
+          try {
+            setUser(JSON.parse(e.newValue));
+          } catch (error) {
+            console.error("Failed to parse user from storage event:", error);
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Check if user cookie exists and is valid to determine authentication status
+  const isAuthenticated = () => {
+    // First check our state
+    if (user) return true;
+    
+    // If no user in state, check cookie (for edge cases)
+    const userCookie = getCookie("eventnft_user");
+    if (userCookie) {
       try {
-        setUser(JSON.parse(savedUser))
+        const parsedUser = JSON.parse(decodeURIComponent(userCookie));
+        // Update state if we found a valid cookie
+        if (!user) {
+          setUser(parsedUser);
+          localStorage.setItem("eventnft_user", JSON.stringify(parsedUser));
+        }
+        return true;
       } catch (error) {
-        console.error("Failed to parse saved user:", error)
-        localStorage.removeItem("eventnft_user")
+        console.error("Invalid user cookie:", error);
+        return false;
       }
     }
-  }, [])
+    
+    return false;
+  };
 
   const value: AuthContextType = {
     user,
@@ -149,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loginWithEmail,
     registerMerchant,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: isAuthenticated(),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

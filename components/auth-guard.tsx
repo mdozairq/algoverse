@@ -29,8 +29,8 @@ export default function AuthGuard({ children, requiredRole, fallbackPath }: Auth
       if (requiredRole && user?.role !== requiredRole) {
         // Redirect to appropriate dashboard based on user's actual role
         const dashboardPath = user?.role === "admin" ? "/dashboard/admin" :
-                            user?.role === "merchant" ? "/merchant/dashboard" :
-                            "/user/dashboard"
+                            user?.role === "merchant" ? "/dashboard/merchant" :
+                            "/dashboard/user"
         router.push(dashboardPath)
         return
       }

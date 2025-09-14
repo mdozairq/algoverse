@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,13 +17,18 @@ import { useRouter } from "next/navigation"
 
 export default function AdminAuthPage() {
   const router = useRouter()
-  const { loginWithEmail, loading } = useAuth()
+  const { loginWithEmail, loading, logout } = useAuth()
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     adminKey: "",
   })
+
+  // Clear any existing session when accessing admin auth page
+  useEffect(() => {
+    logout()
+  }, [logout])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,11 +50,25 @@ export default function AdminAuthPage() {
         description: "Welcome back, Administrator!",
       })
 
-      router.push("/dashboard/admin")
+      router.push("/dashboard")
     } catch (error: any) {
+      let errorMessage = "Invalid credentials"
+      
+      if (error.message) {
+        if (error.message.includes("User not found")) {
+          errorMessage = "No admin account found with this email address"
+        } else if (error.message.includes("Invalid password")) {
+          errorMessage = "Incorrect password. Please try again"
+        } else if (error.message.includes("Invalid admin master key")) {
+          errorMessage = "Invalid admin master key. Please check your key and try again"
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid credentials",
+        description: errorMessage,
         variant: "destructive",
       })
     }

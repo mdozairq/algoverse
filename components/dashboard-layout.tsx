@@ -47,17 +47,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
 
   const handleLogout = () => {
     logout()
-    switch(role){
-      case "admin":
-        router.push("/auth/admin")
-        break
-      case "merchant":
-        router.push("/auth/merchant")
-        break
-      case "user":
-        router.push("/auth/user")
-        break
-    }
+    router.push("/")
   }
 
   const getMenuItems = () => {
@@ -66,7 +56,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
     switch (role) {
       case "admin":
         return [
-          { icon: Home, label: "Dashboard", href: "/admin/dashboard" },
+          { icon: Home, label: "Dashboard", href: "/dashboard/admin" },
           { icon: Users, label: "Merchants", href: "/admin/merchants" },
           { icon: Store, label: "Marketplaces", href: "/admin/marketplaces" },
           { icon: DollarSign, label: "Fee Management", href: "/admin/fees" },
@@ -75,7 +65,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
         ]
       case "merchant":
         return [
-          { icon: Home, label: "Dashboard", href: "/merchant/dashboard" },
+          { icon: Home, label: "Dashboard", href: "/dashboard/merchant" },
           { icon: Calendar, label: "My Events", href: "/merchant/events" },
           { icon: Plus, label: "Create Event", href: "/merchant/create-event" },
           { icon: Store, label: "Marketplace", href: "/merchant/create-marketplace" },
@@ -84,12 +74,12 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
         ]
       case "user":
         return [
-          { icon: Home, label: "Dashboard", href: "/user/dashboard" },
-          { icon: Wallet, label: "My NFTs", href: "/user/dashboard?tab=nfts" }, // Link to specific tab
-          { icon: Calendar, label: "Events", href: "/user/dashboard?tab=events" }, // Link to specific tab
-          { icon: Trophy, label: "Rewards", href: "/user/dashboard?tab=rewards" }, // Link to specific tab
-          { icon: BarChart3, label: "Activity", href: "/user/dashboard?tab=transactions" }, // Link to specific tab
-          { icon: Settings, label: "Profile Settings", href: "/user/dashboard?tab=profile" }, // Link to specific tab
+          { icon: Home, label: "Dashboard", href: "/dashboard/user" },
+          { icon: Wallet, label: "My NFTs", href: "/dashboard/user?tab=nfts" }, // Link to specific tab
+          { icon: Calendar, label: "Events", href: "/dashboard/user?tab=events" }, // Link to specific tab
+          { icon: Trophy, label: "Rewards", href: "/dashboard/user?tab=rewards" }, // Link to specific tab
+          { icon: BarChart3, label: "Activity", href: "/dashboard/user?tab=activity" }, // Link to specific tab
+          { icon: Settings, label: "Profile Settings", href: "/dashboard/user?tab=profile" }, // Link to specific tab
         ]
       default:
         return []
