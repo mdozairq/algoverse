@@ -1,120 +1,70 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Clock, Users, Search, Star, Heart } from "lucide-react"
+import { Calendar, MapPin, Clock, Users, Search, Star, Heart, Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import { FloatingCard } from "@/components/animations/card-hover"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { useToast } from "@/hooks/use-toast"
 
 export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedLocation, setSelectedLocation] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [featuredEvents, setFeaturedEvents] = useState<any[]>([])
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
+  const { toast } = useToast()
 
-  const featuredEvents = [
-    {
-      id: 1,
-      title: "Summer Music Festival 2024",
-      description: "The biggest music festival of the year featuring top artists from around the world",
-      image: "/placeholder.svg?height=400&width=600&text=Music Festival",
-      date: "July 15-17, 2024",
-      time: "6:00 PM - 2:00 AM",
-      location: "Central Park, NYC",
-      venue: "Great Lawn Stage",
-      category: "Music",
-      price: "From 0.5 ALGO",
-      attendees: "50K+",
-      rating: 4.9,
-      isFeatured: true,
-      isLiked: false,
-    },
-    {
-      id: 2,
-      title: "Tech Innovation Conference",
-      description: "Leading technology conference bringing together innovators and industry leaders",
-      image: "/placeholder.svg?height=400&width=600&text=Tech Conference",
-      date: "August 20-22, 2024",
-      time: "9:00 AM - 6:00 PM",
-      location: "San Francisco, CA",
-      venue: "Moscone Center",
-      category: "Conference",
-      price: "From 1.2 ALGO",
-      attendees: "10K+",
-      rating: 4.8,
-      isFeatured: true,
-      isLiked: false,
-    },
-  ]
+  const fetchEvents = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
 
-  const upcomingEvents = [
-    {
-      id: 3,
-      title: "Broadway Show: Hamilton",
-      description: "The award-winning musical that tells the story of Alexander Hamilton",
-      image: "/placeholder.svg?height=300&width=400&text=Hamilton Show",
-      date: "September 5, 2024",
-      time: "8:00 PM",
-      location: "New York, NY",
-      venue: "Richard Rodgers Theatre",
-      category: "Theater",
-      price: "From 2.8 ALGO",
-      attendees: "1.4K",
-      rating: 4.9,
-      isLiked: false,
-    },
-    {
-      id: 4,
-      title: "Art Gallery Opening",
-      description: "Contemporary art exhibition featuring emerging artists",
-      image: "/placeholder.svg?height=300&width=400&text=Art Gallery",
-      date: "September 12, 2024",
-      time: "7:00 PM",
-      location: "Los Angeles, CA",
-      venue: "LACMA",
-      category: "Art",
-      price: "From 0.3 ALGO",
-      attendees: "500",
-      rating: 4.6,
-      isLiked: false,
-    },
-    {
-      id: 5,
-      title: "Food & Wine Festival",
-      description: "Culinary experience with world-renowned chefs and wine tastings",
-      image: "/placeholder.svg?height=300&width=400&text=Food Festival",
-      date: "September 18-19, 2024",
-      time: "12:00 PM - 10:00 PM",
-      location: "Napa Valley, CA",
-      venue: "Various Venues",
-      category: "Food",
-      price: "From 1.5 ALGO",
-      attendees: "5K+",
-      rating: 4.7,
-      isLiked: false,
-    },
-    {
-      id: 6,
-      title: "Sports Championship Finals",
-      description: "The ultimate showdown between the top teams of the season",
-      image: "/placeholder.svg?height=300&width=400&text=Sports Event",
-      date: "October 1, 2024",
-      time: "3:00 PM",
-      location: "Chicago, IL",
-      venue: "United Center",
-      category: "Sports",
-      price: "From 3.2 ALGO",
-      attendees: "20K+",
-      rating: 4.8,
-      isLiked: false,
-    },
-  ]
+    try {
+      const [featuredRes, upcomingRes] = await Promise.all([
+        fetch("/api/events?featured=true"),
+        fetch("/api/events?upcoming=true")
+      ])
+
+      const [featuredData, upcomingData] = await Promise.all([
+        featuredRes.json(),
+        upcomingRes.json()
+      ])
+
+      if (featuredRes.ok) {
+        setFeaturedEvents(featuredData.events || [])
+      }
+
+      if (upcomingRes.ok) {
+        setUpcomingEvents(upcomingData.events || [])
+      }
+    } catch (error: any) {
+      console.error("Error fetching events:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load events",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchEvents()
+  }, [])
 
   const categories = [
     { value: "all", label: "All Categories" },
@@ -137,12 +87,12 @@ export default function EventsPage() {
 
   const filteredEvents = upcomingEvents.filter((event) => {
     const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchQuery.toLowerCase())
+      event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory =
-      selectedCategory === "all" || event.category.toLowerCase() === selectedCategory.toLowerCase()
+      selectedCategory === "all" || event.category?.toLowerCase() === selectedCategory.toLowerCase()
     const matchesLocation =
-      selectedLocation === "all" || event.location.toLowerCase().includes(selectedLocation.toLowerCase())
+      selectedLocation === "all" || event.location?.toLowerCase().includes(selectedLocation.toLowerCase())
 
     return matchesSearch && matchesCategory && matchesLocation
   })
@@ -212,6 +162,16 @@ export default function EventsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchEvents(true)}
+                      disabled={refreshing}
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -223,8 +183,30 @@ export default function EventsPage() {
             <FadeIn>
               <h2 className="text-3xl font-black tracking-tight mb-8 text-gray-900 dark:text-white">Featured Events</h2>
             </FadeIn>
-            <StaggerContainer className="grid lg:grid-cols-2 gap-8">
-              {featuredEvents.map((event, index) => (
+            {loading ? (
+              <div className="grid lg:grid-cols-2 gap-8">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                    <CardContent className="p-6">
+                      <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                      <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
+                      <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : featuredEvents.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-500 dark:text-gray-400 mb-4">No featured events available</div>
+                <Button onClick={() => fetchEvents(true)} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            ) : (
+              <StaggerContainer className="grid lg:grid-cols-2 gap-8">
+                {featuredEvents.map((event, index) => (
                 <StaggerItem key={event.id}>
                   <FloatingCard>
                     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden group">
@@ -306,7 +288,8 @@ export default function EventsPage() {
                   </FloatingCard>
                 </StaggerItem>
               ))}
-            </StaggerContainer>
+              </StaggerContainer>
+            )}
           </section>
 
           {/* Upcoming Events */}
@@ -320,8 +303,39 @@ export default function EventsPage() {
               </div>
             </FadeIn>
 
-            <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event, index) => (
+            {loading ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                    <CardHeader className="p-4">
+                      <div className="h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                      <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                      <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                      <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-500 dark:text-gray-400 mb-4">
+                  {upcomingEvents.length === 0 
+                    ? "No events available" 
+                    : "No events match your filters"
+                  }
+                </div>
+                <Button onClick={() => fetchEvents(true)} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            ) : (
+              <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredEvents.map((event, index) => (
                 <StaggerItem key={event.id}>
                   <FloatingCard>
                     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden group h-full">
@@ -382,29 +396,7 @@ export default function EventsPage() {
                   </FloatingCard>
                 </StaggerItem>
               ))}
-            </StaggerContainer>
-
-            {filteredEvents.length === 0 && (
-              <FadeIn>
-                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-center py-12">
-                  <CardContent>
-                    <p className="text-gray-600 dark:text-gray-400 text-lg mb-4">
-                      No events found matching your criteria
-                    </p>
-                    <Button
-                      onClick={() => {
-                        setSearchQuery("")
-                        setSelectedCategory("all")
-                        setSelectedLocation("all")
-                      }}
-                      variant="outline"
-                      className="border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full bg-white dark:bg-gray-800"
-                    >
-                      Clear Filters
-                    </Button>
-                  </CardContent>
-                </Card>
-              </FadeIn>
+              </StaggerContainer>
             )}
           </section>
 

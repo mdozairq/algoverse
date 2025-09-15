@@ -7,31 +7,60 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Eye, Edit, ExternalLink, Store } from "lucide-react"
+import { Plus, Eye, Edit, ExternalLink, Store, Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function MerchantMarketplacesPage() {
   const [loading, setLoading] = useState(true)
   const [marketplaces, setMarketplaces] = useState<any[]>([])
+  const [refreshing, setRefreshing] = useState(false)
   const { toast } = useToast()
+  const { user, isAuthenticated } = useAuth()
 
-  const fetchMarketplaces = async () => {
-    setLoading(true)
+  const fetchMarketplaces = async (isRefresh = false) => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
+    if (isRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
-      const res = await fetch("/api/marketplaces")
+      const res = await fetch("/api/marketplaces?merchantId=" + user.userId, {
+        credentials: "include"
+      })
       const data = await res.json()
-      if (res.ok) setMarketplaces(data.marketplaces || [])
-    } catch (e) {
-      console.error(e)
+      
+      if (res.ok) {
+        setMarketplaces(data.marketplaces || [])
+      } else {
+        throw new Error(data.error || "Failed to fetch marketplaces")
+      }
+    } catch (error: any) {
+      console.error("Error fetching marketplaces:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load marketplaces",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchMarketplaces()
-  }, [])
+    if (isAuthenticated && user) {
+      fetchMarketplaces()
+    }
+  }, [isAuthenticated, user])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -56,13 +85,28 @@ export default function MerchantMarketplacesPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">My Marketplaces</h1>
               <p className="text-gray-600 dark:text-gray-400">Manage your marketplace applications and listings</p>
+              <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                {marketplaces.length} marketplace{marketplaces.length !== 1 ? 's' : ''} found
+              </div>
             </div>
-            <Link href="/dashboard/merchant/create-marketplace">
-              <Button className="rounded-full">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Marketplace
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchMarketplaces(true)}
+                disabled={refreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
               </Button>
-            </Link>
+              <Link href="/dashboard/merchant/create-marketplace">
+                <Button className="rounded-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Marketplace
+                </Button>
+              </Link>
+            </div>
           </div>
 
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -87,7 +131,12 @@ export default function MerchantMarketplacesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow className="border-gray-200 dark:border-gray-700">
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-gray-500">Loading marketplaces...</span>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ) : marketplaces.length === 0 ? (
                     <TableRow className="border-gray-200 dark:border-gray-700">
