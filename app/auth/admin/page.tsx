@@ -58,7 +58,7 @@ export default function AdminAuthPage() {
       })
 
       // Redirect to role-specific dashboard
-      router.push(`/dashboard/${user.role}`)
+      router.replace(`/dashboard/${user.role}`)
     } catch (error: any) {
       let errorMessage = "Invalid credentials"
       

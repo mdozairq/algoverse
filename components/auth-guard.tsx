@@ -27,8 +27,13 @@ export default function AuthGuard({ children, requiredRole, fallbackPath }: Auth
             : requiredRole === "merchant"
               ? "/auth/merchant/signin"
               : "/auth/user")
-        router.push(authPath)
-        return
+        
+        // Use setTimeout to prevent rapid redirects and allow state to settle
+        const timeoutId = setTimeout(() => {
+          router.replace(authPath)
+        }, 100)
+        
+        return () => clearTimeout(timeoutId)
       }
 
       if (requiredRole && user?.role !== requiredRole) {
@@ -39,8 +44,13 @@ export default function AuthGuard({ children, requiredRole, fallbackPath }: Auth
             : user?.role === "merchant"
               ? "/dashboard/merchant"
               : "/dashboard/user"
-        router.push(dashboardPath)
-        return
+        
+        // Use setTimeout to prevent rapid redirects
+        const timeoutId = setTimeout(() => {
+          router.replace(dashboardPath)
+        }, 100)
+        
+        return () => clearTimeout(timeoutId)
       }
     }
   }, [user, loading, isAuthenticated, requiredRole, router, fallbackPath])

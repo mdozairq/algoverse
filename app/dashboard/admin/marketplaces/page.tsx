@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, X, Eye, Loader2, Store, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function AdminMarketplacesPage() {
   const [loading, setLoading] = useState(true)
@@ -17,8 +18,15 @@ export default function AdminMarketplacesPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { toast } = useToast()
+  const { user, isAuthenticated } = useAuth()
 
   const fetchMarketplaces = async () => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch(`/api/marketplaces${filter !== "all" ? `?status=${filter}` : ""}`)
@@ -41,6 +49,11 @@ export default function AdminMarketplacesPage() {
   }
 
   const handleStatusUpdate = async (marketplaceId: string, status: "approved" | "rejected") => {
+    // Don't update if user is not authenticated
+    if (!isAuthenticated || !user) {
+      return
+    }
+
     setUpdatingId(marketplaceId)
     try {
       const res = await fetch(`/api/marketplaces/${marketplaceId}`, {
@@ -76,8 +89,10 @@ export default function AdminMarketplacesPage() {
   }
 
   useEffect(() => {
-    fetchMarketplaces()
-  }, [filter])
+    if (isAuthenticated && user) {
+      fetchMarketplaces()
+    }
+  }, [filter, isAuthenticated, user])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -268,7 +283,7 @@ export default function AdminMarketplacesPage() {
                               asChild
                               title="View marketplace details"
                             >
-                              <Link href={`/marketplace/${marketplace.id}`}>
+                              <Link href={`/dashboard/admin/marketplace/${marketplace.id}`}>
                                 <Eye className="w-4 h-4" />
                               </Link>
                             </Button>

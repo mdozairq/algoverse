@@ -8,13 +8,21 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { TrendingUp, Users, Store, DollarSign, Activity, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<any>(null)
   const { toast } = useToast()
+  const { user, isAuthenticated } = useAuth()
 
   const fetchAnalytics = async () => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch("/api/analytics")
@@ -37,8 +45,10 @@ export default function AdminAnalyticsPage() {
   }
 
   useEffect(() => {
-    fetchAnalytics()
-  }, [])
+    if (isAuthenticated && user) {
+      fetchAnalytics()
+    }
+  }, [isAuthenticated, user])
 
   const statsCards = [
     {

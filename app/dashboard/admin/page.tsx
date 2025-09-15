@@ -11,6 +11,7 @@ import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, C
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
@@ -32,8 +33,15 @@ export default function AdminDashboard() {
   })
   const [savingSettings, setSavingSettings] = useState(false)
   const { toast } = useToast()
+  const { user, isAuthenticated } = useAuth()
 
   const fetchDashboardData = async () => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       // Fetch all data in parallel
@@ -121,6 +129,11 @@ export default function AdminDashboard() {
   }
 
   const handleMerchantApproval = async (merchantId: string, approved: boolean) => {
+    // Don't update if user is not authenticated
+    if (!isAuthenticated || !user) {
+      return
+    }
+
     try {
       const res = await fetch("/api/admin/merchants", {
         method: "POST",
@@ -147,6 +160,11 @@ export default function AdminDashboard() {
   }
 
   const handleSaveSettings = async () => {
+    // Don't save if user is not authenticated
+    if (!isAuthenticated || !user) {
+      return
+    }
+
     setSavingSettings(true)
     try {
       const res = await fetch("/api/admin/settings", {
@@ -175,8 +193,10 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (isAuthenticated && user) {
+      fetchDashboardData()
+    }
+  }, [isAuthenticated, user])
 
   const statsData = [
     {

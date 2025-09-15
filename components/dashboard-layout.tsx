@@ -46,9 +46,9 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
   const { logout } = useAuth()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
-    router.push("/")
+  const handleLogout = async () => {
+    await logout()
+    router.replace("/")
   }
 
   const getMenuItems = () => {

@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Clear user state immediately for better UX
       setUser(null)
+      setLoading(false) // Stop loading state
       
       // Then call logout API to clear server-side session
       await fetch("/api/auth/logout", { method: "POST" })

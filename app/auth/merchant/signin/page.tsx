@@ -56,7 +56,7 @@ export default function MerchantLoginPage() {
         description: "Welcome back, Merchant!",
       })
 
-      router.push(`/dashboard/${user.role}`)
+      router.replace(`/dashboard/${user.role}`)
     } catch (error: any) {
       let errorMessage = "Invalid credentials"
       

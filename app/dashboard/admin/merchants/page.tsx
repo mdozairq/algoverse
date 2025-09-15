@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface Merchant {
   id: string
@@ -23,8 +24,15 @@ export default function AdminMerchantsPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [merchants, setMerchants] = useState<Merchant[]>([])
+  const { user, isAuthenticated } = useAuth()
 
   const fetchMerchants = async () => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch("/api/admin/merchants")
@@ -40,6 +48,11 @@ export default function AdminMerchantsPage() {
   }
 
   const updateApproval = async (merchantId: string, approved: boolean) => {
+    // Don't update if user is not authenticated
+    if (!isAuthenticated || !user) {
+      return
+    }
+
     try {
       const res = await fetch("/api/admin/merchants", {
         method: "POST",
@@ -56,8 +69,10 @@ export default function AdminMerchantsPage() {
   }
 
   useEffect(() => {
-    fetchMerchants()
-  }, [])
+    if (isAuthenticated && user) {
+      fetchMerchants()
+    }
+  }, [isAuthenticated, user])
 
   return (
     <AuthGuard requiredRole="admin">

@@ -6,14 +6,22 @@ import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function AdminFeesPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [platformFeePercentage, setPlatformFeePercentage] = useState<number>(2.5)
   const [networkFeeAlgo, setNetworkFeeAlgo] = useState<number>(0.001)
+  const { user, isAuthenticated } = useAuth()
 
   const loadSettings = async () => {
+    // Don't fetch if user is not authenticated
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch("/api/admin/settings")
@@ -30,6 +38,11 @@ export default function AdminFeesPage() {
   }
 
   const save = async () => {
+    // Don't save if user is not authenticated
+    if (!isAuthenticated || !user) {
+      return
+    }
+
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
@@ -45,8 +58,10 @@ export default function AdminFeesPage() {
   }
 
   useEffect(() => {
-    loadSettings()
-  }, [])
+    if (isAuthenticated && user) {
+      loadSettings()
+    }
+  }, [isAuthenticated, user])
 
   return (
     <AuthGuard requiredRole="admin">
