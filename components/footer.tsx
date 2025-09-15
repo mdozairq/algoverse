@@ -37,7 +37,7 @@ export default function Footer({
                   Concerts
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link href="/hotels" className="hover:text-gray-900 dark:hover:text-white transition-colors">
                   Hotels
                 </Link>
@@ -46,14 +46,14 @@ export default function Footer({
                 <Link href="/movies" className="hover:text-gray-900 dark:hover:text-white transition-colors">
                   Movies
                 </Link>
-              </li>
+              </li> */}
             </ul>
           </div>
           <div>
             <h3 className="font-bold mb-4 text-sm tracking-wide text-gray-900 dark:text-white">FOR MERCHANTS</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
               <li>
-                <Link href="/auth/merchant" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                <Link href="/auth/merchant/signup" className="hover:text-gray-900 dark:hover:text-white transition-colors">
                   Become a Merchant
                 </Link>
               </li>
@@ -107,6 +107,12 @@ export default function Footer({
               className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"
             >
               Terms
+            </Link>
+            <Link
+              href="/auth/admin"
+              className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"
+            >
+              Admin
             </Link>
           </div>
         </div>

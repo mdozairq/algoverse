@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw } from "lucide-react"
+import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 export default function MerchantDashboard() {
   const [loading, setLoading] = useState(true)
@@ -26,6 +27,7 @@ export default function MerchantDashboard() {
   const [events, setEvents] = useState<any[]>([])
   const [marketplaces, setMarketplaces] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuth()
   const fetchDashboardData = async (isRefresh = false) => {
@@ -55,10 +57,27 @@ export default function MerchantDashboard() {
       ])
 
       if (eventsRes.ok) {
-        setEvents(eventsData.events || [])
+        const eventsList = eventsData.events || []
+        setEvents(eventsList)
+        
+        // Calculate stats from events
+        const totalEvents = eventsList.length
+        const totalSold = eventsList.reduce((sum: number, event: any) => sum + (event.totalSupply - event.availableSupply), 0)
+        const totalRevenue = eventsList.reduce((sum: number, event: any) => {
+          const soldCount = event.totalSupply - event.availableSupply
+          return sum + (soldCount * parseFloat(event.price || "0"))
+        }, 0)
+        
+        // Calculate conversion rate (events with sales / total events)
+        const eventsWithSales = eventsList.filter((event: any) => (event.totalSupply - event.availableSupply) > 0).length
+        const conversionRate = totalEvents > 0 ? (eventsWithSales / totalEvents) * 100 : 0
+        
         setStats(prev => ({
           ...prev,
-          totalEvents: eventsData.events?.length || 0
+          totalEvents,
+          ticketsSold: totalSold,
+          totalRevenue,
+          conversionRate
         }))
       }
 
@@ -163,6 +182,75 @@ export default function MerchantDashboard() {
     }
   }
 
+  const handlePublishEvent = async (eventId: string) => {
+    setActionLoading(eventId)
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'active' })
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Event published successfully",
+        })
+        fetchDashboardData(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to publish event')
+      }
+    } catch (error: any) {
+      console.error('Error publishing event:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to publish event",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleViewAnalytics = (eventId: string) => {
+    // Navigate to analytics page with event filter
+    window.open(`/dashboard/merchant/analytics?event=${eventId}`, '_blank')
+  }
+
+  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
+    setActionLoading(eventId)
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Event deleted successfully",
+        })
+        fetchDashboardData(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete event')
+      }
+    } catch (error: any) {
+      console.error('Error deleting event:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   return (
     <AuthGuard requiredRole="merchant">
       <DashboardLayout role="merchant">
@@ -224,6 +312,38 @@ export default function MerchantDashboard() {
             )}
           </div>
 
+          {/* Quick Actions */}
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-gray-900 dark:text-white">Quick Actions</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Common tasks to manage your business
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link href="/dashboard/merchant/create-event">
+                  <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                    <Calendar className="h-6 w-6" />
+                    <span className="font-medium">Create Event</span>
+                  </Button>
+                </Link>
+                <Link href="/dashboard/merchant/create-marketplace">
+                  <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
+                    <Plus className="h-6 w-6" />
+                    <span className="font-medium">Create Marketplace</span>
+                  </Button>
+                </Link>
+                <Link href="/dashboard/merchant/analytics">
+                  <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                    <TrendingUp className="h-6 w-6" />
+                    <span className="font-medium">View Analytics</span>
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Main Content */}
           <Tabs defaultValue="events" className="space-y-4">
             <TabsList className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -234,10 +354,16 @@ export default function MerchantDashboard() {
                 My Events
               </TabsTrigger>
               <TabsTrigger
+                value="marketplaces"
+                className="data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-gray-700 text-gray-600 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white"
+              >
+                My Marketplaces
+              </TabsTrigger>
+              <TabsTrigger
                 value="sales"
                 className="data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-gray-700 text-gray-600 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white"
               >
-                Recent Sales
+                Recent Activity
               </TabsTrigger>
               <TabsTrigger
                 value="analytics"
@@ -285,64 +411,146 @@ export default function MerchantDashboard() {
                         </TableRow>
                       ) : events.length === 0 ? (
                         <TableRow className="border-gray-200 dark:border-gray-700">
-                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                            <div className="flex flex-col items-center gap-2">
-                              <Calendar className="h-8 w-8 text-gray-400" />
-                              <span>No events found</span>
-                              <Link href="/dashboard/merchant/create-event">
-                                <Button size="sm">
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Create Event
-                                </Button>
-                              </Link>
+                          <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                            <div className="flex flex-col items-center gap-4">
+                              <Calendar className="h-12 w-12 text-gray-400" />
+                              <div>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No events yet</h3>
+                                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                  Create your first event to start selling tickets and NFTs
+                                </p>
+                                <Link href="/dashboard/merchant/create-event">
+                                  <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Create Your First Event
+                                  </Button>
+                                </Link>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
                       ) : (
-                        events.map((event) => (
-                        <TableRow key={event.id} className="border-gray-200 dark:border-gray-700">
-                          <TableCell>
-                            <div className="font-medium text-gray-900 dark:text-white">{event.title}</div>
-                          </TableCell>
-                          <TableCell className="text-gray-900 dark:text-gray-300">{event.date}</TableCell>
-                          <TableCell>{getStatusBadge(event.status)}</TableCell>
-                          <TableCell className="text-gray-900 dark:text-gray-300">
-                            {event.sold}/{event.total}
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                              <div
-                                className="bg-blue-400 h-2 rounded-full"
-                                style={{ width: `${(event.sold / event.total) * 100}%` }}
-                              ></div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-gray-900 dark:text-white font-medium">{event.revenue}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        ))
+                        events.map((event) => {
+                          const soldCount = event.totalSupply - event.availableSupply
+                          const totalCount = event.totalSupply
+                          const soldPercentage = totalCount > 0 ? (soldCount / totalCount) * 100 : 0
+                          const revenue = soldCount * parseFloat(event.price || "0")
+                          const status = event.availableSupply === 0 ? "completed" : 
+                                       event.availableSupply < event.totalSupply ? "active" : "draft"
+                          
+                          return (
+                            <TableRow key={event.id} className="border-gray-200 dark:border-gray-700">
+                              <TableCell>
+                                <div className="font-medium text-gray-900 dark:text-white">{event.title}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">{event.category}</div>
+                              </TableCell>
+                              <TableCell className="text-gray-900 dark:text-gray-300">
+                                {new Date(event.date).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>{getStatusBadge(status)}</TableCell>
+                              <TableCell className="text-gray-900 dark:text-gray-300">
+                                {soldCount}/{totalCount}
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                                  <div
+                                    className="bg-blue-400 h-2 rounded-full"
+                                    style={{ width: `${soldPercentage}%` }}
+                                  ></div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-900 dark:text-white font-medium">
+                                {revenue.toFixed(2)} ALGO
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Link href={`/events/${event.id}`}>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                      title="View Event"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                  <Link href={`/dashboard/merchant/create-event?edit=${event.id}`}>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                      title="Edit Event"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                  {status === "draft" && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                      title="Publish Event"
+                                      onClick={() => handlePublishEvent(event.id)}
+                                      disabled={actionLoading === event.id}
+                                    >
+                                      {actionLoading === event.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <TrendingUp className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                  {status === "active" && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                      title="View Analytics"
+                                      onClick={() => handleViewAnalytics(event.id)}
+                                    >
+                                      <TrendingUp className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        title="Delete Event"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete "{event.title}"? This action cannot be undone and will remove all associated data.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDeleteEvent(event.id, event.title)}
+                                          className="bg-red-600 hover:bg-red-700 text-white"
+                                          disabled={actionLoading === event.id}
+                                        >
+                                          {actionLoading === event.id ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                              Deleting...
+                                            </>
+                                          ) : (
+                                            "Delete Event"
+                                          )}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
                       )}
                     </TableBody>
                   </Table>
@@ -404,6 +612,82 @@ export default function MerchantDashboard() {
                       ))
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="marketplaces" className="space-y-4">
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">My Marketplaces</CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-gray-400">
+                    Manage your marketplace applications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="space-y-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse">
+                          <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
+                          <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : marketplaces.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-500 dark:text-gray-400 mb-4">
+                        <Plus className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No marketplaces yet</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          Create a marketplace to showcase your events and reach more customers
+                        </p>
+                        <Link href="/dashboard/merchant/create-marketplace">
+                          <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Marketplace
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {marketplaces.map((marketplace) => (
+                        <div
+                          key={marketplace.id}
+                          className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-between"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                              <Plus className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-gray-900 dark:text-white">{marketplace.businessName}</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{marketplace.category}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge 
+                              className={
+                                marketplace.status === "approved" 
+                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                  : marketplace.status === "pending"
+                                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                              }
+                            >
+                              {marketplace.status}
+                            </Badge>
+                            <Link href={`/dashboard/admin/marketplace/${marketplace.id}`}>
+                              <Button size="sm" variant="outline">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

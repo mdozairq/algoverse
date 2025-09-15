@@ -141,6 +141,10 @@ export const eventsCollection = {
   async update(id: string, updates: Partial<Event>): Promise<void> {
     await adminDb.collection("events").doc(id).update(updates)
   },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("events").doc(id).delete()
+  },
 }
 
 export const nftsCollection = {
@@ -293,6 +297,10 @@ export class FirebaseService {
 
   static async updateEvent(id: string, updates: Partial<Event>): Promise<void> {
     return eventsCollection.update(id, updates)
+  }
+
+  static async deleteEvent(id: string): Promise<void> {
+    return eventsCollection.delete(id)
   }
 
   static async createNFT(nftData: Omit<NFT, "id" | "createdAt">): Promise<string> {
