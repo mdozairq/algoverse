@@ -462,12 +462,12 @@ export default function MerchantDashboard() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-1">
-                                  <Link href={`/events/${event.id}`}>
+                                  <Link href={`/dashboard/merchant/event/${event.id}`}>
                                     <Button
                                       size="sm"
                                       variant="ghost"
                                       className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                      title="View Event"
+                                      title="View Event Details"
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
