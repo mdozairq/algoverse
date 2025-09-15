@@ -58,11 +58,11 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
       case "admin":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/admin" },
-          { icon: Users, label: "Merchants", href: "/admin/merchants" },
-          { icon: Store, label: "Marketplaces", href: "/admin/marketplaces" },
-          { icon: DollarSign, label: "Fee Management", href: "/admin/fees" },
-          { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
-          { icon: Settings, label: "Settings", href: "/admin/settings" },
+          { icon: Users, label: "Merchants", href: "/dashboard/admin/merchants" },
+          { icon: Store, label: "Marketplaces", href: "/dashboard/admin/marketplaces" },
+          { icon: DollarSign, label: "Fee Management", href: "/dashboard/admin/fees" },
+          { icon: BarChart3, label: "Analytics", href: "/dashboard/admin/analytics" },
+          { icon: Settings, label: "Settings", href: "/dashboard/admin/settings" },
         ]
       case "merchant":
         return [
@@ -109,7 +109,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                 {role === "admin" && <Shield className="w-6 h-6 text-red-600" />}
                 {role === "merchant" && <Store className="w-6 h-6 text-blue-600" />}
                 {role === "user" && <User className="w-6 h-6 text-green-600" />}
-                <span className="text-xl font-black tracking-tight text-gray-900 dark:text-white">EVENTNFT.</span>
+                <span className="text-xl font-black tracking-tight text-gray-900 dark:text-white">ALGOVERSE.</span>
               </div>
             </SidebarHeader>
 

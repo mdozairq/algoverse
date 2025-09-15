@@ -1,0 +1,64 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { FirebaseService } from "@/lib/firebase/collections"
+import { requireRole } from "@/lib/auth/middleware"
+
+// GET /api/marketplaces - Get marketplaces with filtering
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get("status")
+    const merchantId = searchParams.get("merchantId")
+
+    let marketplaces = []
+
+    if (status === "pending") {
+      marketplaces = await FirebaseService.getPendingMarketplaces()
+    } else if (status === "approved") {
+      marketplaces = await FirebaseService.getApprovedMarketplaces()
+    } else if (merchantId) {
+      marketplaces = await FirebaseService.getMarketplacesByMerchant(merchantId)
+    } else {
+      marketplaces = await FirebaseService.getAllMarketplaces()
+    }
+
+    return NextResponse.json({ marketplaces })
+  } catch (error: any) {
+    console.error("Error fetching marketplaces:", error)
+    return NextResponse.json({ error: "Failed to fetch marketplaces" }, { status: 500 })
+  }
+}
+
+// POST /api/marketplaces - Create new marketplace (merchants only)
+export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
+  try {
+    const auth = (request as any).auth
+    const marketplaceData = await request.json()
+
+    // Get merchant info
+    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    if (!merchant) {
+      return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
+    }
+
+    // Validate required fields
+    if (!marketplaceData.businessName || !marketplaceData.description || !marketplaceData.category) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Create marketplace
+    const marketplaceId = await FirebaseService.createMarketplace({
+      ...marketplaceData,
+      merchantId: merchant.id!,
+      status: "pending", // All new marketplaces start as pending
+    })
+
+    return NextResponse.json({
+      success: true,
+      marketplaceId,
+      message: "Marketplace created successfully and submitted for approval",
+    })
+  } catch (error: any) {
+    console.error("Error creating marketplace:", error)
+    return NextResponse.json({ error: "Failed to create marketplace" }, { status: 500 })
+  }
+})

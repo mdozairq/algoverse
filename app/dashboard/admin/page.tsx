@@ -1,102 +1,211 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, Clock, Eye } from "lucide-react"
+import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, Clock, Eye, Loader2 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminDashboard() {
-  const stats = [
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalMerchants: 0,
+    activeMarketplaces: 0,
+    totalRevenue: 0,
+    platformGrowth: 0,
+  })
+  const [pendingMerchants, setPendingMerchants] = useState<any[]>([])
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [settings, setSettings] = useState({
+    platformFeePercentage: 2.5,
+    creatorRoyaltyPercentage: 5.0,
+    networkFeeAlgo: 0.001,
+    requireManualMerchantApproval: true,
+    autoApproveVerifiedMerchants: true,
+  })
+  const [savingSettings, setSavingSettings] = useState(false)
+  const { toast } = useToast()
+
+  const fetchDashboardData = async () => {
+    setLoading(true)
+    try {
+      // Fetch all data in parallel
+      const [merchantsRes, marketplacesRes, analyticsRes, settingsRes] = await Promise.all([
+        fetch("/api/merchants"),
+        fetch("/api/marketplaces"),
+        fetch("/api/analytics"),
+        fetch("/api/admin/settings"),
+      ])
+
+      const [merchantsData, marketplacesData, analyticsData, settingsData] = await Promise.all([
+        merchantsRes.json(),
+        marketplacesRes.json(),
+        analyticsRes.json(),
+        settingsRes.json(),
+      ])
+
+      if (merchantsData.merchants) {
+        const approvedMerchants = merchantsData.merchants.filter((m: any) => m.isApproved)
+        const pendingMerchants = merchantsData.merchants.filter((m: any) => !m.isApproved)
+        
+        setStats(prev => ({
+          ...prev,
+          totalMerchants: approvedMerchants.length,
+        }))
+        setPendingMerchants(pendingMerchants.slice(0, 5)) // Show latest 5
+      }
+
+      if (marketplacesData.marketplaces) {
+        const approvedMarketplaces = marketplacesData.marketplaces.filter((m: any) => m.status === "approved")
+        setStats(prev => ({
+          ...prev,
+          activeMarketplaces: approvedMarketplaces.length,
+        }))
+      }
+
+      if (analyticsData.analytics) {
+        setAnalytics(analyticsData.analytics)
+        setStats(prev => ({
+          ...prev,
+          totalRevenue: analyticsData.analytics.totalVolume || 0,
+          platformGrowth: 18.2, // This would come from analytics
+        }))
+      }
+
+      if (settingsData.config) {
+        setSettings(prev => ({
+          ...prev,
+          ...settingsData.config,
+        }))
+      }
+
+      // Generate recent activity from the data
+      const activities = []
+      if (pendingMerchants.length > 0) {
+        activities.push({
+          id: 1,
+          action: "New merchant application",
+          merchant: pendingMerchants[0].businessName,
+          time: "2 hours ago",
+          type: "application",
+        })
+      }
+      if (marketplacesData.marketplaces?.length > 0) {
+        activities.push({
+          id: 2,
+          action: "Marketplace created",
+          merchant: marketplacesData.marketplaces[0].businessName,
+          time: "4 hours ago",
+          type: "creation",
+        })
+      }
+      setRecentActivity(activities)
+
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMerchantApproval = async (merchantId: string, approved: boolean) => {
+    try {
+      const res = await fetch("/api/admin/merchants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchantId, approved }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: approved ? "Merchant approved" : "Merchant rejected",
+          description: `Merchant has been ${approved ? "approved" : "rejected"} successfully`,
+        })
+        fetchDashboardData() // Refresh data
+      } else {
+        throw new Error("Failed to update merchant status")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update merchant status",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true)
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      })
+
+      if (res.ok) {
+        toast({
+          title: "Settings saved",
+          description: "Platform settings have been updated successfully",
+        })
+      } else {
+        throw new Error("Failed to save settings")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const statsData = [
     {
       title: "Total Merchants",
-      value: "1,234",
+      value: stats.totalMerchants.toString(),
       change: "+12%",
       icon: Users,
       color: "text-blue-400",
     },
     {
       title: "Active Marketplaces",
-      value: "856",
+      value: stats.activeMarketplaces.toString(),
       change: "+8%",
       icon: Store,
       color: "text-green-400",
     },
     {
       title: "Total Revenue",
-      value: "$45,231",
+      value: analytics?.totalVolume || "$0",
       change: "+23%",
       icon: DollarSign,
       color: "text-yellow-400",
     },
     {
       title: "Platform Growth",
-      value: "18.2%",
+      value: `${stats.platformGrowth}%`,
       change: "+5%",
       icon: TrendingUp,
       color: "text-purple-400",
-    },
-  ]
-
-  const pendingMerchants = [
-    {
-      id: 1,
-      name: "Festival Productions LLC",
-      email: "contact@festivalproductions.com",
-      type: "Event Organizer",
-      submitted: "2024-01-15",
-      status: "pending",
-    },
-    {
-      id: 2,
-      name: "Resort Paradise Group",
-      email: "admin@resortparadise.com",
-      type: "Hotel Chain",
-      submitted: "2024-01-14",
-      status: "pending",
-    },
-    {
-      id: 3,
-      name: "Cinema Network",
-      email: "business@cinemanetwork.com",
-      type: "Entertainment",
-      submitted: "2024-01-13",
-      status: "review",
-    },
-  ]
-
-  const recentActivity = [
-    {
-      id: 1,
-      action: "New merchant approved",
-      merchant: "Tech Conference Co.",
-      time: "2 hours ago",
-      type: "approval",
-    },
-    {
-      id: 2,
-      action: "Marketplace created",
-      merchant: "Music Festival Group",
-      time: "4 hours ago",
-      type: "creation",
-    },
-    {
-      id: 3,
-      action: "Fee structure updated",
-      merchant: "Global Events Inc.",
-      time: "6 hours ago",
-      type: "update",
-    },
-    {
-      id: 4,
-      action: "Merchant suspended",
-      merchant: "Suspicious Events LLC",
-      time: "1 day ago",
-      type: "suspension",
     },
   ]
 
@@ -112,18 +221,33 @@ export default function AdminDashboard() {
 
           {/* Stats Grid */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <Card key={stat.title} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</CardTitle>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
-                  <p className="text-xs text-green-600 dark:text-green-400">{stat.change} from last month</p>
-                </CardContent>
-              </Card>
-            ))}
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              statsData.map((stat) => (
+                <Card key={stat.title} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</CardTitle>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
+                    <p className="text-xs text-green-600 dark:text-green-400">{stat.change} from last month</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
 
           {/* Main Content Tabs */}
@@ -228,120 +352,158 @@ export default function AdminDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-gray-200 dark:border-gray-700">
-                        <TableHead className="text-gray-600 dark:text-gray-400">Merchant</TableHead>
-                        <TableHead className="text-gray-600 dark:text-gray-400">Type</TableHead>
-                        <TableHead className="text-gray-600 dark:text-gray-400">Submitted</TableHead>
-                        <TableHead className="text-gray-600 dark:text-gray-400">Status</TableHead>
-                        <TableHead className="text-gray-600 dark:text-gray-400">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingMerchants.map((merchant) => (
-                        <TableRow key={merchant.id} className="border-gray-200 dark:border-gray-700">
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">{merchant.name}</div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">{merchant.email}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-gray-900 dark:text-gray-300">{merchant.type}</TableCell>
-                          <TableCell className="text-gray-900 dark:text-gray-300">{merchant.submitted}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={merchant.status === "pending" ? "secondary" : "outline"}
-                              className={
-                                merchant.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800 border-yellow-500/20 dark:bg-yellow-900 dark:text-yellow-400"
-                                  : "bg-blue-100 text-blue-800 border-blue-500/20 dark:bg-blue-900 dark:text-blue-400"
-                              }
-                            >
-                              {merchant.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white bg-transparent"
-                              >
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">Loading merchants...</span>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-gray-200 dark:border-gray-700">
+                          <TableHead className="text-gray-600 dark:text-gray-400">Merchant</TableHead>
+                          <TableHead className="text-gray-600 dark:text-gray-400">Category</TableHead>
+                          <TableHead className="text-gray-600 dark:text-gray-400">Submitted</TableHead>
+                          <TableHead className="text-gray-600 dark:text-gray-400">Status</TableHead>
+                          <TableHead className="text-gray-600 dark:text-gray-400">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingMerchants.length === 0 ? (
+                          <TableRow className="border-gray-200 dark:border-gray-700">
+                            <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                              No pending merchants
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          pendingMerchants.map((merchant) => (
+                            <TableRow key={merchant.id} className="border-gray-200 dark:border-gray-700">
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">{merchant.businessName}</div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">{merchant.email}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-900 dark:text-gray-300">{merchant.category}</TableCell>
+                              <TableCell className="text-gray-900 dark:text-gray-300">
+                                {merchant.createdAt ? new Date(merchant.createdAt.seconds ? merchant.createdAt.seconds * 1000 : merchant.createdAt).toLocaleDateString() : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-500/20 dark:bg-yellow-900 dark:text-yellow-400">
+                                  Pending
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                    onClick={() => handleMerchantApproval(merchant.id, true)}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white bg-transparent"
+                                    onClick={() => handleMerchantApproval(merchant.id, false)}
+                                  >
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-gray-900 dark:text-white">Revenue Analytics</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
-                      Platform revenue and fee collection
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">Total Fees Collected</span>
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white">$12,456</span>
+              {loading ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <CardHeader>
+                        <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {Array.from({ length: 3 }).map((_, j) => (
+                            <div key={j} className="flex justify-between items-center">
+                              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                              <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-gray-900 dark:text-white">Revenue Analytics</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-400">
+                        Platform revenue and fee collection
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Total Volume</span>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">{analytics?.totalVolume || "$0"}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Active Users</span>
+                          <span className="text-lg font-semibold text-gray-900 dark:text-white">{analytics?.activeUsers || "0"}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Events Listed</span>
+                          <span className="text-lg font-semibold text-gray-900 dark:text-white">{analytics?.eventsListed || "0"}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">Average Fee Rate</span>
-                        <span className="text-lg font-semibold text-gray-900 dark:text-white">2.5%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">Monthly Growth</span>
-                        <span className="text-lg font-semibold text-green-600 dark:text-green-400">+18.2%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-gray-900 dark:text-white">User Metrics</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
-                      Platform user engagement statistics
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">Active Users</span>
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white">8,924</span>
+                  <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-gray-900 dark:text-white">Platform Metrics</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-400">
+                        System performance and reliability
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Transaction Success</span>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">{analytics?.platformMetrics?.transactionSuccessRate || "99.7%"}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">Avg Response Time</span>
+                          <span className="text-lg font-semibold text-gray-900 dark:text-white">{analytics?.platformMetrics?.averageResponseTime || "1.2s"}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 dark:text-gray-400">User Satisfaction</span>
+                          <span className="text-lg font-semibold text-green-600 dark:text-green-400">{analytics?.platformMetrics?.userSatisfaction || "4.8/5"}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">New Signups (30d)</span>
-                        <span className="text-lg font-semibold text-gray-900 dark:text-white">1,234</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 dark:text-gray-400">Retention Rate</span>
-                        <span className="text-lg font-semibold text-green-600 dark:text-green-400">87.3%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="settings" className="space-y-4">
@@ -353,60 +515,102 @@ export default function AdminDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Fee Configuration</h3>
+                  {loading ? (
+                    <div className="space-y-4">
+                      <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="text-sm text-gray-600 dark:text-gray-400">Platform Fee (%)</label>
-                          <input
-                            type="number"
-                            defaultValue="2.5"
-                            className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
-                          />
+                        <div className="space-y-2">
+                          <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                          <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                         </div>
-                        <div>
-                          <label className="text-sm text-gray-600 dark:text-gray-400">Transaction Fee (ALGO)</label>
-                          <input
-                            type="number"
-                            defaultValue="0.001"
-                            step="0.001"
-                            className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
-                          />
+                        <div className="space-y-2">
+                          <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                          <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                         </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Fee Configuration</h3>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400">Platform Fee (%)</label>
+                            <input
+                              type="number"
+                              value={settings.platformFeePercentage}
+                              step="0.1"
+                              onChange={(e) => setSettings(prev => ({ ...prev, platformFeePercentage: Number(e.target.value) }))}
+                              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400">Creator Royalty (%)</label>
+                            <input
+                              type="number"
+                              value={settings.creatorRoyaltyPercentage}
+                              step="0.1"
+                              onChange={(e) => setSettings(prev => ({ ...prev, creatorRoyaltyPercentage: Number(e.target.value) }))}
+                              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400">Network Fee (ALGO)</label>
+                            <input
+                              type="number"
+                              value={settings.networkFeeAlgo}
+                              step="0.001"
+                              onChange={(e) => setSettings(prev => ({ ...prev, networkFeeAlgo: Number(e.target.value) }))}
+                              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Approval Settings</h3>
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="rounded border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-                          />
-                          <span className="text-gray-900 dark:text-gray-300">
-                            Require manual approval for new merchants
-                          </span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="rounded border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-                          />
-                          <span className="text-gray-900 dark:text-gray-300">Auto-approve verified merchants</span>
-                        </label>
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Approval Settings</h3>
+                        <div className="space-y-2">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={settings.requireManualMerchantApproval}
+                              onChange={(e) => setSettings(prev => ({ ...prev, requireManualMerchantApproval: e.target.checked }))}
+                              className="rounded border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                            />
+                            <span className="text-gray-900 dark:text-gray-300">
+                              Require manual approval for new merchants
+                            </span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={settings.autoApproveVerifiedMerchants}
+                              onChange={(e) => setSettings(prev => ({ ...prev, autoApproveVerifiedMerchants: e.target.checked }))}
+                              className="rounded border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                            />
+                            <span className="text-gray-900 dark:text-gray-300">Auto-approve verified merchants</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button 
+                          onClick={handleSaveSettings}
+                          disabled={savingSettings}
+                          className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                        >
+                          {savingSettings ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Settings"
+                          )}
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="flex justify-end">
-                      <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
-                        Save Settings
-                      </Button>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

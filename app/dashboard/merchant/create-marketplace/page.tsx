@@ -8,12 +8,16 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ArrowLeft, ArrowRight, Upload, Eye, Save, Check, Store, Palette, CreditCard } from "lucide-react"
+import { ArrowLeft, ArrowRight, Upload, Eye, Save, Check, Store, Palette, CreditCard, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CreateMarketplace() {
   const [currentStep, setCurrentStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     businessName: "",
     description: "",
@@ -46,8 +50,14 @@ export default function CreateMarketplace() {
   const progress = (currentStep / steps.length) * 100
 
   const nextStep = () => {
-    if (currentStep < steps.length) {
+    if (currentStep < steps.length && validateStep(currentStep)) {
       setCurrentStep(currentStep + 1)
+    } else if (!validateStep(currentStep)) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields before proceeding.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -59,6 +69,115 @@ export default function CreateMarketplace() {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validateStep = (step: number) => {
+    switch (step) {
+      case 1:
+        return formData.businessName && formData.description && formData.category
+      case 2:
+        return true // Optional step
+      case 3:
+        return formData.template
+      case 4:
+        return formData.walletAddress
+      case 5:
+        return true // Preview step
+      default:
+        return false
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    setIsSaving(true)
+    try {
+      const response = await fetch("/api/marketplaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          status: "draft",
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Draft saved",
+          description: "Your marketplace draft has been saved successfully.",
+        })
+      } else {
+        throw new Error("Failed to save draft")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save draft. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!validateStep(1) || !validateStep(4)) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields before submitting.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch("/api/marketplaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          status: "pending",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Marketplace Submitted",
+          description: "Your marketplace has been submitted for approval. You'll be notified once it's reviewed.",
+        })
+        // Reset form
+        setFormData({
+          businessName: "",
+          description: "",
+          category: "",
+          website: "",
+          logo: null,
+          banner: null,
+          template: "modern",
+          primaryColor: "#3B82F6",
+          secondaryColor: "#10B981",
+          paymentMethod: "algorand",
+          walletAddress: "",
+        })
+        setCurrentStep(1)
+      } else {
+        throw new Error(data.error || "Failed to submit marketplace")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Submission Error",
+        description: error.message || "Failed to submit marketplace. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -81,8 +200,17 @@ export default function CreateMarketplace() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="outline" className="rounded-full bg-transparent">
-              <Save className="w-4 h-4 mr-2" />
+            <Button 
+              variant="outline" 
+              className="rounded-full bg-transparent"
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
               Save Draft
             </Button>
           </div>
@@ -455,8 +583,16 @@ export default function CreateMarketplace() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button className="rounded-full bg-green-600 hover:bg-green-700">
-                  <Check className="w-4 h-4 mr-2" />
+                <Button 
+                  className="rounded-full bg-green-600 hover:bg-green-700"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
                   Submit for Approval
                 </Button>
               )}

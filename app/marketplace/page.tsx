@@ -2,14 +2,14 @@
 
 import { Label } from "@/components/ui/label"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Search, Filter, Calendar, Store, ArrowRight } from "lucide-react"
+import { Search, Filter, Calendar, Store, ArrowRight, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
@@ -18,96 +18,39 @@ import Footer from "@/components/footer"
 
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [eventType, setEventType] = useState("all")
-  const [merchantFilter, setMerchantFilter] = useState("all")
-  const [priceRange, setPriceRange] = useState([0, 10]) // Example: 0 to 10 ALGO
-  const [dateFilter, setDateFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [templateFilter, setTemplateFilter] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [marketplaces, setMarketplaces] = useState<any[]>([])
 
-  const nfts = [
-    {
-      id: 1,
-      title: "Summer Concert VIP",
-      description: "Exclusive access to the hottest music festival.",
-      image: "/placeholder.svg?height=200&width=300&text=Concert NFT",
-      price: "0.5 ALGO",
-      merchant: "Festival Productions LLC",
-      category: "Concert",
-      date: "2024-07-15",
-      status: "available",
-    },
-    {
-      id: 2,
-      title: "Jazz Night Premium",
-      description: "Enjoy a sophisticated evening of jazz.",
-      image: "/placeholder.svg?height=200&width=300&text=Jazz NFT",
-      price: "0.3 ALGO",
-      merchant: "Blue Note NYC",
-      category: "Music",
-      date: "2024-08-20",
-      status: "available",
-    },
-    {
-      id: 3,
-      title: "Resort Weekend Pass",
-      description: "A luxurious getaway pass for two.",
-      image: "/placeholder.svg?height=200&width=300&text=Resort Pass",
-      price: "2.0 ALGO",
-      merchant: "Luxury Resorts Inc.",
-      category: "Travel",
-      date: "2024-09-01",
-      status: "available",
-    },
-    {
-      id: 4,
-      title: "Art Exhibition Entry",
-      description: "Access to the grand opening of a modern art exhibition.",
-      image: "/placeholder.svg?height=200&width=300&text=Art NFT",
-      price: "0.1 ALGO",
-      merchant: "Modern Art Gallery",
-      category: "Art",
-      date: "2024-07-25",
-      status: "available",
-    },
-    {
-      id: 5,
-      title: "Tech Conference VIP",
-      description: "All-access pass to the leading tech conference.",
-      image: "/placeholder.svg?height=200&width=300&text=Tech NFT",
-      price: "1.2 ALGO",
-      merchant: "Global Tech Events",
-      category: "Conference",
-      date: "2024-10-10",
-      status: "available",
-    },
-    {
-      id: 6,
-      title: "Food Festival Pass",
-      description: "Taste the world's cuisines at this annual food festival.",
-      image: "/placeholder.svg?height=200&width=300&text=Food NFT",
-      price: "0.4 ALGO",
-      merchant: "Gourmet Events Co.",
-      category: "Food",
-      date: "2024-08-05",
-      status: "available",
-    },
-  ]
+  const fetchMarketplaces = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/marketplaces?status=approved")
+      const data = await res.json()
+      if (res.ok) setMarketplaces(data.marketplaces || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const filteredNfts = nfts.filter((nft) => {
-    const matchesSearch = nft.title.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesEventType = eventType === "all" || nft.category === eventType
-    const matchesMerchant = merchantFilter === "all" || nft.merchant === merchantFilter
-    const nftPrice = Number.parseFloat(nft.price.split(" ")[0])
-    const matchesPrice = nftPrice >= priceRange[0] && nftPrice <= priceRange[1]
-    const matchesDate =
-      dateFilter === "all" ||
-      (dateFilter === "upcoming" && new Date(nft.date) > new Date()) ||
-      (dateFilter === "past" && new Date(nft.date) <= new Date())
+  useEffect(() => {
+    fetchMarketplaces()
+  }, [])
 
-    return matchesSearch && matchesEventType && matchesMerchant && matchesPrice && matchesDate
+  const filteredMarketplaces = marketplaces.filter((marketplace) => {
+    const matchesSearch = marketplace.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         marketplace.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = categoryFilter === "all" || marketplace.category === categoryFilter
+    const matchesTemplate = templateFilter === "all" || marketplace.template === templateFilter
+
+    return matchesSearch && matchesCategory && matchesTemplate
   })
 
-  const uniqueEventTypes = Array.from(new Set(nfts.map((nft) => nft.category)))
-  const uniqueMerchants = Array.from(new Set(nfts.map((nft) => nft.merchant)))
+  const uniqueCategories = Array.from(new Set(marketplaces.map((m) => m.category)))
+  const uniqueTemplates = Array.from(new Set(marketplaces.map((m) => m.template)))
 
   return (
     <PageTransition>
@@ -117,9 +60,9 @@ export default function MarketplacePage() {
         <div className="container mx-auto px-6 py-8">
           <FadeIn>
             <div className="mb-8">
-              <h2 className="text-4xl font-black tracking-tight mb-2">Explore Event NFTs</h2>
+              <h2 className="text-4xl font-black tracking-tight mb-2">Explore Marketplaces</h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Discover unique tickets and passes for events worldwide
+                Discover unique marketplaces and their event offerings
               </p>
             </div>
           </FadeIn>
@@ -131,84 +74,62 @@ export default function MarketplacePage() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-none dark:border dark:border-gray-700 mb-8"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Search NFTs by title..."
+                  placeholder="Search marketplaces..."
                   className="pl-9 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
 
-              <Select value={eventType} onValueChange={setEventType}>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   <Filter className="h-4 w-4 mr-2 text-gray-500" />
-                  <SelectValue placeholder="Filter by Event Type" />
+                  <SelectValue placeholder="Filter by Category" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectItem value="all">All Event Types</SelectItem>
-                  {uniqueEventTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {uniqueCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Select value={merchantFilter} onValueChange={setMerchantFilter}>
+              <Select value={templateFilter} onValueChange={setTemplateFilter}>
                 <SelectTrigger className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   <Store className="h-4 w-4 mr-2 text-gray-500" />
-                  <SelectValue placeholder="Filter by Merchant" />
+                  <SelectValue placeholder="Filter by Template" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectItem value="all">All Merchants</SelectItem>
-                  {uniqueMerchants.map((merchant) => (
-                    <SelectItem key={merchant} value={merchant}>
-                      {merchant}
+                  <SelectItem value="all">All Templates</SelectItem>
+                  {uniqueTemplates.map((template) => (
+                    <SelectItem key={template} value={template}>
+                      {template}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                  <SelectValue placeholder="Filter by Date" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectItem value="all">All Dates</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="past">Past</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="mt-4">
-              <Label htmlFor="price-range" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Price Range (ALGO): {priceRange[0]} - {priceRange[1]}
-              </Label>
-              <Slider
-                id="price-range"
-                min={0}
-                max={10}
-                step={0.1}
-                value={priceRange}
-                onValueChange={(val) => setPriceRange(val as [number, number])}
-                className="mt-2"
-              />
             </div>
           </motion.div>
 
-          {/* NFT Grid */}
+          {/* Marketplace Grid */}
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredNfts.length === 0 ? (
+            {loading ? (
               <div className="col-span-full text-center py-12 text-gray-600 dark:text-gray-400">
-                No NFTs found matching your criteria.
+                Loading marketplaces...
+              </div>
+            ) : filteredMarketplaces.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-gray-600 dark:text-gray-400">
+                No marketplaces found matching your criteria.
               </div>
             ) : (
-              filteredNfts.map((nft, index) => (
-                <StaggerItem key={nft.id}>
+              filteredMarketplaces.map((marketplace, index) => (
+                <StaggerItem key={marketplace.id}>
                   <motion.div
                     whileHover={{
                       scale: 1.02,
@@ -217,30 +138,73 @@ export default function MarketplacePage() {
                     className="h-full"
                   >
                     <Card className="overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full flex flex-col">
-                      <Link href={`/nft/${nft.id}`}>
-                        <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700">
+                      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 relative">
+                        {marketplace.banner ? (
                           <img
-                            src={nft.image || "/placeholder.svg"}
-                            alt={nft.title}
+                            src={marketplace.banner}
+                            alt={marketplace.businessName}
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                      </Link>
-                      <CardContent className="p-4 flex-1 flex flex-col">
-                        <h3 className="font-bold text-lg mb-1">{nft.title}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{nft.merchant}</p>
-                        <div className="flex justify-between items-center mb-3 mt-auto">
-                          <span className="font-black text-xl">{nft.price}</span>
-                          <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 rounded-full">
-                            {nft.category}
+                        ) : (
+                          <div 
+                            className="w-full h-full flex items-center justify-center"
+                            style={{ 
+                              background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
+                            }}
+                          >
+                            <Store className="w-16 h-16 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-white/90 text-gray-800 border-gray-200">
+                            {marketplace.template}
                           </Badge>
                         </div>
-                        <Link href={`/nft/${nft.id}`}>
-                          <Button className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full">
-                            View Details
-                            <ArrowRight className="w-4 h-4 ml-2" />
+                      </div>
+                      <CardContent className="p-4 flex-1 flex flex-col">
+                        <h3 className="font-bold text-lg mb-1">{marketplace.businessName}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                          {marketplace.description}
+                        </p>
+                        <div className="flex justify-between items-center mb-3 mt-auto">
+                          <Badge 
+                            className="rounded-full"
+                            style={{ 
+                              backgroundColor: `${marketplace.primaryColor}20`,
+                              color: marketplace.primaryColor,
+                              borderColor: `${marketplace.primaryColor}40`
+                            }}
+                          >
+                            {marketplace.category}
+                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {marketplace.paymentMethod}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full"
+                            asChild
+                          >
+                            <Link href={`/marketplace/${marketplace.id}`}>
+                              View Marketplace
+                              <ArrowRight className="w-4 h-4 ml-2" />
+                            </Link>
                           </Button>
-                        </Link>
+                          {marketplace.website && (
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              asChild
+                            >
+                              <Link href={marketplace.website} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   </motion.div>

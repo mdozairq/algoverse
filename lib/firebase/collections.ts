@@ -54,6 +54,25 @@ export interface Merchant {
   updatedAt?: Date
 }
 
+export interface Marketplace {
+  id: string
+  merchantId: string
+  businessName: string
+  description: string
+  category: string
+  website?: string
+  logo?: string
+  banner?: string
+  template: string
+  primaryColor: string
+  secondaryColor: string
+  paymentMethod: string
+  walletAddress: string
+  status: "draft" | "pending" | "approved" | "rejected"
+  createdAt: Date
+  updatedAt?: Date
+}
+
 // Real Firestore collection services
 export const usersCollection = {
   async create(userData: Omit<User, "id" | "createdAt">): Promise<string> {
@@ -190,6 +209,54 @@ export const merchantsCollection = {
   },
 }
 
+export const marketplacesCollection = {
+  async create(marketplaceData: Omit<Marketplace, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("marketplaces").add({
+      ...marketplaceData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<Marketplace | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
+    const doc = await adminDb.collection("marketplaces").doc(id).get()
+    if (doc.exists) {
+      return { ...doc.data(), id } as Marketplace
+    }
+    return null
+  },
+
+  async getByMerchant(merchantId: string): Promise<Marketplace[]> {
+    const snapshot = await adminDb.collection("marketplaces").where("merchantId", "==", merchantId).get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Marketplace)
+  },
+
+  async getPending(): Promise<Marketplace[]> {
+    const snapshot = await adminDb.collection("marketplaces").where("status", "==", "pending").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Marketplace)
+  },
+
+  async getApproved(): Promise<Marketplace[]> {
+    const snapshot = await adminDb.collection("marketplaces").where("status", "==", "approved").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Marketplace)
+  },
+
+  async getAll(): Promise<Marketplace[]> {
+    const snapshot = await adminDb.collection("marketplaces").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Marketplace)
+  },
+
+  async update(id: string, updates: Partial<Marketplace>): Promise<void> {
+    await adminDb.collection("marketplaces").doc(id).update({
+      ...updates,
+      updatedAt: new Date(),
+    })
+  },
+}
+
 // FirebaseService class for API routes
 export class FirebaseService {
   static async createUser(userData: Omit<User, "id" | "createdAt">): Promise<string> {
@@ -307,5 +374,34 @@ export class FirebaseService {
       return { ...doc.data(), id: doc.id } as User
     }
     return null
+  }
+
+  // Marketplace methods
+  static async createMarketplace(marketplaceData: Omit<Marketplace, "id" | "createdAt">): Promise<string> {
+    return marketplacesCollection.create(marketplaceData)
+  }
+
+  static async getMarketplaceById(id: string): Promise<Marketplace | null> {
+    return marketplacesCollection.getById(id)
+  }
+
+  static async getMarketplacesByMerchant(merchantId: string): Promise<Marketplace[]> {
+    return marketplacesCollection.getByMerchant(merchantId)
+  }
+
+  static async getPendingMarketplaces(): Promise<Marketplace[]> {
+    return marketplacesCollection.getPending()
+  }
+
+  static async getApprovedMarketplaces(): Promise<Marketplace[]> {
+    return marketplacesCollection.getApproved()
+  }
+
+  static async getAllMarketplaces(): Promise<Marketplace[]> {
+    return marketplacesCollection.getAll()
+  }
+
+  static async updateMarketplace(id: string, updates: Partial<Marketplace>): Promise<void> {
+    return marketplacesCollection.update(id, updates)
   }
 }
