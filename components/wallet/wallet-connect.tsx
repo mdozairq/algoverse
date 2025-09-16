@@ -1,14 +1,34 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
-import { Wallet, Smartphone, Globe, Check, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { 
+  Wallet, 
+  Key, 
+  Download, 
+  Copy, 
+  Check, 
+  Eye, 
+  EyeOff, 
+  RefreshCw,
+  Plus,
+  Trash2,
+  Settings,
+  Smartphone,
+  Globe
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { useWallet } from "@/lib/wallet/wallet-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
-import { useToast } from "@/hooks/use-toast"
+import { PeraWalletService } from "@/lib/wallet/pera-wallet"
 
 interface WalletOption {
   id: string
@@ -43,27 +63,173 @@ const walletOptions: WalletOption[] = [
 ]
 
 export function WalletConnect() {
+  const { toast } = useToast()
+  const { connectWallet: authConnectWallet, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const {
+    currentAccount,
+    accounts,
+    isConnected,
+    isLoading,
+    connectWallet,
+    disconnectWallet,
+    createWallet,
+    importWallet,
+    refreshWallet,
+    getBalance,
+    formatAddress
+  } = useWallet()
+  
+  const [mnemonic, setMnemonic] = useState("")
+  const [walletName, setWalletName] = useState("")
+  const [showMnemonic, setShowMnemonic] = useState(false)
+  const [balance, setBalance] = useState(0)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle")
-  const { connectWallet, loading } = useAuth()
-  const { toast } = useToast()
-  const router = useRouter()
 
-  const handleConnect = async (walletId: string) => {
+  useEffect(() => {
+    if (isConnected && currentAccount) {
+      loadBalance()
+    }
+  }, [isConnected, currentAccount])
+
+  const loadBalance = async () => {
+    try {
+      const bal = await getBalance()
+      setBalance(bal)
+    } catch (error) {
+      console.error('Error loading balance:', error)
+    }
+  }
+
+  const handleCreateWallet = () => {
+    try {
+      const account = createWallet(walletName || undefined)
+      setShowCreateDialog(false)
+      setWalletName("")
+      
+      toast({
+        title: "Wallet Created",
+        description: "New wallet has been created successfully!",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create wallet",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleImportWallet = () => {
+    try {
+      if (!mnemonic.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a mnemonic phrase",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const account = importWallet(mnemonic.trim(), walletName || undefined)
+      setMnemonic("")
+      setWalletName("")
+      setShowImportDialog(false)
+      
+      toast({
+        title: "Wallet Imported",
+        description: "Wallet has been imported successfully!",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Import Error",
+        description: error.message || "Invalid mnemonic phrase",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleConnect = async (account: any) => {
+    try {
+      console.log('Connecting wallet:', account)
+      console.log('Account address:', account.address, 'Type:', typeof account.address)
+      await connectWallet(account)
+      toast({
+        title: "Wallet Connected",
+        description: "Your wallet has been connected successfully!",
+      })
+    } catch (error: any) {
+      console.error('Wallet connection error:', error)
+      toast({
+        title: "Connection Error",
+        description: error.message || "Failed to connect wallet",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDisconnect = () => {
+    disconnectWallet()
+    setBalance(0)
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected.",
+    })
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: "Copied",
+      description: "Text copied to clipboard",
+    })
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refreshWallet()
+      await loadBalance()
+      toast({
+        title: "Refreshed",
+        description: "Wallet data has been refreshed",
+      })
+    } catch (error) {
+      toast({
+        title: "Refresh Error",
+        description: "Failed to refresh wallet data",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handlePeraWalletConnect = async (walletId: string) => {
     setSelectedWallet(walletId)
     setConnectionStatus("connecting")
 
     try {
-      // Generate a mock wallet address
-      const mockAddress = `ALGO${Math.random().toString(36).substring(2, 15).toUpperCase()}`
+      // Check if Pera Wallet is installed
+      if (!PeraWalletService.isInstalled()) {
+        throw new Error("Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store.")
+      }
 
-      await connectWallet(mockAddress)
+      // Connect to Pera Wallet
+      const peraWallet = PeraWalletService.getInstance()
+      const peraAccount = await peraWallet.connect()
+      
+      console.log('Pera wallet connected:', peraAccount)
+      console.log('Pera account address:', peraAccount.address, 'Type:', typeof peraAccount.address)
+
+      // Connect to auth system with Pera wallet address
+      await authConnectWallet(peraAccount.address)
 
       setConnectionStatus("connected")
 
       toast({
         title: "Wallet Connected",
-        description: "Your wallet has been connected successfully!",
+        description: "Your Pera wallet has been connected successfully!",
       })
 
       // Redirect after success animation
@@ -73,29 +239,29 @@ export function WalletConnect() {
           .then(res => res.json())
           .then(data => {
             if (data.user) {
-              router.push(`/dashboard/${data.user.role}`)
+              router.replace(`/dashboard/${data.user.role}`)
             } else {
-              router.push("/dashboard")
+              router.replace("/dashboard")
             }
           })
           .catch(() => {
-            router.push("/dashboard")
+            router.replace("/dashboard")
           })
       }, 1500)
     } catch (error: any) {
-      console.error("Wallet connection failed:", error)
+      console.error("Pera wallet connection failed:", error)
       setConnectionStatus("idle")
       setSelectedWallet(null)
       
-      let errorMessage = "Failed to connect wallet. Please try again."
+      let errorMessage = "Failed to connect Pera wallet. Please try again."
       
       if (error.message) {
         if (error.message.includes("User rejected")) {
           errorMessage = "Wallet connection was rejected. Please try again."
         } else if (error.message.includes("Network error")) {
           errorMessage = "Network error. Please check your connection and try again."
-        } else if (error.message.includes("Wallet not found")) {
-          errorMessage = "Wallet not found. Please install a compatible wallet."
+        } else if (error.message.includes("not installed")) {
+          errorMessage = "Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store."
         } else {
           errorMessage = error.message
         }
@@ -109,105 +275,270 @@ export function WalletConnect() {
     }
   }
 
-  return (
-          <div className="space-y-4 sm:space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="text-xl sm:text-2xl font-bold text-white">Connect Your Wallet</h2>
-          <p className="text-sm sm:text-base text-gray-400">Choose your preferred Algorand wallet to get started</p>
-        </div>
-
-      <div className="grid gap-4">
-        <AnimatePresence mode="wait">
-          {walletOptions.map((wallet) => (
-            <motion.div
-              key={wallet.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card
-                className={`cursor-pointer transition-all duration-300 hover:shadow-lg bg-gray-700 border-gray-600 ${
-                  selectedWallet === wallet.id ? "ring-2 ring-white" : ""
-                }`}
-                onClick={() => !loading && connectionStatus === "idle" && handleConnect(wallet.id)}
+  if (isConnected && currentAccount) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-green-600" />
+                {currentAccount.name}
+              </CardTitle>
+              <CardDescription>
+                {formatAddress(currentAccount.address || '')}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isLoading}
               >
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center space-x-3 sm:space-x-4">
-                    <div className={`p-2 sm:p-3 rounded-lg bg-gradient-to-r ${wallet.color} text-white`}>{wallet.icon}</div>
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Balance</Label>
+              <div className="text-2xl font-bold text-green-600">
+                {balance.toFixed(4)} ALGO
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Assets</Label>
+              <div className="text-2xl font-bold">
+                {currentAccount.assets.length}
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <Label className="text-sm font-medium">Wallet Address</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                value={currentAccount.address}
+                readOnly
+                className="font-mono text-sm"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => copyToClipboard(currentAccount.address)}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {currentAccount.assets.length > 0 && (
+            <div>
+              <Label className="text-sm font-medium">Assets</Label>
+              <div className="space-y-2 mt-2">
+                {currentAccount.assets.slice(0, 3).map((asset) => (
+                  <div key={asset.assetId} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <div>
+                      <div className="font-medium">{asset.name}</div>
+                      <div className="text-sm text-gray-600">{asset.balance} {asset.unitName}</div>
+                    </div>
+                    <Badge variant="outline">{asset.assetId}</Badge>
+                  </div>
+                ))}
+                {currentAccount.assets.length > 3 && (
+                  <div className="text-sm text-gray-600 text-center">
+                    +{currentAccount.assets.length - 3} more assets
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5" />
+          Connect Wallet
+        </CardTitle>
+        <CardDescription>
+          Connect your Algorand wallet to start using the platform
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Wallet Options */}
+        <div>
+          <Label className="text-sm font-medium mb-4 block">Choose Wallet Type</Label>
+          <div className="grid gap-3">
+            {walletOptions.map((wallet) => (
+              <Card
+                key={wallet.id}
+                className={`cursor-pointer transition-all duration-300 hover:shadow-lg border-gray-200 dark:border-gray-600 ${
+                  selectedWallet === wallet.id ? "ring-2 ring-blue-500" : ""
+                }`}
+                onClick={() => !authLoading && connectionStatus === "idle" && handlePeraWalletConnect(wallet.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-3 rounded-lg bg-gradient-to-r ${wallet.color} text-white`}>
+                      {wallet.icon}
+                    </div>
                     <div className="flex-1">
-                      <h3 className="text-sm sm:text-base font-semibold text-white">{wallet.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-400">{wallet.description}</p>
+                      <h3 className="text-base font-semibold">{wallet.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{wallet.description}</p>
                     </div>
                     <div className="flex items-center">
                       {selectedWallet === wallet.id && connectionStatus === "connecting" && (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
                       )}
                       {selectedWallet === wallet.id && connectionStatus === "connected" && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        >
-                          <Check className="h-5 w-5 text-green-400" />
-                        </motion.div>
+                        <Check className="h-5 w-5 text-green-500" />
                       )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+            ))}
+          </div>
+        </div>
 
-      {connectionStatus === "connecting" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-2">
-          <p className="text-sm text-gray-400">
-            Connecting to {walletOptions.find((w) => w.id === selectedWallet)?.name}...
-          </p>
-          <div className="flex justify-center">
-            <div className="flex space-x-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 bg-white rounded-full"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 1,
-                    repeat: Number.POSITIVE_INFINITY,
-                    delay: i * 0.2,
-                  }}
-                />
-              ))}
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or</span>
+          </div>
+        </div>
+
+        {/* Local Wallet Management */}
+        <div>
+          <Label className="text-sm font-medium mb-4 block">Local Wallet Management</Label>
+          
+          {/* Existing Wallets */}
+          {accounts.length > 0 && (
+            <div className="mb-4">
+              <Label className="text-sm font-medium mb-2 block">Saved Wallets</Label>
+              <div className="space-y-2">
+                {accounts.map((account) => (
+                  <div key={account.address || 'unknown'} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="font-medium">{account.name}</div>
+                      <div className="text-sm text-gray-600">{formatAddress(account.address || '')}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleConnect(account)}
+                      disabled={isLoading}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+          )}
 
-      {connectionStatus === "connected" && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center space-y-2"
-        >
-          <div className="flex justify-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"
-            >
-              <Check className="h-6 w-6 text-white" />
-            </motion.div>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button className="flex-1">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Wallet</DialogTitle>
+                  <DialogDescription>
+                    Generate a new Algorand wallet with a unique mnemonic phrase
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="walletName">Wallet Name (Optional)</Label>
+                    <Input
+                      id="walletName"
+                      value={walletName}
+                      onChange={(e) => setWalletName(e.target.value)}
+                      placeholder="My Wallet"
+                    />
+                  </div>
+                  <Button onClick={handleCreateWallet} className="w-full">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Create Wallet
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex-1">
+                  <Key className="h-4 w-4 mr-2" />
+                  Import Existing
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Import Wallet</DialogTitle>
+                  <DialogDescription>
+                    Import an existing wallet using your mnemonic phrase
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="importWalletName">Wallet Name (Optional)</Label>
+                    <Input
+                      id="importWalletName"
+                      value={walletName}
+                      onChange={(e) => setWalletName(e.target.value)}
+                      placeholder="Imported Wallet"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="importMnemonic">Mnemonic Phrase</Label>
+                    <Input
+                      id="importMnemonic"
+                      value={mnemonic}
+                      onChange={(e) => setMnemonic(e.target.value)}
+                      placeholder="Enter your 25-word mnemonic phrase"
+                    />
+                  </div>
+                  <Button onClick={handleImportWallet} className="w-full">
+                    <Key className="h-4 w-4 mr-2" />
+                    Import Wallet
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
-          <p className="text-green-400 font-medium">Wallet Connected Successfully!</p>
-          <p className="text-sm text-gray-400">Redirecting to dashboard...</p>
-        </motion.div>
-      )}
-    </div>
+        </div>
+
+        <Alert>
+          <Key className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Security Notice:</strong> Never share your mnemonic phrase with anyone. 
+            Store it safely offline. Anyone with access to this phrase can control your wallet.
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
   )
 }
