@@ -28,6 +28,13 @@ export interface Event {
   createdAt: Date
   featured?: boolean
   trending?: boolean
+  nftAssetId?: number
+  nftCreated?: boolean
+  nftCreatedAt?: Date
+  nftUnitName?: string
+  nftAssetName?: string
+  nftUrl?: string
+  royaltyPercentage?: number
 }
 
 export interface NFT {
