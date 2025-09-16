@@ -1,46 +1,107 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { AlgorandNFTService, type NFTSwapParams } from "@/lib/algorand/nft-service"
+import { verifyAuthToken } from "@/lib/auth/middleware"
 import { FirebaseService } from "@/lib/firebase/collections"
-import { AlgorandNFTService } from "@/lib/algorand/nft"
-import { requireAuth } from "@/lib/auth/middleware"
 
-export const POST = requireAuth(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const auth = (request as any).auth
-    const { nft1Id, nft2Id, user2WalletAddress } = await request.json()
-
-    // Get user info
-    const user1 = await FirebaseService.getUserByUid(auth.uid)
-    if (!user1 || !user1.walletAddress) {
-      return NextResponse.json({ error: "User wallet not configured" }, { status: 400 })
+    // Verify authentication
+    const auth = await verifyAuthToken(request)
+    if (!auth || !auth.uid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get NFT info
-    const nft1 = await FirebaseService.getNFTById(nft1Id)
-    const nft2 = await FirebaseService.getNFTById(nft2Id)
+    const {
+      assetId1,
+      assetId2,
+      fromAddress1,
+      fromAddress2,
+      amount1 = 1,
+      amount2 = 1,
+      expiryTime
+    } = await request.json()
 
-    if (!nft1 || !nft2) {
-      return NextResponse.json({ error: "NFTs not found" }, { status: 404 })
+    // Validate required fields
+    if (!assetId1 || !assetId2 || !fromAddress1 || !fromAddress2) {
+      return NextResponse.json({ 
+        error: "Missing required fields: assetId1, assetId2, fromAddress1, fromAddress2" 
+      }, { status: 400 })
     }
 
-    // Verify ownership
-    if (nft1.ownerId !== user1.id) {
-      return NextResponse.json({ error: "You do not own the first NFT" }, { status: 403 })
+    // Get user details
+    const user = await FirebaseService.getUserByUid(auth.uid)
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Create atomic swap transactions
-    const swapTxns = await AlgorandNFTService.createAtomicSwap(
-      user1.walletAddress,
-      user2WalletAddress,
-      nft1.assetId,
-      nft2.assetId,
-    )
+    // Verify user owns one of the addresses
+    if (fromAddress1 !== user.walletAddress && fromAddress2 !== user.walletAddress) {
+      return NextResponse.json({ 
+        error: "User must be one of the swap participants" 
+      }, { status: 403 })
+    }
+
+    // Prepare swap parameters
+    const swapParams: NFTSwapParams = {
+      assetId1,
+      assetId2,
+      fromAddress1,
+      fromAddress2,
+      amount1,
+      amount2,
+      expiryTime
+    }
+
+    // Create atomic swap
+    const result = await AlgorandNFTService.createAtomicSwap(swapParams)
 
     return NextResponse.json({
       success: true,
-      transactions: swapTxns.map((txn) => Buffer.from(txn.toByte()).toString("base64")),
+      swapId: result.swapId,
+      transactionId: result.transactionId,
+      message: "Atomic swap created successfully"
     })
+
   } catch (error: any) {
-    console.error("Error creating swap transaction:", error)
-    return NextResponse.json({ error: "Failed to create swap transaction" }, { status: 500 })
+    console.error("Error creating atomic swap:", error)
+    return NextResponse.json({ 
+      error: "Failed to create atomic swap",
+      details: error.message 
+    }, { status: 500 })
   }
-})
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Verify authentication
+    const auth = await verifyAuthToken(request)
+    if (!auth || !auth.uid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { swapId, privateKey1, privateKey2 } = await request.json()
+
+    // Validate required fields
+    if (!swapId || !privateKey1 || !privateKey2) {
+      return NextResponse.json({ 
+        error: "Missing required fields: swapId, privateKey1, privateKey2" 
+      }, { status: 400 })
+    }
+
+    // Execute atomic swap
+    const result = await AlgorandNFTService.executeAtomicSwap(swapId, privateKey1, privateKey2)
+
+    return NextResponse.json({
+      success: true,
+      transactionId: result.transactionId,
+      message: "Atomic swap executed successfully"
+    })
+
+  } catch (error: any) {
+    console.error("Error executing atomic swap:", error)
+    return NextResponse.json({ 
+      error: "Failed to execute atomic swap",
+      details: error.message 
+    }, { status: 500 })
+  }
+}

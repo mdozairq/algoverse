@@ -1,59 +1,103 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { AlgorandNFTService, type NFTCreationParams } from "@/lib/algorand/nft-service"
+import { verifyAuthToken } from "@/lib/auth/middleware"
 import { FirebaseService } from "@/lib/firebase/collections"
-import { AlgorandNFTService, type NFTMetadata } from "@/lib/algorand/nft"
-import { requireRole } from "@/lib/auth/middleware"
 
-export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const auth = (request as any).auth
-    const { eventId, metadata, totalSupply } = await request.json()
-
-    // Get merchant info
-    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
-    if (!merchant || !merchant.walletAddress) {
-      return NextResponse.json({ error: "Merchant wallet not configured" }, { status: 400 })
+    // Verify authentication
+    const auth = await verifyAuthToken(request)
+    if (!auth || !auth.uid || (auth.role !== "merchant" && auth.role !== "admin")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get event info
-    const event = await FirebaseService.getEventById(eventId)
-    if (!event || event.merchantId !== merchant.id) {
-      return NextResponse.json({ error: "Event not found or unauthorized" }, { status: 404 })
-    }
-
-    // Create NFT metadata
-    const nftMetadata: NFTMetadata = {
-      name: event.title,
-      description: event.description,
-      image: metadata.image || event.images[0],
-      eventDate: event.eventDate,
-      eventTime: event.eventTime,
-      venue: event.venue,
-      location: event.location,
-      category: event.category,
-      seatInfo: metadata.seatInfo,
-      benefits: event.metadata.benefits,
-      transferable: event.metadata.transferable,
-      resellable: event.metadata.resellable,
-      maxResellPrice: event.metadata.maxResellPrice,
-    }
-
-    // Create Algorand transaction for NFT creation
-    const createTxn = await AlgorandNFTService.createNFT({
-      creatorAddress: merchant.walletAddress,
-      metadata: nftMetadata,
+    const {
+      eventId,
+      metadata,
       totalSupply,
-      unitName: "EVTNFT",
-      assetName: event.title.substring(0, 32), // Algorand limit
+      unitName,
+      assetName,
+      url,
+      royaltyPercentage = 0
+    } = await request.json()
+
+    // Validate required fields
+    if (!eventId || !metadata || !totalSupply || !unitName || !assetName) {
+      return NextResponse.json({ 
+        error: "Missing required fields: eventId, metadata, totalSupply, unitName, assetName" 
+      }, { status: 400 })
+    }
+
+    // Get merchant details
+    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    if (!merchant) {
+      return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
+    }
+
+    // Get event details
+    const event = await FirebaseService.getEventById(eventId)
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+
+    // Verify merchant owns the event
+    if (event.merchantId !== merchant.id) {
+      return NextResponse.json({ error: "Unauthorized to create NFT for this event" }, { status: 403 })
+    }
+
+    // Get merchant's wallet private key (in production, this should be stored securely)
+    const merchantPrivateKey = process.env.MERCHANT_PRIVATE_KEY || ""
+    if (!merchantPrivateKey) {
+      return NextResponse.json({ error: "Merchant wallet not configured" }, { status: 500 })
+    }
+
+    // Prepare NFT creation parameters
+    const nftParams: NFTCreationParams = {
+      metadata: {
+        ...metadata,
+        event_id: eventId,
+        event_title: event.title,
+        event_date: event.date,
+        event_location: event.location,
+        price: parseFloat(event.price),
+        currency: 'ALGO'
+      },
+      totalSupply,
+      decimals: 0, // NFTs have 0 decimals
+      defaultFrozen: false,
+      unitName,
+      assetName,
+      url,
+      managerAddress: merchant.walletAddress,
+      reserveAddress: merchant.walletAddress,
+      freezeAddress: merchant.walletAddress,
+      clawbackAddress: merchant.walletAddress,
+      royaltyPercentage
+    }
+
+    // Create NFT on Algorand
+    const result = await AlgorandNFTService.createNFT(nftParams, merchantPrivateKey)
+
+    // Update event with NFT asset ID
+    await FirebaseService.updateEvent(eventId, {
+      nftAssetId: result.assetId,
+      nftCreated: true,
+      nftCreatedAt: new Date()
     })
 
-    // Return unsigned transaction for client to sign
     return NextResponse.json({
       success: true,
-      transaction: Buffer.from(createTxn.toByte()).toString("base64"),
-      metadata: nftMetadata,
+      assetId: result.assetId,
+      transactionId: result.transactionId,
+      metadata: result.metadata,
+      message: "NFT created successfully"
     })
+
   } catch (error: any) {
     console.error("Error creating NFT:", error)
-    return NextResponse.json({ error: "Failed to create NFT" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Failed to create NFT",
+      details: error.message 
+    }, { status: 500 })
   }
-})
+}

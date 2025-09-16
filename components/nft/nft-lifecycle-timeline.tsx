@@ -1,139 +1,257 @@
 "use client"
 
-import { CardContent } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  DollarSign, 
+  QrCode, 
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  ExternalLink
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-import { CardTitle } from "@/components/ui/card"
-
-import { CardHeader } from "@/components/ui/card"
-
-import { Card } from "@/components/ui/card"
-
-import { motion } from "framer-motion"
-import { PlusCircle, Coins, Wallet, ArrowRightLeft, RefreshCw, CheckSquare, Clock, LinkIcon } from "lucide-react"
-import Link from "next/link"
-
-interface NftLifecycleTimelineProps {
-  currentNftId: string | string[]
+interface NFTLifecycleProps {
+  assetId: number
+  eventId: string
+  userAddress: string
+  metadata?: any
 }
 
-export function NftLifecycleTimeline({ currentNftId }: NftLifecycleTimelineProps) {
-  // Mock data for NFT lifecycle stages
-  const lifecycleStages = [
-    {
-      id: "created",
-      name: "Created",
-      description: "NFT metadata and properties defined.",
-      icon: PlusCircle,
-      status: "completed",
-      date: "2024-01-01",
-      txHash: "0x1a2b3c...",
-    },
-    {
-      id: "minted",
-      name: "Minted as ASA",
-      description: "Asset created on Algorand blockchain.",
-      icon: Coins,
-      status: "completed",
-      date: "2024-01-02",
-      txHash: "0x2b3c4d...",
-    },
-    {
-      id: "opted-in",
-      name: "Opted-in (User)",
-      description: "User opted into receiving the NFT.",
-      icon: Wallet,
-      status: "completed",
-      date: "2024-01-05",
-      txHash: "0x3c4d5e...",
-    },
-    {
-      id: "first-sale",
-      name: "First Sale",
-      description: "NFT transferred from merchant to first buyer.",
-      icon: ArrowRightLeft,
-      status: "completed",
-      date: "2024-01-10",
-      txHash: "0x4d5e6f...",
-    },
-    {
-      id: "secondary-trade",
-      name: "Secondary Trade/Swap",
-      description: "NFT traded or swapped on secondary market.",
-      icon: RefreshCw,
-      status: "active", // This is the current active stage for demonstration
-      date: "2024-01-15",
-      txHash: "0x5e6f7a...",
-    },
-    {
-      id: "redeemed-expired",
-      name: "Redeemed/Expired",
-      description: "NFT used for event access or expired.",
-      icon: CheckSquare,
-      status: "pending",
-      date: "2024-07-15", // Example event date
-      txHash: null,
-    },
-  ]
+interface LifecycleStage {
+  id: string
+  title: string
+  description: string
+  status: 'completed' | 'current' | 'upcoming'
+  icon: React.ReactNode
+  action?: {
+    label: string
+    onClick: () => void
+    disabled?: boolean
+  }
+}
 
-  const currentStageIndex = lifecycleStages.findIndex((stage) => stage.status === "active")
+export function NFTLifecycleTimeline({ assetId, eventId, userAddress, metadata }: NFTLifecycleProps) {
+  const { toast } = useToast()
+  const [verification, setVerification] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    verifyTicket()
+  }, [assetId, userAddress, eventId])
+
+  const verifyTicket = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/nft/verify?assetId=${assetId}&address=${userAddress}&eventId=${eventId}`)
+      const data = await response.json()
+      setVerification(data)
+    } catch (error) {
+      console.error('Error verifying ticket:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateQRCode = () => {
+    const qrData = {
+      assetId,
+      address: userAddress,
+      eventId,
+      timestamp: Date.now(),
+      type: 'nft_ticket_verification'
+    }
+    
+    // In a real implementation, you would generate a QR code here
+    const qrString = JSON.stringify(qrData)
+    navigator.clipboard.writeText(qrString)
+    
+    toast({
+      title: "QR Code Data Copied",
+      description: "QR code data has been copied to clipboard for verification",
+    })
+  }
+
+  const getLifecycleStages = (): LifecycleStage[] => {
+    const now = new Date()
+    const eventDate = metadata ? new Date(metadata.event_date) : new Date()
+    const isEventPassed = now > eventDate
+    const isEventToday = now.toDateString() === eventDate.toDateString()
+
+    return [
+      {
+        id: 'purchased',
+        title: 'Ticket Purchased',
+        description: 'NFT ticket has been minted and added to your wallet',
+        status: 'completed',
+        icon: <CheckCircle className="h-5 w-5 text-green-600" />
+      },
+      {
+        id: 'verified',
+        title: 'Ticket Verified',
+        description: verification?.isValid ? 'Ticket is valid and ready for use' : 'Verifying ticket authenticity',
+        status: verification?.isValid ? 'completed' : 'current',
+        icon: verification?.isValid ? 
+          <CheckCircle className="h-5 w-5 text-green-600" /> : 
+          <Clock className="h-5 w-5 text-yellow-600" />
+      },
+      {
+        id: 'qr_generated',
+        title: 'QR Code Generated',
+        description: 'QR code created for event entry verification',
+        status: verification?.isValid ? 'current' : 'upcoming',
+        icon: <QrCode className="h-5 w-5 text-blue-600" />,
+        action: {
+          label: 'Generate QR Code',
+          onClick: generateQRCode,
+          disabled: !verification?.isValid
+        }
+      },
+      {
+        id: 'event_entry',
+        title: 'Event Entry',
+        description: isEventPassed ? 'Event has ended' : isEventToday ? 'Event is today!' : 'Ready for event entry',
+        status: isEventPassed ? 'completed' : isEventToday ? 'current' : 'upcoming',
+        icon: isEventPassed ? 
+          <CheckCircle className="h-5 w-5 text-green-600" /> : 
+          isEventToday ? 
+            <AlertCircle className="h-5 w-5 text-orange-600" /> : 
+            <Clock className="h-5 w-5 text-gray-400" />
+      }
+    ]
+  }
+
+  const stages = getLifecycleStages()
 
   return (
-    <div className="relative py-8">
-      <div className="absolute left-1/2 top-0 h-full w-0.5 bg-gray-700 transform -translate-x-1/2"></div>
-      {lifecycleStages.map((stage, index) => (
-        <motion.div
-          key={stage.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.2, duration: 0.5 }}
-          className={`relative flex items-center mb-8 ${index % 2 === 0 ? "flex-row" : "flex-row-reverse"}`}
-        >
-          <div
-            className={`absolute z-10 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-gray-900 ${
-              stage.status === "completed"
-                ? "bg-green-500"
-                : stage.status === "active"
-                  ? "bg-blue-500 animate-pulse"
-                  : "bg-gray-500"
-            }`}
-            style={{ left: "50%", transform: "translateX(-50%)" }}
-          >
-            {stage.status === "completed" && <CheckSquare className="w-3 h-3 text-white" />}
-            {stage.status === "active" && <Clock className="w-3 h-3 text-white" />}
-            {stage.status === "pending" && <Clock className="w-3 h-3 text-white" />}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <QrCode className="h-5 w-5" />
+          NFT Ticket Lifecycle
+        </CardTitle>
+        <CardDescription>
+          Track your NFT ticket from purchase to event entry
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Event Details */}
+        {metadata && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+            <h4 className="font-semibold text-lg">{metadata.event_title}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span>{new Date(metadata.event_date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-gray-500" />
+                <span>{metadata.event_location}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-gray-500" />
+                <span>{metadata.price} {metadata.currency}</span>
+              </div>
+            </div>
+            {metadata.seat_number && (
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-gray-500" />
+                <span>Seat: {metadata.seat_number}</span>
+                {metadata.section && <span>• Section: {metadata.section}</span>}
+              </div>
+            )}
           </div>
+        )}
 
-          <Card
-            className={`w-[calc(50%-20px)] p-4 rounded-lg shadow-lg border border-gray-700 bg-gray-800 ${
-              index % 2 === 0 ? "mr-auto" : "ml-auto"
-            }`}
-          >
-            <CardHeader className="p-0 mb-2">
-              <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                <stage.icon className="w-5 h-5 text-gray-400" />
-                {stage.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <p className="text-sm text-gray-300 mb-2">{stage.description}</p>
-              <div className="text-xs text-gray-400">
-                <p>Date: {stage.date}</p>
-                {stage.txHash && (
-                  <Link
-                    href={`https://testnet.algoexplorer.io/tx/${stage.txHash}`} // Replace with actual explorer link
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-400 hover:underline mt-1"
+        {/* Lifecycle Timeline */}
+        <div className="space-y-4">
+          {stages.map((stage, index) => (
+            <div key={stage.id} className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                {stage.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">{stage.title}</h4>
+                  <Badge 
+                    variant={stage.status === 'completed' ? 'default' : 
+                            stage.status === 'current' ? 'secondary' : 'outline'}
+                    className="text-xs"
                   >
-                    <LinkIcon className="w-3 h-3" />
-                    <span>Tx Hash: {stage.txHash.substring(0, 8)}...</span>
-                  </Link>
+                    {stage.status === 'completed' ? 'Completed' :
+                     stage.status === 'current' ? 'Current' : 'Upcoming'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {stage.description}
+                </p>
+                {stage.action && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={stage.action.onClick}
+                    disabled={stage.action.disabled}
+                    className="mt-2"
+                  >
+                    {stage.action.label}
+                  </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+              {index < stages.length - 1 && (
+                <div className="flex-shrink-0 ml-4">
+                  <ArrowRight className="h-4 w-4 text-gray-400" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Verification Status */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Verification Status</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={verifyTicket}
+              disabled={loading}
+            >
+              {loading ? 'Verifying...' : 'Refresh'}
+            </Button>
+          </div>
+          <div className="mt-2">
+            {verification?.isValid ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm">Ticket is valid and ready for use</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">Ticket verification failed</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Asset Information */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <h4 className="font-medium text-sm mb-2">Asset Information</h4>
+          <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            <div>Asset ID: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{assetId}</code></div>
+            <div>Owner: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{userAddress.slice(0, 8)}...{userAddress.slice(-8)}</code></div>
+            <div>Event ID: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{eventId}</code></div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

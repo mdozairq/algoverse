@@ -70,12 +70,14 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Calendar, label: "My Events", href: "/dashboard/merchant#events" },
           { icon: Plus, label: "Create Event", href: "/dashboard/merchant/create-event" },
           { icon: Store, label: "Create Marketplace", href: "/dashboard/merchant/create-marketplace" },
+          { icon: Wallet, label: "NFT Management", href: "/dashboard/merchant/nft-management" },
           { icon: BarChart3, label: "Analytics", href: "/dashboard/merchant/analytics" },
           { icon: Settings, label: "Settings", href: "/dashboard/merchant#settings" },
         ]
       case "user":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/user" },
+          { icon: Wallet, label: "Wallet", href: "/dashboard/user/wallet" },
           { icon: Wallet, label: "My NFTs", href: "/dashboard/user/nfts" },
           { icon: Calendar, label: "My Events", href: "/dashboard/user/events" },
           { icon: Activity, label: "Activity", href: "/dashboard/user/activity" },

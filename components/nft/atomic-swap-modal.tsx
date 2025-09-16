@@ -1,223 +1,248 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, CheckCircle2, XCircle, ArrowRightLeft } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 
 interface AtomicSwapModalProps {
-  isOpen: boolean
-  onClose: () => void
-  nftToSwap: any // The NFT the user wants to offer
-  userNFTs: any[] // Other NFTs the user owns to select for receiving
+  userAssetId: number
+  userAddress: string
+  onSwapCreated?: (swapId: string) => void
 }
 
-export function AtomicSwapModal({ isOpen, onClose, nftToSwap, userNFTs }: AtomicSwapModalProps) {
-  const [selectedReceivingNft, setSelectedReceivingNft] = useState<string | null>(null)
-  const [swapStatus, setSwapStatus] = useState<"idle" | "pending" | "success" | "error">("idle")
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+export function AtomicSwapModal({ userAssetId, userAddress, onSwapCreated }: AtomicSwapModalProps) {
+  const { toast } = useToast()
+  const [isOpen, setIsOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [swapData, setSwapData] = useState({
+    assetId2: '',
+    fromAddress2: '',
+    amount1: 1,
+    amount2: 1,
+    expiryHours: 24
+  })
 
-  const handleSwap = async () => {
-    if (!nftToSwap || !selectedReceivingNft) {
-      setErrorMessage("Please select an NFT to receive.")
-      return
-    }
-
-    setSwapStatus("pending")
-    setErrorMessage(null)
-
+  const handleCreateSwap = async () => {
     try {
-      // Simulate atomic swap API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      setLoading(true)
 
-      const success = Math.random() > 0.3 // Simulate success/failure
-      if (success) {
-        setSwapStatus("success")
-      } else {
-        throw new Error("Swap failed due to network congestion.")
+      // Validate form
+      if (!swapData.assetId2 || !swapData.fromAddress2) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        })
+        return
       }
-    } catch (error: any) {
-      setSwapStatus("error")
-      setErrorMessage(error.message || "An unexpected error occurred during swap.")
-    }
-  }
 
-  const resetModal = () => {
-    setSelectedReceivingNft(null)
-    setSwapStatus("idle")
-    setErrorMessage(null)
-    onClose()
+      const response = await fetch('/api/nft/swap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          assetId1: userAssetId,
+          assetId2: parseInt(swapData.assetId2),
+          fromAddress1: userAddress,
+          fromAddress2: swapData.fromAddress2,
+          amount1: swapData.amount1,
+          amount2: swapData.amount2,
+          expiryTime: Date.now() + (swapData.expiryHours * 60 * 60 * 1000)
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create swap')
+      }
+
+      toast({
+        title: "Swap Created",
+        description: "Atomic swap has been created successfully",
+      })
+
+      onSwapCreated?.(data.swapId)
+      setIsOpen(false)
+      setSwapData({
+        assetId2: '',
+        fromAddress2: '',
+        amount1: 1,
+        amount2: 1,
+        expiryHours: 24
+      })
+
+    } catch (error: any) {
+      console.error('Error creating swap:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create atomic swap",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={resetModal}>
-      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-full">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Create Atomic Swap
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Propose Atomic Swap</DialogTitle>
-          <DialogDescription className="text-gray-600 dark:text-gray-400">
-            Exchange your NFT for another NFT with a direct, trustless swap.
+          <DialogTitle>Create Atomic Swap</DialogTitle>
+          <DialogDescription>
+            Create a secure atomic swap to trade your NFT with another user. Both parties must agree for the swap to execute.
           </DialogDescription>
         </DialogHeader>
 
-        <AnimatePresence mode="wait">
-          {swapStatus === "idle" && (
-            <motion.div
-              key="swap-form"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6 py-4"
-            >
-              <div className="grid grid-cols-2 gap-4 items-center">
-                <Card className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Your NFT (Offering)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center text-center">
-                    <img
-                      src={nftToSwap?.image || "/placeholder.svg?height=80&width=80&text=NFT"}
-                      alt={nftToSwap?.name}
-                      className="w-20 h-20 object-cover rounded-md mb-2"
-                    />
-                    <p className="font-semibold text-sm">{nftToSwap?.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{nftToSwap?.price}</p>
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-center">
-                  <ArrowRightLeft className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+        <div className="space-y-6">
+          {/* Your Asset */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Your Asset</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Asset ID:</span>
+                  <code className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                    {userAssetId}
+                  </code>
                 </div>
-
-                <Card className="col-span-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      NFT to Receive
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Select onValueChange={setSelectedReceivingNft} value={selectedReceivingNft || ""}>
-                      <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-                        <SelectValue placeholder="Select an NFT from your collection" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                        {userNFTs.length === 0 && (
-                          <SelectItem value="no-nfts" disabled>
-                            No other NFTs available for swap
-                          </SelectItem>
-                        )}
-                        {userNFTs.map((nft) => (
-                          <SelectItem key={nft.id} value={nft.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={nft.image || "/placeholder.svg?height=24&width=24&text=NFT"}
-                                alt={nft.name}
-                                className="w-6 h-6 rounded-sm object-cover"
-                              />
-                              {nft.name} ({nft.price})
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedReceivingNft && (
-                      <div className="mt-4 text-center">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          You are proposing to swap <span className="font-semibold">{nftToSwap?.name}</span> for{" "}
-                          <span className="font-semibold">
-                            {userNFTs.find((nft) => nft.id.toString() === selectedReceivingNft)?.name}
-                          </span>
-                          .
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Your Address:</span>
+                  <code className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                    {userAddress.slice(0, 8)}...{userAddress.slice(-8)}
+                  </code>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Amount:</span>
+                  <Badge variant="outline">{swapData.amount1}</Badge>
+                </div>
               </div>
-              {errorMessage && <p className="text-red-500 text-sm text-center">{errorMessage}</p>}
-            </motion.div>
-          )}
+            </CardContent>
+          </Card>
 
-          {swapStatus === "pending" && (
-            <motion.div
-              key="swap-pending"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-8 space-y-4"
-            >
-              <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-              <p className="text-lg font-semibold">Initiating Atomic Swap...</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Please confirm the transaction in your wallet.</p>
-            </motion.div>
-          )}
+          {/* Swap Details */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="assetId2">Counterparty Asset ID *</Label>
+                <Input
+                  id="assetId2"
+                  type="number"
+                  value={swapData.assetId2}
+                  onChange={(e) => setSwapData({ ...swapData, assetId2: e.target.value })}
+                  placeholder="Enter asset ID to swap with"
+                />
+              </div>
+              <div>
+                <Label htmlFor="amount2">Counterparty Amount</Label>
+                <Input
+                  id="amount2"
+                  type="number"
+                  min="1"
+                  value={swapData.amount2}
+                  onChange={(e) => setSwapData({ ...swapData, amount2: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            </div>
 
-          {swapStatus === "success" && (
-            <motion.div
-              key="swap-success"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-8 space-y-4 text-center"
-            >
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-              <p className="text-lg font-semibold">Swap Successful!</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Your NFTs have been exchanged. Check your collection.
-              </p>
-            </motion.div>
-          )}
+            <div>
+              <Label htmlFor="fromAddress2">Counterparty Address *</Label>
+              <Input
+                id="fromAddress2"
+                value={swapData.fromAddress2}
+                onChange={(e) => setSwapData({ ...swapData, fromAddress2: e.target.value })}
+                placeholder="Enter counterparty wallet address"
+              />
+            </div>
 
-          {swapStatus === "error" && (
-            <motion.div
-              key="swap-error"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-8 space-y-4 text-center"
-            >
-              <XCircle className="h-12 w-12 text-red-500" />
-              <p className="text-lg font-semibold">Swap Failed!</p>
-              <p className="text-sm text-red-500">{errorMessage}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Please try again or contact support.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            <div>
+              <Label htmlFor="expiryHours">Expiry Time (hours)</Label>
+              <Input
+                id="expiryHours"
+                type="number"
+                min="1"
+                max="168"
+                value={swapData.expiryHours}
+                onChange={(e) => setSwapData({ ...swapData, expiryHours: parseInt(e.target.value) || 24 })}
+              />
+            </div>
+          </div>
 
-        <DialogFooter className="pt-4">
-          {swapStatus === "idle" && (
+          {/* Swap Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Swap Preview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="text-center">
+                  <div className="text-sm font-medium">Your Asset</div>
+                  <div className="text-xs text-gray-600">ID: {userAssetId}</div>
+                  <div className="text-xs text-gray-600">Amount: {swapData.amount1}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-gray-400" />
+                <div className="text-center">
+                  <div className="text-sm font-medium">Counterparty Asset</div>
+                  <div className="text-xs text-gray-600">ID: {swapData.assetId2 || 'N/A'}</div>
+                  <div className="text-xs text-gray-600">Amount: {swapData.amount2}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security Notice */}
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Security Notice:</strong> Atomic swaps are secure and trustless. Both parties must sign the transaction for it to execute. If either party doesn't sign within the expiry time, the swap will be cancelled.
+            </AlertDescription>
+          </Alert>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3">
             <Button
-              onClick={handleSwap}
-              disabled={!selectedReceivingNft}
-              className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={loading}
             >
-              Propose Swap
+              Cancel
             </Button>
-          )}
-          {(swapStatus === "success" || swapStatus === "error") && (
             <Button
-              onClick={resetModal}
-              className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              onClick={handleCreateSwap}
+              disabled={loading || !swapData.assetId2 || !swapData.fromAddress2}
             >
-              Close
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Create Swap
+                </>
+              )}
             </Button>
-          )}
-        </DialogFooter>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

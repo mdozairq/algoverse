@@ -32,7 +32,6 @@ import { AtomicSwapModal } from "@/components/nft/atomic-swap-modal"
 
 export default function UserDashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth()
-  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   const [nfts, setNfts] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -355,12 +354,15 @@ export default function UserDashboard() {
           </Card>
 
         </div>
-        <AtomicSwapModal 
-          isOpen={isSwapModalOpen} 
-          onClose={() => setIsSwapModalOpen(false)}
-          nftToSwap={nfts[0]}
-          userNFTs={nfts}
-        />
+        {nfts.length > 0 && (
+          <AtomicSwapModal 
+            userAssetId={nfts[0].assetId}
+            userAddress={user?.walletAddress || ""}
+            onSwapCreated={(swapId) => {
+              console.log('Swap created:', swapId)
+            }}
+          />
+        )}
       </DashboardLayout>
     </AuthGuard>
   )

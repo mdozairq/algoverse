@@ -5,6 +5,7 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/auth/auth-context"
+import { WalletProvider } from "@/lib/wallet/wallet-context"
 import { DataProvider } from "@/lib/providers/data-provider"
 import { ThemeWrapper } from "@/components/theme-wrapper"
 import { Toaster } from "@/components/ui/toaster"
@@ -26,7 +27,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ThemeWrapper>
             <AuthProvider>
-              <DataProvider>{children}</DataProvider>
+              <WalletProvider>
+                <DataProvider>{children}</DataProvider>
+              </WalletProvider>
             </AuthProvider>
             <Toaster />
           </ThemeWrapper>
