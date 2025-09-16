@@ -36,8 +36,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    if (role === "merchant" && !(userData as any).isApproved) {
-      return NextResponse.json({ error: "Account pending approval" }, { status: 403 })
+    if (role === "merchant") {
+      // Check if user is verified (for users collection) or if merchant is approved (for merchants collection)
+      const isVerified = (userData as any).isVerified || (userData as any).isApproved
+      if (!isVerified) {
+        return NextResponse.json({ error: "Account pending approval" }, { status: 403 })
+      }
     }
 
     const storedPassword = (userData as any).password

@@ -33,18 +33,18 @@ export async function POST(request: NextRequest) {
         isApproved: false,
         uid: userId,
       })
-    } else {
-      await FirebaseService.createUser({
-        email,
-        password: hashedPassword,
-        name: displayName || "",
-        role: role || "user",
-        walletAddress: walletAddress || "",
-        isVerified: false,
-        uid: userId,
-      })
-    }
-
+    } 
+    
+    await FirebaseService.createUser({
+      email,
+      password: hashedPassword,
+      name: displayName || "",
+      role: role || "user",
+      walletAddress: walletAddress || "",
+      isVerified: false,
+      uid: userId,
+    })
+    
     return NextResponse.json({
       success: true,
       message:

@@ -39,6 +39,16 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
       updatedAt: new Date(),
     })
 
+    // Update the user's verification status if approved
+    if (approved && target.uid) {
+      const user = await FirebaseService.getUserByUid(target.uid)
+      if (user) {
+        await FirebaseService.updateUser(user.id, {
+          isVerified: true
+        })
+      }
+    }
+
     // Update user custom claims if approved
     if (approved && target.uid) {
       try {
