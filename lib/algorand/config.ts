@@ -122,7 +122,7 @@ export const waitForConfirmation = async (txId: string, timeout = 10) => {
   while (timeout > 0) {
     const pendingInfo = await algodClient.pendingTransactionInformation(txId).do()
 
-    if (pendingInfo.confirmedRound !== null && pendingInfo.confirmedRound > 0) {
+    if (pendingInfo.confirmedRound !== null && pendingInfo.confirmedRound !== undefined && pendingInfo.confirmedRound > 0) {
       return pendingInfo
     }
 
@@ -168,7 +168,8 @@ export const buildPaymentTransaction = async (from: string, to: string, amount: 
   const params = await algodClient.getTransactionParams().do()
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    to,
+    sender: from,
+    receiver: to,
     amount,
     note: note ? new TextEncoder().encode(note) : undefined,
     suggestedParams: params,
@@ -188,7 +189,8 @@ export const buildAssetTransferTransaction = async (
   const params = await algodClient.getTransactionParams().do()
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    to,
+    sender: from,
+    receiver: to,
     assetIndex,
     amount,
     note: note ? new TextEncoder().encode(note) : undefined,
