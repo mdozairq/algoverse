@@ -68,9 +68,8 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
       case "merchant":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/merchant" },
-          { icon: Calendar, label: "My Events", href: "/dashboard/merchant#events" },
-          { icon: Plus, label: "Create Event", href: "/dashboard/merchant/create-event" },
-          { icon: Store, label: "Create Marketplace", href: "/dashboard/merchant/create-marketplace" },
+          { icon: Calendar, label: "Events", href: "/dashboard/merchant/events" },
+          { icon: Store, label: "Marketplaces", href: "/dashboard/merchant/marketplaces" },
           { icon: Wallet, label: "NFT Management", href: "/dashboard/merchant/nft-management" },
           { icon: BarChart3, label: "Analytics", href: "/dashboard/merchant/analytics" },
           { icon: Settings, label: "Settings", href: "/dashboard/merchant#settings" },
