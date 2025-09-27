@@ -10,17 +10,13 @@ import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { PeraWalletConnect } from "@perawallet/connect"
 import algosdk from "algosdk"
-
-
-// Create the PeraWalletConnect instance outside of the component
-const peraWallet = new PeraWalletConnect()
+import { peraWallet } from "@/lib/wallet/pera-wallet"
 
 // Client-side component that uses direct Pera Wallet connection
 function UserAuthContent() {
   const router = useRouter()
-  const { connectWallet, loading, logout } = useAuth()
+  const { connectWallet, loading, logout, disconnectWallet } = useAuth()
   const { toast } = useToast()
   const [authMethod, setAuthMethod] = useState<"pera" | "google">("pera")
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle")
@@ -122,7 +118,7 @@ function UserAuthContent() {
   }
 
   const handleDisconnectWalletClick = () => {
-    peraWallet.disconnect()
+    disconnectWallet()
     setAccountAddress(null)
     setConnectionStatus("idle")
     

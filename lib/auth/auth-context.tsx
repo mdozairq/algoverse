@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
+import { disconnectPeraWallet } from "@/lib/wallet/pera-wallet"
 
 interface User {
   userId: string
@@ -19,6 +20,7 @@ interface AuthContextType {
   loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<User>
   registerMerchant: (data: any) => Promise<void>
   logout: () => Promise<void>
+  disconnectWallet: () => void
   isAuthenticated: boolean
 }
 
@@ -121,8 +123,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const disconnectWallet = () => {
+    disconnectPeraWallet()
+  }
+
   const logout = async () => {
     try {
+      // Disconnect Pera wallet if connected
+      disconnectWallet()
+      
       // Clear user state immediately for better UX
       setUser(null)
       setLoading(false) // Stop loading state
@@ -146,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loginWithEmail,
     registerMerchant,
     logout,
+    disconnectWallet,
     isAuthenticated: !!user,
   }
 

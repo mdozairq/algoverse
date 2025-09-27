@@ -8,6 +8,7 @@ import { ThemeToggle } from "./theme-toggle"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import { disconnectPeraWallet } from "@/lib/wallet/pera-wallet"
 
 interface HeaderProps {
   showSearch?: boolean
@@ -47,6 +48,9 @@ console.log(user);
 
   const handleLogout = async () => {
     try {
+      // Disconnect Pera wallet if connected
+      disconnectPeraWallet()
+      
       await logout()
       router.push("/")
     } catch (error) {
