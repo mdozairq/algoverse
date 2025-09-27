@@ -2,11 +2,16 @@ import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
 import { requireRole } from "@/lib/auth/middleware"
 
-// GET /api/marketplaces/[id] - Get marketplace by ID
+// GET /api/marketplaces/[id] - Get single marketplace
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const marketplace = await FirebaseService.getMarketplaceById(params.id)
-    
+    const marketplaceId = params.id
+
+    if (!marketplaceId) {
+      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
+    }
+
+    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
@@ -18,21 +23,27 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// PUT /api/marketplaces/[id] - Update marketplace (merchants for their own, admins for status)
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// PUT /api/marketplaces/[id] - Update marketplace
+export const PUT = requireRole(["merchant", "admin"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
-    // For admin operations, we'll allow the request for now
-    // In a production app, you'd verify the JWT token from cookies
-    const updates = await request.json()
+    const marketplaceData = await request.json()
+    const marketplaceId = params.id
 
-    // Get marketplace
-    const marketplace = await FirebaseService.getMarketplaceById(params.id)
+    if (!marketplaceId) {
+      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
+    }
+
+    // Get the marketplace first to check if it exists
+    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
     // Update marketplace
-    await FirebaseService.updateMarketplace(params.id, updates)
+    await FirebaseService.updateMarketplace(marketplaceId, {
+      ...marketplaceData,
+      updatedAt: new Date(),
+    })
 
     return NextResponse.json({
       success: true,
@@ -42,19 +53,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     console.error("Error updating marketplace:", error)
     return NextResponse.json({ error: "Failed to update marketplace" }, { status: 500 })
   }
-}
+})
 
-// DELETE /api/marketplaces/[id] - Delete marketplace (merchants for their own, admins for any)
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE /api/marketplaces/[id] - Delete marketplace
+export const DELETE = requireRole(["merchant"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
-    // Get marketplace
-    const marketplace = await FirebaseService.getMarketplaceById(params.id)
+    const marketplaceId = params.id
+
+    if (!marketplaceId) {
+      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
+    }
+
+    // Get the marketplace first to check if it exists
+    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
-    // Delete marketplace (Note: In a real app, you might want to soft delete)
-    await FirebaseService.updateMarketplace(params.id, { status: "rejected" })
+    // Delete marketplace
+    await FirebaseService.deleteMarketplace(marketplaceId)
 
     return NextResponse.json({
       success: true,
@@ -64,4 +81,4 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     console.error("Error deleting marketplace:", error)
     return NextResponse.json({ error: "Failed to delete marketplace" }, { status: 500 })
   }
-}
+})

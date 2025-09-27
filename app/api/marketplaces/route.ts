@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
 
     let marketplaces = []
 
-    if (status === "pending") {
+    if (merchantId) {
+      marketplaces = await FirebaseService.getMarketplacesByMerchant(merchantId)
+    } else if (status === "pending") {
       marketplaces = await FirebaseService.getPendingMarketplaces()
     } else if (status === "approved") {
       marketplaces = await FirebaseService.getApprovedMarketplaces()
-    } else if (merchantId) {
-      marketplaces = await FirebaseService.getMarketplacesByMerchant(merchantId)
     } else {
       marketplaces = await FirebaseService.getAllMarketplaces()
     }
