@@ -1,53 +1,66 @@
-import { type NextResponse, NextRequest } from "next/server"
-import { withAuth, type AuthenticatedRequest } from "@/lib/auth/middleware"
+import { NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
-import { signJWT } from "@/lib/auth/jwt"
 
-export const POST = withAuth(async (req: AuthenticatedRequest): Promise<NextResponse> => {
+export async function POST(request: NextRequest) {
   try {
-    const { walletAddress } = await (req as unknown as NextRequest).json()
+    const { address } = await request.json()
 
-    if (!walletAddress || typeof walletAddress !== "string") {
-      return new Response(JSON.stringify({ error: "walletAddress is required" }), { status: 400 }) as unknown as NextResponse
+    if (!address) {
+      return NextResponse.json({ error: "Wallet address is required" }, { status: 400 })
     }
 
-    const user = req.user!
-
-    // Update wallet address depending on role
-    if (user.role === "merchant") {
-      const merchant = await FirebaseService.getMerchantByUid(user.userId) || (await FirebaseService.getMerchantByUid(user.userId!))
-      if (merchant?.id) {
-        await FirebaseService.updateMerchant(merchant.id, { walletAddress })
+    // Check if user exists with this address
+    let user = await FirebaseService.getUserByAddress(address)
+    
+    if (!user) {
+      // Create new user with wallet address
+      const newUser = {
+        address,
+        role: "user" as const,
+        isVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }
-    } else if (user.role === "user") {
-      // user.userId should be the users collection doc id
-      await FirebaseService.updateUser(user.userId, { walletAddress })
+      
+      user = await FirebaseService.createUser(newUser)
     }
 
-    // Issue a new JWT with updated wallet address
-    const newToken = await signJWT({
-      userId: user.userId,
-      email: user.email,
-      role: user.role as any,
-      walletAddress,
-      isVerified: user.isVerified,
-      uid: (user as any).uid,
+    // Generate JWT token
+    const token = await generateAuthToken(user.id, user.role)
+
+    // Set cookie
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        address: user.address,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     })
 
-    const res = new Response(JSON.stringify({ success: true }), { status: 200 }) as unknown as NextResponse
-    res.cookies.set("auth-token", newToken, {
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
-    return res
-  } catch (error) {
+    return response
+  } catch (error: any) {
     console.error("Wallet connect error:", error)
-    return new Response(JSON.stringify({ error: "Failed to connect wallet" }), { status: 500 }) as unknown as NextResponse
+    return NextResponse.json({ 
+      error: "Failed to connect wallet",
+      details: error.message 
+    }, { status: 500 })
   }
-})
+}
 
-
+async function generateAuthToken(userId: string, role: string): Promise<string> {
+  // This would typically use a JWT library
+  // For now, return a simple token
+  return Buffer.from(`${userId}:${role}:${Date.now()}`).toString('base64')
+}

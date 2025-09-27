@@ -3,11 +3,13 @@ import { adminDb } from "./admin"
 
 export interface User {
   id: string
-  email: string
+  email?: string
   name?: string
   role: "user" | "merchant" | "admin"
   walletAddress?: string
+  address?: string
   createdAt: Date
+  updatedAt?: Date
   isVerified?: boolean
   uid?: string
   password?: string
@@ -103,6 +105,15 @@ export const usersCollection = {
 
   async getByEmail(email: string): Promise<User | null> {
     const snapshot = await adminDb.collection("users").where("email", "==", email).get()
+    if (snapshot.docs.length > 0) {
+      const doc = snapshot.docs[0]
+      return { ...doc.data(), id: doc.id } as User
+    }
+    return null
+  },
+
+  async getByAddress(address: string): Promise<User | null> {
+    const snapshot = await adminDb.collection("users").where("address", "==", address).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
       return { ...doc.data(), id: doc.id } as User
@@ -280,6 +291,10 @@ export class FirebaseService {
 
   static async getUserByEmail(email: string): Promise<User | null> {
     return usersCollection.getByEmail(email)
+  }
+
+  static async getUserByAddress(address: string): Promise<User | null> {
+    return usersCollection.getByAddress(address)
   }
 
   static async updateUser(id: string, updates: Partial<User>): Promise<void> {
