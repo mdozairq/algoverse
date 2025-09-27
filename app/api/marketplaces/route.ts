@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
 import { requireRole } from "@/lib/auth/middleware"
 
-// GET /api/marketplaces - Get marketplaces with filtering
+// GET /api/marketplaces - Get marketplaces with filtering and merchant details
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -21,7 +21,43 @@ export async function GET(request: NextRequest) {
       marketplaces = await FirebaseService.getAllMarketplaces()
     }
 
-    return NextResponse.json({ marketplaces })
+    // Join marketplace data with merchant information
+    const marketplacesWithMerchants = await Promise.all(
+      marketplaces.map(async (marketplace) => {
+        try {
+          // Fetch merchant details if merchantId exists
+          if (marketplace.merchantId) {
+            const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
+            if (merchant) {
+              return {
+                ...marketplace,
+                merchantName: merchant.businessName,
+                merchantEmail: merchant.email,
+                merchantId: marketplace.merchantId,
+              }
+            }
+          }
+          
+          // Return marketplace without merchant details if merchant not found
+          return {
+            ...marketplace,
+            merchantName: 'Unknown Merchant',
+            merchantEmail: null,
+            merchantId: marketplace.merchantId || null,
+          }
+        } catch (error) {
+          console.error(`Error fetching merchant for marketplace ${marketplace.id}:`, error)
+          return {
+            ...marketplace,
+            merchantName: 'Unknown Merchant',
+            merchantEmail: null,
+            merchantId: marketplace.merchantId || null,
+          }
+        }
+      })
+    )
+
+    return NextResponse.json({ marketplaces: marketplacesWithMerchants })
   } catch (error: any) {
     console.error("Error fetching marketplaces:", error)
     return NextResponse.json({ error: "Failed to fetch marketplaces" }, { status: 500 })
