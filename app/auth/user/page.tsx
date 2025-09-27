@@ -10,14 +10,37 @@ import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { PeraWalletService } from "@/lib/wallet/pera-wallet"
+import { PeraWalletConnect } from "@perawallet/connect"
+import algosdk from "algosdk"
 
-export default function UserAuthPage() {
+
+// Create the PeraWalletConnect instance outside of the component
+const peraWallet = new PeraWalletConnect()
+
+// Client-side component that uses direct Pera Wallet connection
+function UserAuthContent() {
   const router = useRouter()
   const { connectWallet, loading, logout } = useAuth()
   const { toast } = useToast()
   const [authMethod, setAuthMethod] = useState<"pera" | "google">("pera")
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle")
+  const [accountAddress, setAccountAddress] = useState<string | null>(null)
+  
+  const isConnectedToPeraWallet = !!accountAddress
+
+  // Reconnect to the session when the component is mounted
+  useEffect(() => {
+    peraWallet.reconnectSession().then((accounts) => {
+      // Setup the disconnect event listener
+      peraWallet.connector?.on("disconnect", handleDisconnectWalletClick)
+
+      if (accounts.length) {
+        setAccountAddress(accounts[0])
+      }
+    }).catch((error) => {
+      console.log("No existing Pera wallet session to reconnect")
+    })
+  }, [])
 
   // Clear any existing session when accessing user auth page
   useEffect(() => {
@@ -31,60 +54,82 @@ export default function UserAuthPage() {
     clearSession()
   }, [])
 
-  const handlePeraWalletConnect = async () => {
+  const handleConnectWalletClick = () => {
     setConnectionStatus("connecting")
 
-    try {
-      // Check if Pera Wallet is installed
-      if (!PeraWalletService.isInstalled()) {
-        throw new Error("Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store.")
-      }
+    peraWallet
+      .connect()
+      .then((newAccounts) => {
+        // Setup the disconnect event listener
+        peraWallet.connector?.on("disconnect", handleDisconnectWalletClick)
 
-      // Connect to Pera Wallet
-      const peraWallet = PeraWalletService.getInstance()
-      const peraAccount = await peraWallet.connect()
-      
-      console.log('Pera wallet connected:', peraAccount)
-      console.log('Pera account address:', peraAccount.address, 'Type:', typeof peraAccount.address)
+        const accountAddress = newAccounts[0]
+        setAccountAddress(accountAddress)
 
-      // Connect to auth system with Pera wallet address
-      await connectWallet(peraAccount.address)
+        console.log('Pera wallet connected:', accountAddress)
 
-      setConnectionStatus("connected")
+        // Connect to auth system with Pera wallet address
+        connectWallet(accountAddress).then(() => {
+          setConnectionStatus("connected")
 
-      toast({
-        title: "Wallet Connected",
-        description: "Your Pera wallet has been connected successfully!",
+          toast({
+            title: "Wallet Connected",
+            description: "Your Pera wallet has been connected successfully!",
+          })
+
+          // Redirect after success animation
+          setTimeout(() => {
+            router.replace("/dashboard/user")
+          }, 1500)
+        }).catch((error) => {
+          console.error("Auth connection failed:", error)
+          setConnectionStatus("idle")
+          toast({
+            title: "Authentication Failed",
+            description: "Failed to authenticate with the connected wallet.",
+            variant: "destructive",
+          })
+        })
       })
-
-      // Redirect after success animation
-      setTimeout(() => {
-        router.replace("/dashboard/user")
-      }, 1500)
-    } catch (error: any) {
-      console.error("Pera wallet connection failed:", error)
-      setConnectionStatus("idle")
-      
-      let errorMessage = "Failed to connect Pera wallet. Please try again."
-      
-      if (error.message) {
-        if (error.message.includes("User rejected")) {
-          errorMessage = "Wallet connection was rejected. Please try again."
-        } else if (error.message.includes("Network error")) {
-          errorMessage = "Network error. Please check your connection and try again."
-        } else if (error.message.includes("not installed")) {
-          errorMessage = "Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store."
-        } else {
-          errorMessage = error.message
+      .catch((error) => {
+        // You MUST handle the reject because once the user closes the modal, peraWallet.connect() promise will be rejected.
+        setConnectionStatus("idle")
+        
+        if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
+          console.error("Pera wallet connection failed:", error)
+          
+          let errorMessage = "Failed to connect Pera wallet. Please try again."
+          
+          if (error.message) {
+            if (error.message.includes("User rejected")) {
+              errorMessage = "Wallet connection was rejected. Please try again."
+            } else if (error.message.includes("Network error")) {
+              errorMessage = "Network error. Please check your connection and try again."
+            } else if (error.message.includes("not found") || error.message.includes("not installed")) {
+              errorMessage = "Pera Wallet not found. Please install Pera Wallet from the App Store or Google Play Store."
+            } else {
+              errorMessage = error.message
+            }
+          }
+          
+          toast({
+            title: "Connection Failed",
+            description: errorMessage,
+            variant: "destructive",
+          })
         }
-      }
-      
-      toast({
-        title: "Connection Failed",
-        description: errorMessage,
-        variant: "destructive",
       })
-    }
+  }
+
+  const handleDisconnectWalletClick = () => {
+    peraWallet.disconnect()
+    setAccountAddress(null)
+    setConnectionStatus("idle")
+    
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your Pera wallet has been disconnected.",
+    })
   }
 
   const handleGoogleAuth = async () => {
@@ -188,7 +233,7 @@ export default function UserAuthPage() {
                     </div>
 
                     <Button
-                      onClick={handlePeraWalletConnect}
+                      onClick={isConnectedToPeraWallet ? handleDisconnectWalletClick : handleConnectWalletClick}
                       disabled={connectionStatus === "connecting" || loading}
                       className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-full py-3 text-sm font-medium"
                       size="lg"
@@ -197,6 +242,11 @@ export default function UserAuthPage() {
                         <div className="flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                           CONNECTING...
+                        </div>
+                      ) : isConnectedToPeraWallet ? (
+                        <div className="flex items-center">
+                          <Smartphone className="w-4 h-4 mr-2" />
+                          DISCONNECT WALLET
                         </div>
                       ) : (
                         <div className="flex items-center">
@@ -272,4 +322,43 @@ export default function UserAuthPage() {
       </div>
     </PageTransition>
   )
+}
+
+// Main page component with SSR compatibility
+export default function UserAuthPage() {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-4 text-gray-900 dark:text-white">
+                USER
+                <br />
+                ACCESS
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading authentication options...
+              </p>
+            </div>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Initializing wallet system...</p>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
+
+  return <UserAuthContent />
 }
