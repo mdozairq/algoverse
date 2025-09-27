@@ -1,69 +1,49 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
-import { verifyAuthToken } from "@/lib/auth/middleware"
+import { requireRole } from "@/lib/auth/middleware"
 
+// GET /api/events/[id] - Get single event
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const event = await FirebaseService.getEventById(params.id)
+    const eventId = params.id
 
+    if (!eventId) {
+      return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
+    }
+
+    const event = await FirebaseService.getEventById(eventId)
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Get merchant info only if merchantId is valid
-    let merchant = null
-    if (event.merchantId && event.merchantId.trim() !== "") {
-      try {
-        merchant = await FirebaseService.getMerchantById(event.merchantId)
-      } catch (merchantError) {
-        console.warn("Failed to fetch merchant info:", merchantError)
-        // Continue without merchant info
-      }
-    }
-
-    return NextResponse.json({
-      event: {
-        ...event,
-        merchant: merchant
-          ? {
-              id: merchant.id,
-              businessName: merchant.businessName,
-              verified: merchant.isApproved,
-            }
-          : null,
-      },
-    })
+    return NextResponse.json({ event })
   } catch (error: any) {
     console.error("Error fetching event:", error)
     return NextResponse.json({ error: "Failed to fetch event" }, { status: 500 })
   }
 }
 
-// PUT /api/events/[id] - Update event (merchants only)
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// PUT /api/events/[id] - Update event
+export const PUT = requireRole(["merchant"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
-    // Manual auth check
-    const auth = await verifyAuthToken(request)
-    if (!auth || !auth.uid || (auth.role !== "merchant" && auth.role !== "admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    
-    const updateData = await request.json()
+    const eventData = await request.json()
+    const eventId = params.id
 
-    // Get the event to verify ownership
-    const event = await FirebaseService.getEventById(params.id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
+    }
+
+    // Get the event first to check if it exists and belongs to the merchant
+    const event = await FirebaseService.getEventById(eventId)
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Verify the merchant owns this event
-    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
-    if (!merchant || event.merchantId !== merchant.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    // Update the event
-    await FirebaseService.updateEvent(params.id, updateData)
+    // Update event
+    await FirebaseService.updateEvent(eventId, {
+      ...eventData,
+      updatedAt: new Date(),
+    })
 
     return NextResponse.json({
       success: true,
@@ -73,31 +53,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     console.error("Error updating event:", error)
     return NextResponse.json({ error: "Failed to update event" }, { status: 500 })
   }
-}
+})
 
-// DELETE /api/events/[id] - Delete event (merchants only)
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE /api/events/[id] - Delete event
+export const DELETE = requireRole(["merchant"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
-    // Manual auth check
-    const auth = await verifyAuthToken(request)
-    if (!auth || !auth.uid || (auth.role !== "merchant" && auth.role !== "admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const eventId = params.id
+
+    if (!eventId) {
+      return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
     }
 
-    // Get the event to verify ownership
-    const event = await FirebaseService.getEventById(params.id)
+    // Get the event first to check if it exists
+    const event = await FirebaseService.getEventById(eventId)
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Verify the merchant owns this event
-    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
-    if (!merchant || event.merchantId !== merchant.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    // Delete the event
-    await FirebaseService.deleteEvent(params.id)
+    // Delete event
+    await FirebaseService.deleteEvent(eventId)
 
     return NextResponse.json({
       success: true,
@@ -107,4 +81,4 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     console.error("Error deleting event:", error)
     return NextResponse.json({ error: "Failed to delete event" }, { status: 500 })
   }
-}
+})

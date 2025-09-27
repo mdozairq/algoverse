@@ -2,26 +2,25 @@ import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
 import { requireRole } from "@/lib/auth/middleware"
 
-// GET /api/events - Get all events with filtering
+// GET /api/events - Get events with filtering
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get("category")
-    const featured = searchParams.get("featured")
-    const trending = searchParams.get("trending")
     const merchantId = searchParams.get("merchantId")
+    const status = searchParams.get("status")
 
     let events = []
 
-    if (featured === "true") {
-      events = await FirebaseService.getFeaturedEvents(10)
-    } else if (trending === "true") {
-      events = await FirebaseService.getTrendingEvents(10)
-    } else if (merchantId) {
+    if (merchantId) {
       events = await FirebaseService.getEventsByMerchant(merchantId)
+    } else if (status === "pending") {
+      events = await FirebaseService.getPendingEvents()
+    } else if (status === "approved") {
+      events = await FirebaseService.getApprovedEvents()
+    } else if (status === "rejected") {
+      events = await FirebaseService.getRejectedEvents()
     } else {
-      // Get all events - implement pagination as needed
-      events = await FirebaseService.getFeaturedEvents(50)
+      events = await FirebaseService.getAllEvents()
     }
 
     return NextResponse.json({ events })
@@ -37,31 +36,28 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     const auth = (request as any).auth
     const eventData = await request.json()
 
-    // Resolve merchant by uid (preferred) or by email
-    let merchant = auth.uid ? await FirebaseService.getMerchantByUid(auth.uid) : null
-    if (!merchant && auth.email) {
-      // fallback: find merchant by email in approved list
-      const approved = await FirebaseService.getApprovedMerchants()
-      merchant = approved.find((m: any) => m.email === auth.email) as any
-    }
+    // Get merchant info
+    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
     if (!merchant) {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
+    }
+
+    // Validate required fields
+    if (!eventData.title || !eventData.description || !eventData.category || !eventData.date || !eventData.location) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Create event
     const eventId = await FirebaseService.createEvent({
       ...eventData,
       merchantId: merchant.id!,
-      availableSupply: eventData.totalSupply,
-      soldCount: 0,
-      status: "draft",
-      featured: false,
-      trending: false,
+      status: eventData.status || "draft",
     })
 
     return NextResponse.json({
       success: true,
       eventId,
+      message: "Event created successfully",
     })
   } catch (error: any) {
     console.error("Error creating event:", error)
