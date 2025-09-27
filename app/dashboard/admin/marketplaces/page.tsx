@@ -178,6 +178,7 @@ export default function AdminMarketplacesPage() {
                 <TableHeader>
                   <TableRow className="border-gray-200 dark:border-gray-700">
                     <TableHead className="text-gray-600 dark:text-gray-400">Business</TableHead>
+                    <TableHead className="text-gray-600 dark:text-gray-400">Merchant</TableHead>
                     <TableHead className="text-gray-600 dark:text-gray-400">Category</TableHead>
                     <TableHead className="text-gray-600 dark:text-gray-400">Status</TableHead>
                     <TableHead className="text-gray-600 dark:text-gray-400">Template</TableHead>
@@ -188,7 +189,7 @@ export default function AdminMarketplacesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow className="border-gray-200 dark:border-gray-700">
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <div className="flex items-center justify-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span className="text-gray-500">Loading marketplaces...</span>
@@ -197,7 +198,7 @@ export default function AdminMarketplacesPage() {
                     </TableRow>
                   ) : marketplaces.length === 0 ? (
                     <TableRow className="border-gray-200 dark:border-gray-700">
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         <div className="flex flex-col items-center gap-2">
                           <Store className="h-8 w-8 text-gray-400" />
                           <span>No marketplaces found</span>
@@ -225,6 +226,21 @@ export default function AdminMarketplacesPage() {
                             {marketplace.website && (
                               <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                                 {marketplace.website}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-900 dark:text-gray-300">
+                          <div>
+                            <div className="font-medium text-sm">{marketplace.merchantName || 'Unknown Merchant'}</div>
+                            {marketplace.merchantEmail && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {marketplace.merchantEmail}
+                              </div>
+                            )}
+                            {marketplace.merchantId && (
+                              <div className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                                ID: {marketplace.merchantId.slice(0, 8)}...
                               </div>
                             )}
                           </div>
