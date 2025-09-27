@@ -322,13 +322,13 @@ export default function MerchantDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/dashboard/merchant/create-event">
+                <Link href="/dashboard/merchant/events/create-event">
                   <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                     <Calendar className="h-6 w-6" />
                     <span className="font-medium">Create Event</span>
                   </Button>
                 </Link>
-                <Link href="/dashboard/merchant/create-marketplace">
+                <Link href="/dashboard/merchant/marketplaces/create-marketplace">
                   <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                     <Plus className="h-6 w-6" />
                     <span className="font-medium">Create Marketplace</span>
@@ -419,7 +419,7 @@ export default function MerchantDashboard() {
                                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                                   Create your first event to start selling tickets and NFTs
                                 </p>
-                                <Link href="/dashboard/merchant/create-event">
+                                <Link href="/dashboard/merchant/events/create-event">
                                   <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                                     <Plus className="w-4 h-4 mr-2" />
                                     Create Your First Event
@@ -472,7 +472,7 @@ export default function MerchantDashboard() {
                                       <Eye className="h-4 w-4" />
                                     </Button>
                                   </Link>
-                                  <Link href={`/dashboard/merchant/create-event?edit=${event.id}`}>
+                                  <Link href={`/dashboard/merchant/events/create-event?edit=${event.id}`}>
                                     <Button
                                       size="sm"
                                       variant="ghost"
