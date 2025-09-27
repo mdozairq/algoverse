@@ -26,6 +26,7 @@ export default function AdminMerchantsPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [merchants, setMerchants] = useState<Merchant[]>([])
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const { user, isAuthenticated } = useAuth()
 
   // Helper function to get merchant status
@@ -40,7 +41,7 @@ export default function AdminMerchantsPage() {
     return merchants.filter(merchant => getMerchantStatus(merchant) === status)
   }
 
-  const fetchMerchants = async () => {
+  const fetchMerchants = async (status?: 'all' | 'pending' | 'approved' | 'rejected') => {
     // Don't fetch if user is not authenticated
     if (!isAuthenticated || !user) {
       setLoading(false)
@@ -49,7 +50,8 @@ export default function AdminMerchantsPage() {
 
     setLoading(true)
     try {
-      const res = await fetch("/api/admin/merchants")
+      const url = status && status !== 'all' ? `/api/admin/merchants?status=${status}` : '/api/admin/merchants'
+      const res = await fetch(url)
       const data = await res.json()
       if (res.ok) {
         setMerchants(data.merchants || [])
@@ -140,12 +142,12 @@ export default function AdminMerchantsPage() {
                     )}
                     {getMerchantStatus(m) === 'approved' && (
                       <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white bg-transparent" onClick={() => updateApproval(m.id, false)}>
-                        Reject
+                        Disable
                       </Button>
                     )}
                     {getMerchantStatus(m) === 'rejected' && (
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => updateApproval(m.id, true)}>
-                        Approve
+                        Approve/Enable
                       </Button>
                     )}
                   </div>
@@ -158,9 +160,16 @@ export default function AdminMerchantsPage() {
     </Table>
   )
 
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    const tabValue = value as 'all' | 'pending' | 'approved' | 'rejected'
+    setActiveTab(tabValue)
+    fetchMerchants(tabValue)
+  }
+
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchMerchants()
+      fetchMerchants('all') // Fetch all merchants initially
     }
   }, [isAuthenticated, user])
 
@@ -173,7 +182,7 @@ export default function AdminMerchantsPage() {
             <p className="text-gray-600 dark:text-gray-400">Review and manage merchant applications</p>
           </div>
 
-          <Tabs defaultValue="all" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">
                 All ({merchants.length})

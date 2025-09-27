@@ -3,18 +3,35 @@ import { FirebaseService } from "@/lib/firebase/collections"
 import { adminAuth } from "@/lib/firebase/admin"
 import { requireRole } from "@/lib/auth/middleware"
 
-// GET /api/admin/merchants - Get pending merchants
+// GET /api/admin/merchants - Get merchants with optional status filter
 export const GET = requireRole(["admin"])(async (request: NextRequest) => {
   try {
-    const pendingMerchants = await FirebaseService.getPendingMerchants()
-    return NextResponse.json({ merchants: pendingMerchants })
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    
+    let merchants = []
+    
+    if (status === 'pending') {
+      merchants = await FirebaseService.getPendingMerchants()
+    } else if (status === 'approved') {
+      merchants = await FirebaseService.getApprovedMerchants()
+    } else if (status === 'rejected') {
+      // Get all merchants and filter for rejected ones
+      const allMerchants = await FirebaseService.getAllMerchants()
+      merchants = allMerchants.filter(merchant => merchant.status === 'rejected')
+    } else {
+      // Get all merchants for 'all' status
+      merchants = await FirebaseService.getAllMerchants()
+    }
+    
+    return NextResponse.json({ merchants })
   } catch (error: any) {
-    console.error("Error fetching pending merchants:", error)
+    console.error("Error fetching merchants:", error)
     return NextResponse.json({ error: "Failed to fetch merchants" }, { status: 500 })
   }
 })
 
-// POST /api/admin/merchants/approve - Approve merchant
+// POST /api/admin/merchants - Update merchant status
 export const POST = requireRole(["admin"])(async (request: NextRequest) => {
   try {
     const { merchantId, approved } = await request.json()
@@ -33,9 +50,13 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
     }
 
-    // Update merchant verification status
+    // Determine the new status
+    const newStatus = approved ? 'approved' : 'rejected'
+    
+    // Update merchant verification status with new status field
     await FirebaseService.updateMerchant(target.id, {
       isApproved: approved,
+      status: newStatus,
       updatedAt: new Date(),
     })
 

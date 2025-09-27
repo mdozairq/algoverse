@@ -226,6 +226,11 @@ export const merchantsCollection = {
     return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Merchant)
   },
 
+  async getAll(): Promise<Merchant[]> {
+    const snapshot = await adminDb.collection("merchants").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Merchant)
+  },
+
   async update(id: string, updates: Partial<Merchant>): Promise<void> {
     await adminDb.collection("merchants").doc(id).update(updates)
   },
@@ -355,6 +360,10 @@ export class FirebaseService {
 
   static async getApprovedMerchants(): Promise<Merchant[]> {
     return merchantsCollection.getApproved()
+  }
+
+  static async getAllMerchants(): Promise<Merchant[]> {
+    return merchantsCollection.getAll()
   }
 
   static async updateMerchant(id: string, updates: Partial<Merchant>): Promise<void> {
