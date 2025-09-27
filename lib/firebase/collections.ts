@@ -299,6 +299,10 @@ export const marketplacesCollection = {
       updatedAt: new Date(),
     })
   },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("marketplaces").doc(id).delete()
+  },
 }
 
 // FirebaseService class for API routes
@@ -471,5 +475,9 @@ export class FirebaseService {
 
   static async updateMarketplace(id: string, updates: Partial<Marketplace>): Promise<void> {
     return marketplacesCollection.update(id, updates)
+  }
+
+  static async deleteMarketplace(id: string): Promise<void> {
+    return marketplacesCollection.delete(id)
   }
 }
