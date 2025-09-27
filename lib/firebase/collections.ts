@@ -46,6 +46,9 @@ export interface NFT {
   eventId: string
   ownerId: string
   tokenId: string
+  assetId?: number
+  creatorId?: string
+  price?: number
   metadata: Record<string, any>
   createdAt: Date
   isUsed?: boolean
@@ -60,6 +63,7 @@ export interface Merchant {
   description: string
   walletAddress: string
   isApproved: boolean
+  status?: "pending" | "approved" | "rejected"
   createdAt: Date
   uid: string
   updatedAt?: Date

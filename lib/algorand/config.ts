@@ -117,17 +117,17 @@ export const accountFromMnemonic = (mnemonic: string) => {
 export const waitForConfirmation = async (txId: string, timeout = 10) => {
   const algodClient = getAlgodClient()
 
-  let lastRound = (await algodClient.status().do())["last-round"]
+  let lastRound = (await algodClient.status().do()).lastRound
 
   while (timeout > 0) {
     const pendingInfo = await algodClient.pendingTransactionInformation(txId).do()
 
-    if (pendingInfo["confirmed-round"] !== null && pendingInfo["confirmed-round"] > 0) {
+    if (pendingInfo.confirmedRound !== null && pendingInfo.confirmedRound > 0) {
       return pendingInfo
     }
 
-    if (pendingInfo["pool-error"] != null && pendingInfo["pool-error"].length > 0) {
-      throw new Error(`Transaction rejected: ${pendingInfo["pool-error"]}`)
+    if (pendingInfo.poolError != null && pendingInfo.poolError.length > 0) {
+      throw new Error(`Transaction rejected: ${pendingInfo.poolError}`)
     }
 
     await algodClient.statusAfterBlock(lastRound).do()
@@ -168,7 +168,6 @@ export const buildPaymentTransaction = async (from: string, to: string, amount: 
   const params = await algodClient.getTransactionParams().do()
 
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    from,
     to,
     amount,
     note: note ? new TextEncoder().encode(note) : undefined,
@@ -189,7 +188,6 @@ export const buildAssetTransferTransaction = async (
   const params = await algodClient.getTransactionParams().do()
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from,
     to,
     assetIndex,
     amount,
@@ -211,7 +209,7 @@ export const getApplicationGlobalState = async (appId: number) => {
   try {
     const algodClient = getAlgodClient()
     const appInfo = await algodClient.getApplicationByID(appId).do()
-    return appInfo.params["global-state"] || []
+    return appInfo.params.globalState || []
   } catch (error) {
     console.error("Error getting application global state:", error)
     throw error

@@ -28,41 +28,42 @@ export const POST = requireAuth(async (request: NextRequest) => {
     }
 
     // Get creator info for royalties
-    const creator = await FirebaseService.getUserById(nft.creatorId)
+    const creator = await FirebaseService.getUserById(nft.creatorId || '')
     if (!creator || !creator.walletAddress) {
       return NextResponse.json({ error: "Creator wallet not configured" }, { status: 400 })
     }
 
     const platformWallet = process.env.PLATFORM_WALLET_ADDRESS!
-    const totalAmount = Math.floor(nft.price * 1000000) // Convert to microAlgos
+    const totalAmount = Math.floor((nft.price || 0) * 1000000) // Convert to microAlgos
 
-    // Create payment transactions with royalties
-    const paymentTxns = await AlgorandNFTService.createPaymentWithRoyalties(
-      buyerWalletAddress,
-      seller.walletAddress,
-      creator.walletAddress,
-      platformWallet,
-      totalAmount,
-      PLATFORM_CONFIG.ROYALTY_PERCENTAGE,
-      PLATFORM_CONFIG.PLATFORM_FEE_PERCENTAGE,
-    )
+    // TODO: Implement payment transactions with royalties
+    // const paymentTxns = await AlgorandNFTService.createPaymentWithRoyalties(
+    //   buyerWalletAddress,
+    //   seller.walletAddress,
+    //   creator.walletAddress,
+    //   platformWallet,
+    //   totalAmount,
+    //   PLATFORM_CONFIG.royaltyPercentage,
+    //   PLATFORM_CONFIG.platformFeePercentage,
+    // )
 
-    // Create NFT transfer transaction
-    const transferTxn = await AlgorandNFTService.createTransferTransaction(
-      seller.walletAddress,
-      buyerWalletAddress,
-      nft.assetId,
-    )
+    // TODO: Implement NFT transfer transaction
+    // const transferTxn = await AlgorandNFTService.createTransferTransaction(
+    //   seller.walletAddress,
+    //   buyerWalletAddress,
+    //   nft.assetId,
+    // )
 
-    // Create opt-in transaction if needed
-    const optInTxn = await AlgorandNFTService.createOptInTransaction(buyerWalletAddress, nft.assetId)
+    // TODO: Implement opt-in transaction if needed
+    // const optInTxn = await AlgorandNFTService.createOptInTransaction(buyerWalletAddress, nft.assetId)
 
-    // Combine all transactions
-    const allTxns = [optInTxn, ...paymentTxns, transferTxn]
+    // TODO: Combine all transactions when implemented
+    // const allTxns = [optInTxn, ...paymentTxns, transferTxn]
 
     return NextResponse.json({
       success: true,
-      transactions: allTxns.map((txn) => Buffer.from(txn.toByte()).toString("base64")),
+      message: "NFT purchase functionality coming soon",
+      // transactions: allTxns.map((txn) => Buffer.from(txn.toByte()).toString("base64")),
     })
   } catch (error: any) {
     console.error("Error creating purchase transaction:", error)

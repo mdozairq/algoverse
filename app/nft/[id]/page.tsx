@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { NftLifecycleTimeline } from "@/components/nft/nft-lifecycle-timeline"
+import { NFTLifecycleTimeline } from "@/components/nft/nft-lifecycle-timeline"
 import {
   Dialog,
   DialogContent,
@@ -481,7 +481,7 @@ export default function NFTDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <NftLifecycleTimeline currentNftId={nft.id} />
+                  <NFTLifecycleTimeline currentNftId={nft.id} />
                 </CardContent>
               </Card>
             </TabsContent>

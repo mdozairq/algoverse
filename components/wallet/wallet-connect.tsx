@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useWallet } from "@/lib/wallet/wallet-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
-import { PeraWalletService } from "@/lib/wallet/pera-wallet"
+import { getPeraWalletInstance } from "@/lib/wallet/pera-wallet"
 
 interface WalletOption {
   id: string
@@ -211,12 +211,12 @@ export function WalletConnect() {
 
     try {
       // Check if Pera Wallet is installed
-      if (!PeraWalletService.isInstalled()) {
+      if (!getPeraWalletInstance()) {
         throw new Error("Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store.")
       }
 
       // Connect to Pera Wallet
-      const peraWallet = PeraWalletService.getInstance()
+        const peraWallet = getPeraWalletInstance()
       const peraAccount = await peraWallet.connect()
       
       console.log('Pera wallet connected:', peraAccount)
