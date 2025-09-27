@@ -6,6 +6,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 interface User {
   userId: string
   email: string
+  address?: string
   walletAddress?: string
   role: "user" | "merchant" | "admin"
   isVerified: boolean

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       // Create new user with wallet address
       const newUser = {
-        address,
+        walletAddress: address,
         role: "user" as const,
         isVerified: true,
         createdAt: new Date(),
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        address: user.address,
+        walletAddress: user.walletAddress,
         isVerified: user.isVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
