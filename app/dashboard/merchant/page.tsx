@@ -272,12 +272,12 @@ export default function MerchantDashboard() {
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Link href="/dashboard/merchant/create-event">
+              {/* <Link href="/dashboard/merchant/create-event">
                 <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Event
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </div>
 
