@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
+import { signJWT } from "@/lib/auth/jwt"
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,11 +23,21 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       }
       
-      user = await FirebaseService.createUser(newUser)
+      const userId = await FirebaseService.createUser(newUser)
+      if (!userId) {
+        return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
+      }
+      user = { ...newUser, id: userId }
     }
 
-    // Generate JWT token
-    const token = await generateAuthToken(user.id, user.role)
+    // Generate JWT token using the existing auth system
+    const token = await signJWT({
+      userId: user.id,
+      email: user.email || '',
+      role: user.role,
+      walletAddress: user.address,
+      isVerified: user.isVerified || false
+    })
 
     // Set cookie
     const response = NextResponse.json({
@@ -34,6 +45,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
+        name: user.name,
         role: user.role,
         address: user.address,
         isVerified: user.isVerified,
@@ -57,10 +69,4 @@ export async function POST(request: NextRequest) {
       details: error.message 
     }, { status: 500 })
   }
-}
-
-async function generateAuthToken(userId: string, role: string): Promise<string> {
-  // This would typically use a JWT library
-  // For now, return a simple token
-  return Buffer.from(`${userId}:${role}:${Date.now()}`).toString('base64')
 }

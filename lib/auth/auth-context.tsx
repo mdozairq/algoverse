@@ -50,14 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch("/api/auth/wallet-connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address }),
+        body: JSON.stringify({ address }),
       })
 
       if (!response.ok) {
-        throw new Error("Wallet connection failed")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Wallet connection failed")
       }
 
-      await checkAuth()
+      const data = await response.json()
+      setUser(data.user)
     } catch (error) {
       console.error("Wallet connection failed:", error)
       throw error
