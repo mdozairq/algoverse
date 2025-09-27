@@ -27,7 +27,9 @@ export interface Event {
   imageUrl?: string
   totalSupply: number
   availableSupply: number
+  status?: "draft" | "pending" | "approved" | "rejected"
   createdAt: Date
+  updatedAt?: Date
   featured?: boolean
   trending?: boolean
   nftAssetId?: number
@@ -152,7 +154,22 @@ export const eventsCollection = {
   },
 
   async getAll(): Promise<Event[]> {
-    const snapshot = await adminDb.collection("events").where("availableSupply", ">", 0).get()
+    const snapshot = await adminDb.collection("events").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
+  },
+
+  async getPending(): Promise<Event[]> {
+    const snapshot = await adminDb.collection("events").where("status", "==", "pending").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
+  },
+
+  async getApproved(): Promise<Event[]> {
+    const snapshot = await adminDb.collection("events").where("status", "==", "approved").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
+  },
+
+  async getRejected(): Promise<Event[]> {
+    const snapshot = await adminDb.collection("events").where("status", "==", "rejected").get()
     return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   },
 
@@ -320,6 +337,18 @@ export class FirebaseService {
 
   static async getAllEvents(): Promise<Event[]> {
     return eventsCollection.getAll()
+  }
+
+  static async getPendingEvents(): Promise<Event[]> {
+    return eventsCollection.getPending()
+  }
+
+  static async getApprovedEvents(): Promise<Event[]> {
+    return eventsCollection.getApproved()
+  }
+
+  static async getRejectedEvents(): Promise<Event[]> {
+    return eventsCollection.getRejected()
   }
 
   static async updateEvent(id: string, updates: Partial<Event>): Promise<void> {
