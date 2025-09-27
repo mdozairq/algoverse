@@ -60,6 +60,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Home, label: "Dashboard", href: "/dashboard/admin" },
           { icon: Users, label: "Merchants", href: "/dashboard/admin/merchants" },
           { icon: Store, label: "Marketplaces", href: "/dashboard/admin/marketplaces" },
+          { icon: Calendar, label: "Events", href: "/dashboard/admin/events" },
           { icon: DollarSign, label: "Fee Management", href: "/dashboard/admin/fees" },
           { icon: BarChart3, label: "Analytics", href: "/dashboard/admin/analytics" },
           { icon: Settings, label: "Settings", href: "/dashboard/admin/settings" },
