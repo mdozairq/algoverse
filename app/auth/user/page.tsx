@@ -10,7 +10,7 @@ import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import algosdk from "algosdk"
+
 import { peraWallet } from "@/lib/wallet/pera-wallet"
 
 // Client-side component that uses direct Pera Wallet connection
