@@ -36,6 +36,8 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
+import { Copy, Check } from "lucide-react"
+import { useState } from "react"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -43,12 +45,27 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, role }: DashboardLayoutProps) {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const router = useRouter()
+  const [copied, setCopied] = useState(false)
 
   const handleLogout = async () => {
     await logout()
     router.replace("/")
+  }
+
+  const copyWalletAddress = async () => {
+    const address = user?.walletAddress || user?.address
+    if (address) {
+      await navigator.clipboard.writeText(address)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const formatAddress = (address: string | undefined) => {
+    if (!address) return ''
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
   const getMenuItems = () => {
@@ -147,6 +164,33 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                       side="top"
                       className="w-[--radix-popper-anchor-width] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                     >
+                      {/* User Info */}
+                      <div className="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user?.email || `${role} Account`}
+                        </div>
+                        {role === "merchant" && (user?.walletAddress || user?.address) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Wallet className="w-3 h-3 text-gray-500" />
+                            <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                              {formatAddress(user.walletAddress || user.address)}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={copyWalletAddress}
+                              className="h-4 w-4 p-0 hover:bg-gray-200 dark:hover:bg-gray-600"
+                            >
+                              {copied ? (
+                                <Check className="w-2 h-2 text-green-600" />
+                              ) : (
+                                <Copy className="w-2 h-2 text-gray-500" />
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
                       <DropdownMenuItem className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                         <User className="w-4 h-4 mr-2" />
                         Profile
@@ -181,15 +225,27 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                   <Bell className="w-4 h-4" />
                 </Button>
                 <ThemeToggle />
-                <Link href="/marketplace">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="hidden sm:inline-flex rounded-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    View Marketplace
-                  </Button>
-                </Link>
+                {/* Wallet Address Display for Merchants */}
+                {role === "merchant" && (user?.walletAddress || user?.address) && (
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full">
+                    <Wallet className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                      {formatAddress(user.walletAddress || user.address)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyWalletAddress}
+                      className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      {copied ? (
+                        <Check className="w-3 h-3 text-green-600" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </header>
 
