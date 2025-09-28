@@ -15,7 +15,7 @@ export async function GET(
     }
 
     // Get merchant details
-    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
+    const merchant = await FirebaseService.getUserById(marketplace.merchantId)
     
     return NextResponse.json({
       marketplace: {
