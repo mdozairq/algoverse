@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AlgorandNFTService } from "@/lib/algorand/nft-service"
+import { AlgorandNFTService } from "@/lib/algorand"
 
 export async function POST(request: NextRequest) {
   try {

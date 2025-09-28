@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AlgorandNFTService, type NFTCreationParams } from "@/lib/algorand/nft-service"
+import { AlgorandNFTService, type NFTCreationParams } from "@/lib/algorand"
 import { verifyAuthToken } from "@/lib/auth/middleware"
 import { FirebaseService } from "@/lib/firebase/collections"
 
