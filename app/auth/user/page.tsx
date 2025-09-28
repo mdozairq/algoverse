@@ -11,31 +11,27 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
-import { peraWallet } from "@/lib/wallet/pera-wallet"
+import { useWallet } from "@/hooks/use-wallet"
+import { WalletStatus } from "@/components/wallet/wallet-status"
 
-// Client-side component that uses direct Pera Wallet connection
+// Client-side component that uses global wallet system
 function UserAuthContent() {
   const router = useRouter()
   const { connectWallet, loading, logout, disconnectWallet } = useAuth()
+  const { 
+    isConnected, 
+    isConnecting, 
+    account, 
+    connect: connectWalletService, 
+    disconnect: disconnectWalletService 
+  } = useWallet()
   const { toast } = useToast()
   const [authMethod, setAuthMethod] = useState<"pera" | "google">("pera")
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle")
-  const [accountAddress, setAccountAddress] = useState<string | null>(null)
-  
-  const isConnectedToPeraWallet = !!accountAddress
 
-  // Reconnect to the session when the component is mounted
+  // Check wallet connection on mount
   useEffect(() => {
-    peraWallet.reconnectSession().then((accounts) => {
-      // Setup the disconnect event listener
-      peraWallet.connector?.on("disconnect", handleDisconnectWalletClick)
-
-      if (accounts.length) {
-        setAccountAddress(accounts[0])
-      }
-    }).catch((error) => {
-      console.log("No existing Pera wallet session to reconnect")
-    })
+    // The wallet service automatically handles reconnection
+    // No need for manual reconnection logic
   }, [])
 
   // Clear any existing session when accessing user auth page
@@ -50,87 +46,68 @@ function UserAuthContent() {
     clearSession()
   }, [])
 
-  const handleConnectWalletClick = () => {
-    setConnectionStatus("connecting")
+  const handleConnectWalletClick = async () => {
+    try {
+      // Connect to wallet using the global wallet service
+      const walletAccount = await connectWalletService()
+      
+      // Connect wallet to auth system
+      await connectWallet(walletAccount.address)
 
-    peraWallet
-      .connect()
-      .then((newAccounts) => {
-        // Setup the disconnect event listener
-        peraWallet.connector?.on("disconnect", handleDisconnectWalletClick)
-
-        const accountAddress = newAccounts[0]
-        setAccountAddress(accountAddress)
-
-        console.log('Pera wallet connected:', accountAddress)
-
-        // Connect to auth system with Pera wallet address
-        connectWallet(accountAddress).then(() => {
-          setConnectionStatus("connected")
-
-          toast({
-            title: "Wallet Connected",
-            description: "Your Pera wallet has been connected successfully!",
-          })
-
-          // Redirect after success animation
-          setTimeout(() => {
-            router.replace("/dashboard/user")
-          }, 1500)
-        }).catch((error) => {
-          console.error("Auth connection failed:", error)
-          setConnectionStatus("idle")
-          toast({
-            title: "Authentication Failed",
-            description: "Failed to authenticate with the connected wallet.",
-            variant: "destructive",
-          })
-        })
+      toast({
+        title: "Wallet Connected",
+        description: "Your Pera wallet has been connected successfully!",
       })
-      .catch((error) => {
-        // You MUST handle the reject because once the user closes the modal, peraWallet.connect() promise will be rejected.
-        setConnectionStatus("idle")
-        
-        if (error?.data?.type !== "CONNECT_MODAL_CLOSED") {
-          console.error("Pera wallet connection failed:", error)
-          
-          let errorMessage = "Failed to connect Pera wallet. Please try again."
-          
-          if (error.message) {
-            if (error.message.includes("User rejected")) {
-              errorMessage = "Wallet connection was rejected. Please try again."
-            } else if (error.message.includes("Network error")) {
-              errorMessage = "Network error. Please check your connection and try again."
-            } else if (error.message.includes("not found") || error.message.includes("not installed")) {
-              errorMessage = "Pera Wallet not found. Please install Pera Wallet from the App Store or Google Play Store."
-            } else {
-              errorMessage = error.message
-            }
-          }
-          
-          toast({
-            title: "Connection Failed",
-            description: errorMessage,
-            variant: "destructive",
-          })
+
+      // Redirect after success animation
+      setTimeout(() => {
+        router.replace("/dashboard/user")
+      }, 1500)
+    } catch (error: any) {
+      console.error("Wallet connection failed:", error)
+      
+      let errorMessage = "Failed to connect wallet. Please try again."
+      
+      if (error.message) {
+        if (error.message.includes("User rejected")) {
+          errorMessage = "Wallet connection was rejected. Please try again."
+        } else if (error.message.includes("Network error")) {
+          errorMessage = "Network error. Please check your connection and try again."
+        } else if (error.message.includes("not found") || error.message.includes("not installed")) {
+          errorMessage = "Pera Wallet not found. Please install Pera Wallet from the App Store or Google Play Store."
+        } else {
+          errorMessage = error.message
         }
+      }
+      
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive",
       })
+    }
   }
 
-  const handleDisconnectWalletClick = () => {
-    disconnectWallet()
-    setAccountAddress(null)
-    setConnectionStatus("idle")
-    
-    toast({
-      title: "Wallet Disconnected",
-      description: "Your Pera wallet has been disconnected.",
-    })
+  const handleDisconnectWalletClick = async () => {
+    try {
+      // Disconnect from auth system (this will also disconnect wallet service)
+      await disconnectWallet()
+      
+      toast({
+        title: "Wallet Disconnected",
+        description: "Your Pera wallet has been disconnected.",
+      })
+    } catch (error: any) {
+      console.error("Disconnect failed:", error)
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect wallet properly.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleGoogleAuth = async () => {
-    setConnectionStatus("connecting")
-
     try {
       // TODO: Implement Google OAuth integration
       // For now, we'll simulate the process
@@ -139,11 +116,8 @@ function UserAuthContent() {
         description: "Google OAuth integration coming soon!",
         variant: "destructive",
       })
-      
-      setConnectionStatus("idle")
     } catch (error: any) {
       console.error("Google auth failed:", error)
-      setConnectionStatus("idle")
       
       toast({
         title: "Authentication Failed",
@@ -229,17 +203,17 @@ function UserAuthContent() {
                     </div>
 
                     <Button
-                      onClick={isConnectedToPeraWallet ? handleDisconnectWalletClick : handleConnectWalletClick}
-                      disabled={connectionStatus === "connecting" || loading}
+                      onClick={isConnected ? handleDisconnectWalletClick : handleConnectWalletClick}
+                      disabled={isConnecting || loading}
                       className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-full py-3 text-sm font-medium"
                       size="lg"
                     >
-                      {connectionStatus === "connecting" ? (
+                      {isConnecting ? (
                         <div className="flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                           CONNECTING...
                         </div>
-                      ) : isConnectedToPeraWallet ? (
+                      ) : isConnected ? (
                         <div className="flex items-center">
                           <Smartphone className="w-4 h-4 mr-2" />
                           DISCONNECT WALLET
@@ -251,6 +225,18 @@ function UserAuthContent() {
                         </div>
                       )}
                     </Button>
+
+                    {/* Wallet Status Display */}
+                    {isConnected && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
+                        className="mt-4"
+                      >
+                        <WalletStatus showDetails={true} showActions={false} />
+                      </motion.div>
+                    )}
 
                     <div className="text-center">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -287,21 +273,14 @@ function UserAuthContent() {
 
                     <Button
                       onClick={handleGoogleAuth}
-                      disabled={connectionStatus === "connecting" || loading}
+                      disabled={loading}
                       className="w-full bg-red-600 text-white hover:bg-red-700 rounded-full py-3 text-sm font-medium"
                       size="lg"
                     >
-                      {connectionStatus === "connecting" ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          CONNECTING...
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <Chrome className="w-4 h-4 mr-2" />
-                          SIGN IN WITH GOOGLE
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <Chrome className="w-4 h-4 mr-2" />
+                        SIGN IN WITH GOOGLE
+                      </div>
                     </Button>
 
                     <div className="text-center">
@@ -348,7 +327,7 @@ export default function UserAuthPage() {
             </div>
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Initializing wallet system...</p>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Initializing global wallet system...</p>
             </div>
           </div>
         </div>
