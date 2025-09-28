@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw, Trash2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw, Trash2, Store, Settings, BarChart3, Wallet, Gavel, Zap, ArrowRightLeft } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import Link from "next/link"
@@ -28,6 +30,8 @@ export default function MerchantDashboard() {
   const [marketplaces, setMarketplaces] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [selectedMarketplace, setSelectedMarketplace] = useState<any>(null)
+  const [marketplaceManagementTab, setMarketplaceManagementTab] = useState('overview')
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuth()
   const fetchDashboardData = async (isRefresh = false) => {
@@ -44,10 +48,13 @@ export default function MerchantDashboard() {
     }
 
     try {
+      // Use the user's ID directly as the merchant ID
+      const merchantId = user.userId
+
       const [eventsRes, marketplacesRes, analyticsRes] = await Promise.all([
-        fetch(`/api/events?merchantId=${user.userId}`),
-        fetch(`/api/marketplaces?merchantId=${user.userId}`),
-        fetch(`/api/analytics?merchantId=${user.userId}`)
+        fetch(`/api/events?merchantId=${merchantId}`),
+        fetch(`/api/marketplaces?merchantId=${merchantId}`),
+        fetch(`/api/analytics?merchantId=${merchantId}`)
       ])
 
       const [eventsData, marketplacesData, analyticsData] = await Promise.all([
@@ -617,79 +624,357 @@ export default function MerchantDashboard() {
             </TabsContent>
 
             <TabsContent value="marketplaces" className="space-y-4">
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">My Marketplaces</CardTitle>
-                  <CardDescription className="text-gray-600 dark:text-gray-400">
-                    Manage your marketplace applications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="space-y-4">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse">
-                          <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
-                          <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-600 rounded"></div>
-                        </div>
-                      ))}
+              {!selectedMarketplace ? (
+                // Marketplace List View
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-gray-900 dark:text-white">My Marketplaces</CardTitle>
+                        <CardDescription className="text-gray-600 dark:text-gray-400">
+                          Manage your independent NFT marketplaces
+                        </CardDescription>
+                      </div>
+                      <Link href="/dashboard/merchant/marketplaces/create-marketplace">
+                        <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Marketplace
+                        </Button>
+                      </Link>
                     </div>
-                  ) : marketplaces.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="text-gray-500 dark:text-gray-400 mb-4">
-                        <Plus className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse">
+                            <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
+                            <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : marketplaces.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Store className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No marketplaces yet</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          Create a marketplace to showcase your events and reach more customers
+                          Create your first independent NFT marketplace to showcase your events and reach more customers
                         </p>
-                        <Link href="/dashboard/merchant/create-marketplace">
+                        <Link href="/dashboard/merchant/marketplaces/create-marketplace">
                           <Button className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200">
                             <Plus className="w-4 h-4 mr-2" />
-                            Create Marketplace
+                            Create Your First Marketplace
                           </Button>
                         </Link>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {marketplaces.map((marketplace) => (
-                        <div
-                          key={marketplace.id}
-                          className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                              <Plus className="h-6 w-6 text-gray-400" />
-                            </div>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {marketplaces.map((marketplace) => (
+                          <Card key={marketplace.id} className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedMarketplace(marketplace)}>
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                  {marketplace.logo && (
+                                    <img src={marketplace.logo} alt={marketplace.businessName} className="w-10 h-10 rounded-full" />
+                                  )}
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900 dark:text-white">{marketplace.businessName}</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">{marketplace.category}</p>
+                                  </div>
+                                </div>
+                                <Badge 
+                                  className={
+                                    marketplace.status === "approved" 
+                                      ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                      : marketplace.status === "pending"
+                                      ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                      : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                  }
+                                >
+                                  {marketplace.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                                {marketplace.description}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="flex items-center space-x-1">
+                                    <Store className="h-3 w-3" />
+                                    <span>Active</span>
+                                  </span>
+                                  <span className="flex items-center space-x-1">
+                                    <Users className="h-3 w-3" />
+                                    <span>234 users</span>
+                                  </span>
+                                </div>
+                                <Button size="sm" variant="outline">
+                                  Manage
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                // Marketplace Management View
+                <div className="space-y-6">
+                  {/* Marketplace Header */}
+                  <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedMarketplace(null)}
+                          >
+                            ← Back to Marketplaces
+                          </Button>
+                          <div className="flex items-center space-x-3">
+                            {selectedMarketplace.logo && (
+                              <img src={selectedMarketplace.logo} alt={selectedMarketplace.businessName} className="w-12 h-12 rounded-full" />
+                            )}
                             <div>
-                              <h3 className="font-medium text-gray-900 dark:text-white">{marketplace.businessName}</h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{marketplace.category}</p>
+                              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedMarketplace.businessName}</h2>
+                              <p className="text-gray-600 dark:text-gray-400">{selectedMarketplace.description}</p>
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge 
-                              className={
-                                marketplace.status === "approved" 
-                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                  : marketplace.status === "pending"
-                                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
-                              }
-                            >
-                              {marketplace.status}
-                            </Badge>
-                            <Link href={`/dashboard/admin/marketplace/${marketplace.id}`}>
-                              <Button size="sm" variant="outline">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            className={
+                              selectedMarketplace.status === "approved" 
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : selectedMarketplace.status === "pending"
+                                ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                            }
+                          >
+                            {selectedMarketplace.status}
+                          </Badge>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Public
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Marketplace Management Tabs */}
+                  <Tabs value={marketplaceManagementTab} onValueChange={setMarketplaceManagementTab} className="space-y-4">
+                    <TabsList className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <TabsTrigger value="overview" className="flex items-center space-x-2">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Overview</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="mint" className="flex items-center space-x-2">
+                        <Store className="h-4 w-4" />
+                        <span>Mint</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="trade" className="flex items-center space-x-2">
+                        <Gavel className="h-4 w-4" />
+                        <span>Trade</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="swap" className="flex items-center space-x-2">
+                        <ArrowRightLeft className="h-4 w-4" />
+                        <span>Swap</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="analytics" className="flex items-center space-x-2">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Analytics</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="events" className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Events</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="settings" className="flex items-center space-x-2">
+                        <Settings className="h-4 w-4" />
+                        <span>Settings</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="overview" className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Mints</CardTitle>
+                            <Store className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">1,247</div>
+                            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">892</div>
+                            <p className="text-xs text-muted-foreground">+15.3% from last month</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Swaps</CardTitle>
+                            <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">156</div>
+                            <p className="text-xs text-muted-foreground">+8.7% from last month</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">45,678 ALGO</div>
+                            <p className="text-xs text-muted-foreground">+12.4% from last month</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="mint" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Mint Configuration</CardTitle>
+                          <CardDescription>Configure NFT minting settings for your marketplace</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Enable Minting</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Allow users to mint NFTs</p>
+                            </div>
+                            <Switch defaultChecked />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Auto Approve</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically approve minting requests</p>
+                            </div>
+                            <Switch />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Require KYC</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Require KYC verification for minting</p>
+                            </div>
+                            <Switch />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="trade" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Trade Configuration</CardTitle>
+                          <CardDescription>Configure auction and flash sale settings</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Enable Auctions</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Allow users to create auctions</p>
+                            </div>
+                            <Switch defaultChecked />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Enable Flash Sales</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Allow users to create flash sales</p>
+                            </div>
+                            <Switch defaultChecked />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="swap" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Swap Configuration</CardTitle>
+                          <CardDescription>Configure atomic swap settings</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Enable Swaps</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Allow users to create swap offers</p>
+                            </div>
+                            <Switch defaultChecked />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Require Approval</Label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Require manual approval for swaps</p>
+                            </div>
+                            <Switch />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="analytics" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Analytics Dashboard</CardTitle>
+                          <CardDescription>Performance insights for your marketplace</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-center py-8">
+                            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Analytics Coming Soon</h3>
+                            <p className="text-gray-600 dark:text-gray-400">Detailed analytics will be available here</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="events" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Marketplace Events</CardTitle>
+                          <CardDescription>Manage events for your marketplace</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-center py-8">
+                            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Events Coming Soon</h3>
+                            <p className="text-gray-600 dark:text-gray-400">Event management will be available here</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Marketplace Settings</CardTitle>
+                          <CardDescription>Configure your marketplace settings and preferences</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-center py-8">
+                            <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Settings Coming Soon</h3>
+                            <p className="text-gray-600 dark:text-gray-400">Advanced settings will be available here</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-4">
