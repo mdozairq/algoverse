@@ -2,52 +2,70 @@ import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
 import { requireRole } from "@/lib/auth/middleware"
 
-// GET /api/marketplaces/[id] - Get single marketplace
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// GET /api/marketplaces/[id] - Get specific marketplace
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const marketplaceId = params.id
-
-    if (!marketplaceId) {
-      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
-    }
-
-    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
+    const marketplace = await FirebaseService.getMarketplaceById(params.id)
+    
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ marketplace })
+    // Get merchant details
+    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
+    
+    return NextResponse.json({
+      marketplace: {
+        ...marketplace,
+        merchant: merchant ? {
+          id: merchant.id,
+          businessName: merchant.businessName,
+          email: merchant.email,
+          category: merchant.category
+        } : null
+      }
+    })
   } catch (error: any) {
     console.error("Error fetching marketplace:", error)
     return NextResponse.json({ error: "Failed to fetch marketplace" }, { status: 500 })
   }
 }
 
-// PUT /api/marketplaces/[id] - Update marketplace
-export const PUT = requireRole(["merchant", "admin"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
+// PUT /api/marketplaces/[id] - Update marketplace (merchant only)
+export const PUT = requireRole(["merchant"])(async (request: NextRequest) => {
   try {
-    const marketplaceData = await request.json()
-    const marketplaceId = params.id
+    const auth = (request as any).auth
+    const updateData = await request.json()
+    
+    // Extract ID from URL path
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const marketplaceId = pathParts[pathParts.length - 1]
 
-    if (!marketplaceId) {
-      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
-    }
-
-    // Get the marketplace first to check if it exists
+    // Get marketplace to verify ownership
     const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
+    // Get merchant to verify ownership
+    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    if (!merchant || merchant.id !== marketplace.merchantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
     // Update marketplace
     await FirebaseService.updateMarketplace(marketplaceId, {
-      ...marketplaceData,
-      updatedAt: new Date(),
+      ...updateData,
+      updatedAt: new Date()
     })
 
     return NextResponse.json({
       success: true,
-      message: "Marketplace updated successfully",
+      message: "Marketplace updated successfully"
     })
   } catch (error: any) {
     console.error("Error updating marketplace:", error)
@@ -55,19 +73,26 @@ export const PUT = requireRole(["merchant", "admin"])(async (request: NextReques
   }
 })
 
-// DELETE /api/marketplaces/[id] - Delete marketplace
-export const DELETE = requireRole(["merchant"])(async (request: NextRequest, { params }: { params: { id: string } }) => {
+// DELETE /api/marketplaces/[id] - Delete marketplace (merchant only)
+export const DELETE = requireRole(["merchant"])(async (request: NextRequest) => {
   try {
-    const marketplaceId = params.id
+    const auth = (request as any).auth
+    
+    // Extract ID from URL path
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/')
+    const marketplaceId = pathParts[pathParts.length - 1]
 
-    if (!marketplaceId) {
-      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
-    }
-
-    // Get the marketplace first to check if it exists
+    // Get marketplace to verify ownership
     const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
     if (!marketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
+    }
+
+    // Get merchant to verify ownership
+    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    if (!merchant || merchant.id !== marketplace.merchantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     // Delete marketplace
@@ -75,7 +100,7 @@ export const DELETE = requireRole(["merchant"])(async (request: NextRequest, { p
 
     return NextResponse.json({
       success: true,
-      message: "Marketplace deleted successfully",
+      message: "Marketplace deleted successfully"
     })
   } catch (error: any) {
     console.error("Error deleting marketplace:", error)
