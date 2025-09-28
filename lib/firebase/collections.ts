@@ -86,6 +86,101 @@ export interface Marketplace {
   status: "draft" | "pending" | "approved" | "rejected"
   createdAt: Date
   updatedAt?: Date
+  // Enhanced marketplace features
+  configuration?: MarketplaceConfiguration
+  analytics?: MarketplaceAnalytics
+  customDomain?: string
+  isActive: boolean
+}
+
+export interface MarketplaceConfiguration {
+  mintingConfig: {
+    enabled: boolean
+    autoApprove: boolean
+    requireKYC: boolean
+    maxSupply: number
+    defaultPrice: number
+    currency: 'ALGO' | 'USDC'
+  }
+  tradingConfig: {
+    auctionEnabled: boolean
+    flashSaleEnabled: boolean
+    auctionDuration: number // in hours
+    flashSaleDuration: number // in hours
+    minBidIncrement: number
+    reservePrice: boolean
+  }
+  swapConfig: {
+    enabled: boolean
+    allowPartialSwaps: boolean
+    requireApproval: boolean
+    maxSwapValue: number
+  }
+  nftConfig: {
+    transferable: boolean
+    burnable: boolean
+    pausable: boolean
+    royaltyPercentage: number
+  }
+  addressConfig: {
+    managerAddress: string
+    reserveAddress: string
+    freezeAddress: string
+    clawbackAddress: string
+  }
+}
+
+export interface MarketplaceAnalytics {
+  totalMints: number
+  totalTrades: number
+  totalSwaps: number
+  totalRevenue: number
+  activeUsers: number
+  monthlyStats: {
+    mints: number
+    trades: number
+    revenue: number
+    users: number
+  }
+  topNFTs: Array<{
+    assetId: number
+    name: string
+    volume: number
+    trades: number
+  }>
+}
+
+export interface MarketplaceEvent {
+  id: string
+  marketplaceId: string
+  title: string
+  description: string
+  startDate: Date
+  endDate: Date
+  type: 'mint' | 'auction' | 'flash_sale' | 'swap'
+  status: 'upcoming' | 'active' | 'ended' | 'cancelled'
+  featured: boolean
+  imageUrl?: string
+  metadata: Record<string, any>
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface MarketplacePage {
+  id: string
+  marketplaceId: string
+  merchantId: string
+  type: 'mint' | 'trade' | 'swap' | 'analytics' | 'events' | 'custom'
+  title: string
+  description?: string
+  content: Record<string, any>
+  isActive: boolean
+  order: number
+  slug: string
+  seoTitle?: string
+  seoDescription?: string
+  createdAt: Date
+  updatedAt?: Date
 }
 
 // Real Firestore collection services
@@ -309,6 +404,135 @@ export const marketplacesCollection = {
   },
 }
 
+export const marketplaceEventsCollection = {
+  async create(eventData: Omit<MarketplaceEvent, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("marketplace_events").add({
+      ...eventData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<MarketplaceEvent | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
+    const doc = await adminDb.collection("marketplace_events").doc(id).get()
+    if (doc.exists) {
+      return { ...doc.data(), id } as MarketplaceEvent
+    }
+    return null
+  },
+
+  async getByMarketplace(marketplaceId: string): Promise<MarketplaceEvent[]> {
+    const snapshot = await adminDb.collection("marketplace_events")
+      .where("marketplaceId", "==", marketplaceId)
+      .orderBy("startDate", "asc")
+      .get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as MarketplaceEvent)
+  },
+
+  async getUpcoming(marketplaceId: string): Promise<MarketplaceEvent[]> {
+    const now = new Date()
+    const snapshot = await adminDb.collection("marketplace_events")
+      .where("marketplaceId", "==", marketplaceId)
+      .where("status", "==", "upcoming")
+      .where("startDate", ">", now)
+      .orderBy("startDate", "asc")
+      .get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as MarketplaceEvent)
+  },
+
+  async getActive(marketplaceId: string): Promise<MarketplaceEvent[]> {
+    const now = new Date()
+    const snapshot = await adminDb.collection("marketplace_events")
+      .where("marketplaceId", "==", marketplaceId)
+      .where("status", "==", "active")
+      .where("startDate", "<=", now)
+      .where("endDate", ">=", now)
+      .orderBy("startDate", "asc")
+      .get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as MarketplaceEvent)
+  },
+
+  async update(id: string, updates: Partial<MarketplaceEvent>): Promise<void> {
+    await adminDb.collection("marketplace_events").doc(id).update({
+      ...updates,
+      updatedAt: new Date(),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("marketplace_events").doc(id).delete()
+  },
+}
+
+export const marketplacePagesCollection = {
+  async create(pageData: Omit<MarketplacePage, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("marketplace_pages").add({
+      ...pageData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<MarketplacePage | null> {
+    const doc = await adminDb.collection("marketplace_pages").doc(id).get()
+    if (!doc.exists) return null
+    return { id: doc.id, ...doc.data() } as MarketplacePage
+  },
+
+  async getByMarketplace(marketplaceId: string): Promise<MarketplacePage[]> {
+    const snapshot = await adminDb
+      .collection("marketplace_pages")
+      .where("marketplaceId", "==", marketplaceId)
+      .orderBy("order", "asc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as MarketplacePage[]
+  },
+
+  async getByType(marketplaceId: string, type: string): Promise<MarketplacePage[]> {
+    const snapshot = await adminDb
+      .collection("marketplace_pages")
+      .where("marketplaceId", "==", marketplaceId)
+      .where("type", "==", type)
+      .where("isActive", "==", true)
+      .orderBy("order", "asc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as MarketplacePage[]
+  },
+
+  async getBySlug(marketplaceId: string, slug: string): Promise<MarketplacePage | null> {
+    const snapshot = await adminDb
+      .collection("marketplace_pages")
+      .where("marketplaceId", "==", marketplaceId)
+      .where("slug", "==", slug)
+      .where("isActive", "==", true)
+      .limit(1)
+      .get()
+    
+    if (snapshot.empty) return null
+    const doc = snapshot.docs[0]
+    return { id: doc.id, ...doc.data() } as MarketplacePage
+  },
+
+  async update(id: string, updates: Partial<MarketplacePage>): Promise<void> {
+    await adminDb.collection("marketplace_pages").doc(id).update(updates)
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("marketplace_pages").doc(id).delete()
+  },
+}
+
 // FirebaseService class for API routes
 export class FirebaseService {
   static async createUser(userData: Omit<User, "id" | "createdAt">): Promise<string> {
@@ -483,5 +707,34 @@ export class FirebaseService {
 
   static async deleteMarketplace(id: string): Promise<void> {
     return marketplacesCollection.delete(id)
+  }
+
+  // Marketplace Pages methods
+  static async createMarketplacePage(pageData: Omit<MarketplacePage, "id" | "createdAt">): Promise<string> {
+    return marketplacePagesCollection.create(pageData)
+  }
+
+  static async getMarketplacePageById(id: string): Promise<MarketplacePage | null> {
+    return marketplacePagesCollection.getById(id)
+  }
+
+  static async getMarketplacePages(marketplaceId: string): Promise<MarketplacePage[]> {
+    return marketplacePagesCollection.getByMarketplace(marketplaceId)
+  }
+
+  static async getMarketplacePagesByType(marketplaceId: string, type: string): Promise<MarketplacePage[]> {
+    return marketplacePagesCollection.getByType(marketplaceId, type)
+  }
+
+  static async getMarketplacePageBySlug(marketplaceId: string, slug: string): Promise<MarketplacePage | null> {
+    return marketplacePagesCollection.getBySlug(marketplaceId, slug)
+  }
+
+  static async updateMarketplacePage(id: string, updates: Partial<MarketplacePage>): Promise<void> {
+    return marketplacePagesCollection.update(id, updates)
+  }
+
+  static async deleteMarketplacePage(id: string): Promise<void> {
+    return marketplacePagesCollection.delete(id)
   }
 }
