@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { disconnectPeraWallet } from "@/lib/wallet/pera-wallet"
+import { walletService } from "@/lib/wallet/wallet-service"
 
 interface User {
   userId: string
@@ -20,7 +20,7 @@ interface AuthContextType {
   loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<User>
   registerMerchant: (data: any) => Promise<void>
   logout: () => Promise<void>
-  disconnectWallet: () => void
+  disconnectWallet: () => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -123,14 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const disconnectWallet = () => {
-    disconnectPeraWallet()
+  const disconnectWallet = async () => {
+    try {
+      await walletService.disconnect()
+    } catch (error) {
+      console.error("Wallet disconnect failed:", error)
+    }
   }
 
   const logout = async () => {
     try {
-      // Disconnect Pera wallet if connected
-      disconnectWallet()
+      // Disconnect wallet if connected
+      await disconnectWallet()
       
       // Clear user state immediately for better UX
       setUser(null)
@@ -140,7 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetch("/api/auth/logout", { method: "POST" })
     } catch (error) {
       console.error("Logout failed:", error)
-      // User state is already cleared above
+      // Even if logout fails, clear user state for security
+      setUser(null)
+      setLoading(false)
     }
   }
 

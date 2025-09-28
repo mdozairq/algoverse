@@ -13,6 +13,13 @@ export interface User {
   isVerified?: boolean
   uid?: string
   password?: string
+  
+  // Merchant-specific fields (only present when role === "merchant")
+  businessName?: string
+  category?: string
+  description?: string
+  isApproved?: boolean
+  status?: "pending" | "approved" | "rejected"
 }
 
 export interface Event {
@@ -224,6 +231,33 @@ export const usersCollection = {
 
   async update(id: string, updates: Partial<User>): Promise<void> {
     await adminDb.collection("users").doc(id).update(updates)
+  },
+
+  async getByRole(role: string): Promise<User[]> {
+    const snapshot = await adminDb.collection("users").where("role", "==", role).get()
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as User[]
+  },
+
+  async getByRoleAndStatus(role: string, status: string): Promise<User[]> {
+    const snapshot = await adminDb.collection("users")
+      .where("role", "==", role)
+      .where("status", "==", status)
+      .get()
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as User[]
+  },
+
+  async getAll(): Promise<User[]> {
+    const snapshot = await adminDb.collection("users").get()
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as User[]
   },
 }
 
@@ -555,6 +589,47 @@ export class FirebaseService {
     return usersCollection.update(id, updates)
   }
 
+  // Unified methods for merchants (now part of users collection)
+  static async getMerchants(): Promise<User[]> {
+    return usersCollection.getByRole("merchant")
+  }
+
+  static async getApprovedMerchants(): Promise<User[]> {
+    return usersCollection.getByRoleAndStatus("merchant", "approved")
+  }
+
+  static async getPendingMerchants(): Promise<User[]> {
+    return usersCollection.getByRoleAndStatus("merchant", "pending")
+  }
+
+  static async createMerchant(merchantData: Omit<User, "id" | "createdAt" | "role">): Promise<string> {
+    const userData = {
+      ...merchantData,
+      role: "merchant" as const,
+      isApproved: false,
+      status: "pending" as const,
+      isVerified: false
+    }
+    return usersCollection.create(userData)
+  }
+
+  static async approveMerchant(id: string): Promise<void> {
+    return usersCollection.update(id, {
+      isApproved: true,
+      status: "approved",
+      isVerified: true,
+      updatedAt: new Date()
+    })
+  }
+
+  static async rejectMerchant(id: string): Promise<void> {
+    return usersCollection.update(id, {
+      isApproved: false,
+      status: "rejected",
+      updatedAt: new Date()
+    })
+  }
+
   static async createEvent(eventData: Omit<Event, "id" | "createdAt">): Promise<string> {
     return eventsCollection.create(eventData)
   }
@@ -607,29 +682,7 @@ export class FirebaseService {
     return nftsCollection.update(id, updates)
   }
 
-  static async createMerchant(merchantData: Omit<Merchant, "id" | "createdAt">): Promise<string> {
-    return merchantsCollection.create(merchantData)
-  }
-
-  static async getMerchantById(id: string): Promise<Merchant | null> {
-    return merchantsCollection.getById(id)
-  }
-
-  static async getPendingMerchants(): Promise<Merchant[]> {
-    return merchantsCollection.getPending()
-  }
-
-  static async getApprovedMerchants(): Promise<Merchant[]> {
-    return merchantsCollection.getApproved()
-  }
-
-  static async getAllMerchants(): Promise<Merchant[]> {
-    return merchantsCollection.getAll()
-  }
-
-  static async updateMerchant(id: string, updates: Partial<Merchant>): Promise<void> {
-    return merchantsCollection.update(id, updates)
-  }
+  // Legacy merchant methods removed - use unified methods above
 
   // Additional methods for events
   static async getFeaturedEvents(limit = 10): Promise<Event[]> {
@@ -642,11 +695,14 @@ export class FirebaseService {
     return snapshot.docs.slice(0, limit).map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   }
 
-  static async getMerchantByUid(uid: string): Promise<Merchant | null> {
-    const snapshot = await adminDb.collection("merchants").where("uid", "==", uid).get()
+  static async getMerchantByUid(uid: string): Promise<User | null> {
+    const snapshot = await adminDb.collection("users")
+      .where("uid", "==", uid)
+      .where("role", "==", "merchant")
+      .get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
-      return { ...doc.data(), id: doc.id } as Merchant
+      return { ...doc.data(), id: doc.id } as User
     }
     return null
   }
