@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AlgorandNFTService } from "../../../../lib/algorand"
-import { verifyAuthToken } from "../../../../lib/auth/middleware"
-import { FirebaseService } from "../../../../lib/firebase/collections"
-import { adminDb } from "../../../../lib/firebase/admin"
+import { AlgorandNFTService } from "@/lib/algorand"
+import { verifyAuthToken } from "@/lib/auth/middleware"
+import { FirebaseService } from "@/lib/firebase/collections"
+import { adminDb } from "@/lib/firebase/admin"
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {

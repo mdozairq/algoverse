@@ -164,9 +164,6 @@ temp/
 firebase-debug.log
 firestore-debug.log
 
-# Algorand
-algorand/
-*.wallet
 
 # Package managers
 pnpm-lock.yaml

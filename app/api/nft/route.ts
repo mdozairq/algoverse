@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { FirebaseService } from "@/lib/firebase/collections"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/nft - Get NFTs with filtering
 export async function GET(request: NextRequest) {
   try {
