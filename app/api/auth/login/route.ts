@@ -20,30 +20,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let userData = null
-
-    if (role === "merchant") {
-      // For merchant login, check merchants collection first
-      const merchants = await FirebaseService.getApprovedMerchants()
-      userData = merchants.find((m) => m.email === email)
-      
-      // If not found in merchants, check users collection
-      if (!userData) {
-        userData = await FirebaseService.getUserByEmail(email)
-      }
-    } else {
-      userData = await FirebaseService.getUserByEmail(email)
-    }
+    // Unified approach: all users are in the users collection
+    let userData = await FirebaseService.getUserByEmail(email)
 
     if (!userData) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
+    // Check role-specific verification
     if (role === "merchant") {
-      // Check if user is verified (for users collection) or if merchant is approved (for merchants collection)
-      const isVerified = (userData as any).isVerified || (userData as any).isApproved
-      if (!isVerified) {
+      // For merchants, check if they are approved
+      if (!userData.isApproved || userData.status !== "approved") {
         return NextResponse.json({ error: "Account pending approval" }, { status: 403 })
+      }
+    } else if (role === "user") {
+      // For regular users, check if they are verified
+      if (!userData.isVerified) {
+        return NextResponse.json({ error: "Account not verified" }, { status: 403 })
       }
     }
 
@@ -63,16 +56,16 @@ export async function POST(request: NextRequest) {
 
     const jwtPayload = {
       userId: userData.id || email,
-      email: (userData as any).email,
-      role: role === "merchant" ? "merchant" : ((userData as any).role || role || "user"),
+      email: userData.email || email,
+      role: userData.role || role || "user",
       walletAddress: userData.walletAddress,
-      isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
-      uid: (userData as any).uid,
+      isVerified: userData.isVerified || userData.isApproved || userData.role === "admin",
+      uid: userData.uid,
     }
 
     // Debug logging for merchant login
     if (role === "merchant") {
-      console.log("Merchant login - User data role:", (userData as any).role)
+      console.log("Merchant login - User data role:", userData.role)
       console.log("Merchant login - Requested role:", role)
       console.log("Merchant login - Final JWT role:", jwtPayload.role)
     }
