@@ -28,6 +28,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
       }
       user = { ...newUser, id: userId }
+    } else {
+      // Update existing user's wallet address if not already set
+      if (!user.walletAddress) {
+        await FirebaseService.updateUser(user.id, { 
+          walletAddress: address,
+          updatedAt: new Date()
+        })
+        user.walletAddress = address
+      }
     }
 
     // Generate JWT token using the existing auth system
