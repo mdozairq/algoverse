@@ -23,10 +23,13 @@ export async function POST(request: NextRequest) {
     let userData = null
 
     if (role === "merchant") {
-      userData = await FirebaseService.getUserByEmail(email)
+      // For merchant login, check merchants collection first
+      const merchants = await FirebaseService.getApprovedMerchants()
+      userData = merchants.find((m) => m.email === email)
+      
+      // If not found in merchants, check users collection
       if (!userData) {
-        const merchants = await FirebaseService.getApprovedMerchants()
-        userData = merchants.find((m) => m.email === email)
+        userData = await FirebaseService.getUserByEmail(email)
       }
     } else {
       userData = await FirebaseService.getUserByEmail(email)
@@ -61,10 +64,17 @@ export async function POST(request: NextRequest) {
     const jwtPayload = {
       userId: userData.id || email,
       email: (userData as any).email,
-      role: (userData as any).role || role || "user",
+      role: role === "merchant" ? "merchant" : ((userData as any).role || role || "user"),
       walletAddress: userData.walletAddress,
       isVerified: (userData as any).isVerified || (userData as any).isApproved || (userData as any).role === "admin",
       uid: (userData as any).uid,
+    }
+
+    // Debug logging for merchant login
+    if (role === "merchant") {
+      console.log("Merchant login - User data role:", (userData as any).role)
+      console.log("Merchant login - Requested role:", role)
+      console.log("Merchant login - Final JWT role:", jwtPayload.role)
     }
 
     const token = await signJWT(jwtPayload)
