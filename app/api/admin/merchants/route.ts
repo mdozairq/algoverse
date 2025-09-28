@@ -17,11 +17,11 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
       merchants = await FirebaseService.getApprovedMerchants()
     } else if (status === 'rejected') {
       // Get all merchants and filter for rejected ones
-      const allMerchants = await FirebaseService.getAllMerchants()
+      const allMerchants = await FirebaseService.getMerchants()
       merchants = allMerchants.filter(merchant => merchant.status === 'rejected')
     } else {
       // Get all merchants for 'all' status
-      merchants = await FirebaseService.getAllMerchants()
+      merchants = await FirebaseService.getMerchants()
     }
     
     return NextResponse.json({ merchants })
@@ -37,7 +37,7 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
     const { merchantId, approved } = await request.json()
 
     // Resolve the correct document ID. merchantId may be a doc ID or a UID from older data.
-    let target = await FirebaseService.getMerchantById(merchantId)
+    let target = await FirebaseService.getUserById(merchantId)
     if (!target) {
       // Fallback: try by UID
       const byUid = await FirebaseService.getMerchantByUid(merchantId)
@@ -54,7 +54,7 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
     const newStatus = approved ? 'approved' : 'rejected'
     
     // Update merchant verification status with new status field
-    await FirebaseService.updateMerchant(target.id, {
+    await FirebaseService.updateUser(target.id, {
       isApproved: approved,
       status: newStatus,
       updatedAt: new Date(),
