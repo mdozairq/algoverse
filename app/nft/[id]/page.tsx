@@ -481,7 +481,12 @@ export default function NFTDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <NFTLifecycleTimeline currentNftId={nft.id} />
+                  <NFTLifecycleTimeline 
+                    assetId={nft.assetId || 0} 
+                    eventId={nft.eventId || ''} 
+                    userAddress={nft.owner || ''} 
+                    metadata={nft.metadata} 
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

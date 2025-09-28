@@ -89,7 +89,7 @@ export default function NFTManagementPage() {
       const metadata = {
         name: `${event.title} Ticket`,
         description: `NFT ticket for ${event.title} at ${event.location}`,
-        image: event.imageUrl || '/placeholder-ticket.jpg',
+        image: (event as any).imageUrl || '/placeholder-ticket.jpg',
         attributes: [
           { trait_type: "Event", value: event.title },
           { trait_type: "Date", value: event.date },

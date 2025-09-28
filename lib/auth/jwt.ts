@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from "jose"
+import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from "jose"
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
@@ -12,7 +12,7 @@ export interface JWTPayload {
 }
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
-  return await new SignJWT(payload)
+  return await new SignJWT(payload as unknown as JoseJWTPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -22,7 +22,7 @@ export async function signJWT(payload: JWTPayload): Promise<string> {
 export async function verifyJWT(token: string): Promise<JWTPayload> {
   try {
     const { payload } = await jwtVerify(token, secret)
-    return payload as JWTPayload
+    return payload as unknown as JWTPayload
   } catch (error) {
     console.error("JWT verification failed:", error)
     throw error
