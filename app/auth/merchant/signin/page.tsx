@@ -14,16 +14,16 @@ import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { getPeraWalletInstance } from "@/lib/wallet/pera-wallet"
+import { useWallet } from "@/hooks/use-wallet"
 
 type LoginStep = 'credentials' | 'wallet'
 
 export default function MerchantLoginPage() {
   const router = useRouter()
   const { loginWithEmail, connectWallet, loading, logout } = useAuth()
+  const { connect: connectWalletService, isConnecting: walletConnecting } = useWallet()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState<LoginStep>('credentials')
-  const [walletConnecting, setWalletConnecting] = useState(false)
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null)
   const [formData, setFormData] = useState({
     email: "",
@@ -87,22 +87,12 @@ export default function MerchantLoginPage() {
   }
 
   const handleWalletConnect = async () => {
-    setWalletConnecting(true)
-    
     try {
-      // Check if Pera Wallet is installed
-      if (!getPeraWalletInstance()) {
-        throw new Error("Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store.")
-      }
-
-      // Connect to Pera Wallet
-      const peraWallet = getPeraWalletInstance()
-      const peraAccount = await peraWallet.connect()
+      // Connect to wallet using the global wallet service
+      const walletAccount = await connectWalletService()
       
-      const address = Array.isArray(peraAccount) ? peraAccount[0] : peraAccount
-
       // Connect wallet to auth system
-      await connectWallet(address)
+      await connectWallet(walletAccount.address)
 
       toast({
         title: "Login Complete",
@@ -135,8 +125,6 @@ export default function MerchantLoginPage() {
         description: errorMessage,
         variant: "destructive",
       })
-    } finally {
-      setWalletConnecting(false)
     }
   }
 
