@@ -226,7 +226,7 @@ export const usersCollection = {
   },
 
   async getByAddress(address: string): Promise<User | null> {
-    const snapshot = await adminDb.collection("users").where("address", "==", address).get()
+    const snapshot = await adminDb.collection("users").where("walletAddress", "==", address).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
       return { ...doc.data(), id: doc.id } as User
@@ -392,6 +392,15 @@ export const merchantsCollection = {
 
   async getByEmail(email: string): Promise<Merchant | null> {
     const snapshot = await adminDb.collection("merchants").where("email", "==", email).get()
+    if (snapshot.docs.length > 0) {
+      const doc = snapshot.docs[0]
+      return { ...doc.data(), id: doc.id } as Merchant
+    }
+    return null
+  },
+
+  async getByAddress(address: string): Promise<Merchant | null> {
+    const snapshot = await adminDb.collection("merchants").where("walletAddress", "==", address).get()
     if (snapshot.docs.length > 0) {
       const doc = snapshot.docs[0]
       return { ...doc.data(), id: doc.id } as Merchant
@@ -604,6 +613,14 @@ export class FirebaseService {
 
   static async updateUser(id: string, updates: Partial<User>): Promise<void> {
     return usersCollection.update(id, updates)
+  }
+
+  static async getMerchantByAddress(address: string): Promise<Merchant | null> {
+    return merchantsCollection.getByAddress(address)
+  }
+
+  static async updateMerchantAddress(id: string, updates: Partial<Merchant>): Promise<void> {
+    return merchantsCollection.update(id, updates)
   }
 
   static async getMerchants(): Promise<Merchant[]> {
