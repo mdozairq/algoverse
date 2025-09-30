@@ -88,7 +88,7 @@ export default function MerchantAuthPage() {
         businessName: formData.businessName,
         description: formData.description,
         category: formData.category,
-        walletAddress: formData.walletAddress,
+        // walletAddress: formData.walletAddress,
       })
 
       toast({
@@ -312,7 +312,7 @@ export default function MerchantAuthPage() {
                             className="rounded-full h-12 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400"
                           />
                         </div>
-                        <div>
+                        {/* <div>
                           <Label
                             htmlFor="walletAddress"
                             className="text-sm font-medium text-gray-900 dark:text-gray-300"
@@ -329,7 +329,7 @@ export default function MerchantAuthPage() {
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                             This wallet will receive payments from NFT sales
                           </p>
-                        </div>
+                        </div> */}
                       </div>
                       <div className="flex flex-col sm:flex-row gap-4">
                         <Button
