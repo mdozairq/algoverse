@@ -8,9 +8,9 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
-    
+
     let merchants = []
-    
+
     if (status === 'pending') {
       merchants = await FirebaseService.getPendingMerchants()
     } else if (status === 'approved') {
@@ -23,7 +23,7 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
       // Get all merchants for 'all' status
       merchants = await FirebaseService.getMerchants()
     }
-    
+
     return NextResponse.json({ merchants })
   } catch (error: any) {
     console.error("Error fetching merchants:", error)
@@ -50,37 +50,12 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
     }
 
-    // Determine the new status
-    const newStatus = approved ? 'approved' : 'rejected'
-    
+
     // Update merchant verification status with new status field
-    await FirebaseService.updateUser(target.id, {
-      isApproved: approved,
-      status: newStatus,
-      updatedAt: new Date(),
-    })
-
-    // Update the user's verification status if approved
-    if (approved && target.uid) {
-      const user = await FirebaseService.getUserByUid(target.uid)
-      if (user) {
-        await FirebaseService.updateUser(user.id, {
-          isVerified: true
-        })
-      }
-    }
-
-    // Update user custom claims if approved
-    if (approved && target.uid) {
-      try {
-        await adminAuth.setCustomUserClaims(target.uid, {
-          role: "merchant",
-          verified: true,
-        })
-      } catch (e) {
-        // In local/mock environments, Admin Auth may not be fully configured.
-        console.warn("Skipping setCustomUserClaims due to admin auth config:", e)
-      }
+    if (approved) {
+      await FirebaseService.approveMerchant(target.id)
+    } else {
+      await FirebaseService.rejectMerchant(target.id)
     }
 
     return NextResponse.json({
