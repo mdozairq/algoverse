@@ -3,6 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { walletService } from "@/lib/wallet/wallet-service"
+import { Merchant } from "../firebase/collections"
 
 interface User {
   userId: string
@@ -16,7 +17,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  connectWallet: (address: string) => Promise<void>
+  connectWallet: (address: string, role: string, merchantData?: Merchant) => Promise<void>
   loginWithEmail: (email: string, password: string, role?: string, adminKey?: string) => Promise<User>
   registerMerchant: (data: any) => Promise<void>
   logout: () => Promise<void>
@@ -47,13 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const connectWallet = async (address: string) => {
+  const connectWallet = async (address: string, role: string = "user", merchantData?: Merchant) => {
     setLoading(true)
     try {
       const response = await fetch("/api/auth/wallet-connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address, role, merchantData }),
       })
 
       if (!response.ok) {
