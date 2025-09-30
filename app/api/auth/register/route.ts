@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
     }
 
-    const existingUser = await FirebaseService.getUserByEmail(email)
+    const existingUser = await FirebaseService.getUserByEmail(email, role)
     if (existingUser) {
       return NextResponse.json({ error: "User already exists with this email" }, { status: 400 })
     }
@@ -31,19 +31,22 @@ export async function POST(request: NextRequest) {
         category: Array.isArray(category) ? category[0] : category || "Other",
         walletAddress: walletAddress || "",
         isApproved: false,
+        isVerified: false,
+        uid: userId,
+        name: displayName || "",
+        password: hashedPassword,
+      })
+    } else{
+      await FirebaseService.createUser({
+        email,
+        password: hashedPassword,
+        name: displayName || "",
+        role: role || "user",
+        walletAddress: walletAddress || "",
+        isVerified: false,
         uid: userId,
       })
-    } 
-    
-    await FirebaseService.createUser({
-      email,
-      password: hashedPassword,
-      name: displayName || "",
-      role: role || "user",
-      walletAddress: walletAddress || "",
-      isVerified: false,
-      uid: userId,
-    })
+    }
     
     return NextResponse.json({
       success: true,
