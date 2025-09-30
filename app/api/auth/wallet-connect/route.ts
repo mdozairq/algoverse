@@ -4,15 +4,49 @@ import { signJWT } from "@/lib/auth/jwt"
 
 export async function POST(request: NextRequest) {
   try {
-    const { address } = await request.json()
+    const { address, role, merchantData } = await request.json()
+    let user: any = null
 
     if (!address) {
       return NextResponse.json({ error: "Wallet address is required" }, { status: 400 })
     }
 
-    // Check if user exists with this address
-    let user = await FirebaseService.getUserByAddress(address)
-    
+    if (role === "merchant") {
+      user = await FirebaseService.getMerchantByAddress(address)
+
+      if (!user) {
+        await FirebaseService.updateMerchantAddress(merchantData.userId, {
+          walletAddress: address,
+        })
+        user = await FirebaseService.getMerchantByAddress(address)
+      }
+
+      // return response instead of raw user
+      const token = await signJWT({
+        userId: user.id,
+        email: user?.email || "",
+        role: user.role,
+        walletAddress: user.walletAddress,
+        isVerified: user.isVerified || false,
+      })
+
+      const response = NextResponse.json({
+        success: true,
+        user,
+      })
+
+      response.cookies.set("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60,
+      })
+
+      return response
+    } else {
+      user = await FirebaseService.getUserByAddress(address)
+    }
+
     if (!user) {
       // Create new user with wallet address
       const newUser = {
@@ -22,7 +56,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
       }
-      
+
       const userId = await FirebaseService.createUser(newUser)
       if (!userId) {
         return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
@@ -31,30 +65,29 @@ export async function POST(request: NextRequest) {
     } else {
       // Update existing user's wallet address if not already set
       if (!user.walletAddress) {
-        await FirebaseService.updateUser(user.id, { 
+        await FirebaseService.updateUser(user.id, {
           walletAddress: address,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         user.walletAddress = address
       }
     }
 
-    // Generate JWT token using the existing auth system
+    // Generate JWT token
     const token = await signJWT({
       userId: user.id,
-      email: user.email || '',
+      email: user?.email || "",
       role: user.role,
-      walletAddress: user.address,
-      isVerified: user.isVerified || false
+      walletAddress: user.walletAddress,
+      isVerified: user.isVerified || false,
     })
 
-    // Set cookie
     const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
-        email: user.email,
-        name: user.name,
+        email: user.email || "",
+        name: user.name || "",
         role: user.role,
         walletAddress: user.walletAddress,
         isVerified: user.isVerified,
@@ -63,19 +96,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    response.cookies.set('auth-token', token, {
+    response.cookies.set("auth-token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60,
     })
 
     return response
   } catch (error: any) {
     console.error("Wallet connect error:", error)
-    return NextResponse.json({ 
-      error: "Failed to connect wallet",
-      details: error.message 
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to connect wallet",
+        details: error.message,
+      },
+      { status: 500 }
+    )
   }
 }
