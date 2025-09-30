@@ -224,7 +224,7 @@ export function WalletConnect() {
       console.log('Pera account address:', address, 'Type:', typeof address)
 
       // Connect to auth system with Pera wallet address
-      await authConnectWallet(address)
+      await authConnectWallet(address, "user")
 
       setConnectionStatus("connected")
 
