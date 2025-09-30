@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Unified approach: all users are in the users collection
-    let userData = await FirebaseService.getUserByEmail(email)
+    let userData = await FirebaseService.getUserByEmail(email, role)
 
     if (!userData) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
