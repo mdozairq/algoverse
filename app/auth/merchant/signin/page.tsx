@@ -21,7 +21,7 @@ type LoginStep = 'credentials' | 'wallet'
 export default function MerchantLoginPage() {
   const router = useRouter()
   const { loginWithEmail, connectWallet, loading, logout } = useAuth()
-  const { connect: connectWalletService, isConnecting: walletConnecting } = useWallet()
+  const { connect: connectWalletService, isConnecting: walletConnecting, disconnect } = useWallet()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState<LoginStep>('credentials')
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null)
@@ -34,6 +34,7 @@ export default function MerchantLoginPage() {
   useEffect(() => {
     const clearSession = async () => {
       try {
+        await disconnect()
         await logout()
       } catch (error) {
         console.log("No existing session to clear")
@@ -92,7 +93,7 @@ export default function MerchantLoginPage() {
       const walletAccount = await connectWalletService()
       
       // Connect wallet to auth system
-      await connectWallet(walletAccount.address)
+      await connectWallet(walletAccount.address, "merchant", authenticatedUser)
 
       toast({
         title: "Login Complete",
