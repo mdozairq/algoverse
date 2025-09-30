@@ -52,7 +52,7 @@ function UserAuthContent() {
       const walletAccount = await connectWalletService()
       
       // Connect wallet to auth system
-      await connectWallet(walletAccount.address)
+      await connectWallet(walletAccount.address, "user")
 
       toast({
         title: "Wallet Connected",
