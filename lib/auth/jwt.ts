@@ -4,7 +4,7 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-k
 
 export interface JWTPayload {
   userId: string
-  email: string
+  email?: string
   role: "user" | "merchant" | "admin"
   walletAddress?: string
   isVerified: boolean
