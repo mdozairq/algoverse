@@ -1,4 +1,5 @@
 // Firestore collections using real Firebase Admin SDK
+import { log } from "console"
 import { adminDb } from "./admin"
 
 export interface User {
@@ -64,16 +65,20 @@ export interface NFT {
 
 export interface Merchant {
   id: string
+  name: string
   businessName: string
   email: string
   category: string
   description: string
   walletAddress: string
   isApproved: boolean
+  isVerified: boolean
   status?: "pending" | "approved" | "rejected"
   createdAt: Date
   uid: string
   updatedAt?: Date
+  password?: string
+  role: "merchant"
 }
 
 export interface Marketplace {
@@ -384,6 +389,15 @@ export const merchantsCollection = {
   async update(id: string, updates: Partial<Merchant>): Promise<void> {
     await adminDb.collection("merchants").doc(id).update(updates)
   },
+
+  async getByEmail(email: string): Promise<Merchant | null> {
+    const snapshot = await adminDb.collection("merchants").where("email", "==", email).get()
+    if (snapshot.docs.length > 0) {
+      const doc = snapshot.docs[0]
+      return { ...doc.data(), id: doc.id } as Merchant
+    }
+    return null
+  },
 }
 
 export const marketplacesCollection = {
@@ -577,7 +591,10 @@ export class FirebaseService {
     return usersCollection.getById(id)
   }
 
-  static async getUserByEmail(email: string): Promise<User | null> {
+  static async getUserByEmail(email: string, role: string): Promise<User | Merchant |null> {
+    if(role === "merchant"){
+      return merchantsCollection.getByEmail(email)
+    }
     return usersCollection.getByEmail(email)
   }
 
@@ -589,32 +606,31 @@ export class FirebaseService {
     return usersCollection.update(id, updates)
   }
 
-  // Unified methods for merchants (now part of users collection)
-  static async getMerchants(): Promise<User[]> {
-    return usersCollection.getByRole("merchant")
+  static async getMerchants(): Promise<Merchant[]> {
+    return merchantsCollection.getAll()
   }
 
   static async getApprovedMerchants(): Promise<User[]> {
-    return usersCollection.getByRoleAndStatus("merchant", "approved")
+    return merchantsCollection.getApproved()
   }
 
   static async getPendingMerchants(): Promise<User[]> {
-    return usersCollection.getByRoleAndStatus("merchant", "pending")
+    return merchantsCollection.getPending()
   }
 
-  static async createMerchant(merchantData: Omit<User, "id" | "createdAt" | "role">): Promise<string> {
-    const userData = {
+  static async createMerchant(merchantData: Omit<Merchant, "id" | "createdAt" | "role">): Promise<string> {
+    const merchantPayload = {
       ...merchantData,
       role: "merchant" as const,
       isApproved: false,
       status: "pending" as const,
       isVerified: false
     }
-    return usersCollection.create(userData)
+    return merchantsCollection.create(merchantPayload)
   }
 
   static async approveMerchant(id: string): Promise<void> {
-    return usersCollection.update(id, {
+    return merchantsCollection.update(id, {
       isApproved: true,
       status: "approved",
       isVerified: true,
@@ -623,7 +639,7 @@ export class FirebaseService {
   }
 
   static async rejectMerchant(id: string): Promise<void> {
-    return usersCollection.update(id, {
+    return merchantsCollection.update(id, {
       isApproved: false,
       status: "rejected",
       updatedAt: new Date()
@@ -695,14 +711,12 @@ export class FirebaseService {
     return snapshot.docs.slice(0, limit).map((doc: any) => ({ ...doc.data(), id: doc.id }) as Event)
   }
 
-  static async getMerchantByUid(uid: string): Promise<User | null> {
-    const snapshot = await adminDb.collection("users")
-      .where("uid", "==", uid)
-      .where("role", "==", "merchant")
+  static async getMerchantByUid(uid: string): Promise<Merchant | null> {
+    const snapshot = await adminDb.collection("merchants")
+      .doc(uid)
       .get()
-    if (snapshot.docs.length > 0) {
-      const doc = snapshot.docs[0]
-      return { ...doc.data(), id: doc.id } as User
+    if (snapshot.exists) {
+      return { ...snapshot.data(), id: snapshot.id } as Merchant
     }
     return null
   }
