@@ -136,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Disconnect wallet if connected
       await disconnectWallet()
+      console.log("wallet disconnected");
       
       // Clear user state immediately for better UX
       setUser(null)
