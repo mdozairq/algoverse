@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { useWallet } from '@/hooks/use-wallet'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/lib/auth/auth-context'
 
 interface WalletConnectButtonProps {
   variant?: 'default' | 'outline' | 'ghost'
@@ -62,6 +63,8 @@ export function WalletConnectButton({
     clearError
   } = useWallet()
 
+  const { user , isAuthenticated, logout, disconnectWallet } = useAuth()
+
   const [copied, setCopied] = useState(false)
   const [showInstallDialog, setShowInstallDialog] = useState(false)
   const { toast } = useToast()
@@ -89,7 +92,7 @@ export function WalletConnectButton({
 
   const handleDisconnect = async () => {
     try {
-      await disconnect()
+      await disconnectWallet()
       toast({
         title: "Wallet Disconnected",
         description: "Your wallet has been disconnected.",
@@ -104,10 +107,10 @@ export function WalletConnectButton({
   }
 
   const handleCopyAddress = async () => {
-    if (!account?.address) return
+    if (!user?.walletAddress) return
 
     try {
-      await copyToClipboard(account.address)
+      await copyToClipboard(user?.walletAddress)
       setCopied(true)
       toast({
         title: "Copied",
@@ -128,8 +131,9 @@ export function WalletConnectButton({
   }
 
   const walletInfo = getWalletInfo()
+  console.log("walletInfo", walletInfo, account, user, isConnected)
 
-  if (!isConnected) {
+  if (!isAuthenticated) {
     return (
       <>
         <Button
@@ -213,7 +217,7 @@ export function WalletConnectButton({
             <Wallet className="w-4 h-4 mr-2" />
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium">
-                {formatAddress(account?.address || '', 4)}
+                {formatAddress(user?.walletAddress || '', 4)}
               </span>
               {showBalance && (
                 <span className="text-xs text-gray-500">
@@ -248,7 +252,7 @@ export function WalletConnectButton({
               </Button>
             </div>
             <div className="text-xs font-mono text-gray-700 break-all">
-              {account?.address}
+              {user?.walletAddress}
             </div>
           </div>
 
@@ -270,7 +274,7 @@ export function WalletConnectButton({
             Copy Address
           </DropdownMenuItem>
           
-          <DropdownMenuItem onClick={() => window.open(`https://algoexplorer.io/address/${account?.address}`, '_blank')}>
+          <DropdownMenuItem onClick={() => window.open(`https://algoexplorer.io/address/${user?.walletAddress}`, '_blank')}>
             <ExternalLink className="w-4 h-4 mr-2" />
             View on Explorer
           </DropdownMenuItem>
