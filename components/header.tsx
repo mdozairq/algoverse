@@ -27,7 +27,6 @@ export default function Header({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const { user, isAuthenticated, logout } = useAuth()
   const router = useRouter()
-console.log(user);
 
   // Close dropdown when clicking outside
   useEffect(() => {
