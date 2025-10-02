@@ -80,7 +80,7 @@ export default function CreateMarketplace() {
       case 3:
         return formData.template
       case 4:
-        return formData.walletAddress
+        return true
       case 5:
         return true // Preview step
       default:
@@ -163,7 +163,7 @@ export default function CreateMarketplace() {
           primaryColor: "#3B82F6",
           secondaryColor: "#10B981",
           paymentMethod: "algorand",
-          walletAddress: "",
+          walletAddress:"",
         })
         setCurrentStep(1)
       } else {
@@ -476,7 +476,7 @@ export default function CreateMarketplace() {
                         </div>
                       </div>
                     </div>
-                    <div>
+                    {/* <div>
                       <Label htmlFor="walletAddress" className="text-gray-900 dark:text-white">
                         Algorand Wallet Address *
                       </Label>
@@ -490,7 +490,7 @@ export default function CreateMarketplace() {
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         This is where you'll receive payments from NFT sales
                       </p>
-                    </div>
+                    </div> */}
                   </CardContent>
                 </Card>
               )}
