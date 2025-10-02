@@ -77,7 +77,7 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     }
     
     if (!merchant) {
-      merchant = await FirebaseService.getMerchantByUid(auth.uid)
+       merchant = await FirebaseService.getMerchantById(auth.userId)
     }
     if (!merchant) {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
@@ -92,6 +92,7 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     const marketplacePayload = {
       ...marketplaceData,
       merchantId: merchant.id!,
+      walletAddress: merchant.walletAddress,
       status: "pending", // All new marketplaces start as pending
     }
     const marketplaceId = await FirebaseService.createMarketplace(marketplacePayload)
