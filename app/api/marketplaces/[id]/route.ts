@@ -52,7 +52,8 @@ export const PUT = requireRole(["merchant"])(async (request: NextRequest) => {
     }
 
     // Get merchant to verify ownership
-    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId);
+    
     if (!merchant || merchant.id !== marketplace.merchantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
@@ -90,7 +91,7 @@ export const DELETE = requireRole(["merchant"])(async (request: NextRequest) => 
     }
 
     // Get merchant to verify ownership
-    const merchant = await FirebaseService.getMerchantByUid(auth.uid)
+    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
     if (!merchant || merchant.id !== marketplace.merchantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
