@@ -730,7 +730,17 @@ export class FirebaseService {
 
   static async getMerchantByUid(uid: string): Promise<Merchant | null> {
     const snapshot = await adminDb.collection("merchants")
-      .doc(uid)
+      .where("uid", "==", uid)
+      .get()
+    if (snapshot.exists) {
+      return { ...snapshot.data(), id: snapshot.id } as Merchant
+    }
+    return null
+  }
+
+  static async getMerchantById(id: string): Promise<Merchant | null> {
+    const snapshot = await adminDb.collection("merchants")
+      .doc(id)
       .get()
     if (snapshot.exists) {
       return { ...snapshot.data(), id: snapshot.id } as Merchant
