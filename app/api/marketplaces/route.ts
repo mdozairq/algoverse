@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         try {
           // Fetch merchant details if merchantId exists
           if (marketplace.merchantId) {
-            const merchant = await FirebaseService.getUserById(marketplace.merchantId)
+            const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
             if (merchant) {
               return {
                 ...marketplace,
@@ -77,7 +77,7 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     }
     
     if (!merchant) {
-       merchant = await FirebaseService.getMerchantById(auth.userId)
+       merchant = await FirebaseService.getMerchantById(marketplaceData.merchantId)
     }
     if (!merchant) {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })

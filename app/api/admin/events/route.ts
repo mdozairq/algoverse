@@ -26,7 +26,7 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
         try {
           // Fetch merchant details if merchantId exists
           if (event.merchantId) {
-            const merchant = await FirebaseService.getUserById(event.merchantId)
+            const merchant = await FirebaseService.getMerchantById(event.merchantId)
             if (merchant) {
               return {
                 ...event,
