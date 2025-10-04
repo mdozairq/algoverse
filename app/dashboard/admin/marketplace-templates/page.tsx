@@ -78,8 +78,8 @@ export default function MarketplaceTemplatesPage() {
     configuration: {
       layout: {
         headerStyle: "static" as 'fixed' | 'static',
-        navigationStyle: "horizontal" as const,
-        footerStyle: "full" as const
+        navigationStyle: "horizontal" as 'horizontal' | 'vertical' | 'minimal',
+        footerStyle: "full" as 'full' | 'minimal' | 'hidden'
       },
       theme: {
         primaryColor: "#3B82F6",
@@ -88,7 +88,7 @@ export default function MarketplaceTemplatesPage() {
         backgroundColor: "#FFFFFF",
         textColor: "#1F2937",
         cardStyle: "elevated" as 'flat' | 'elevated' | 'outlined',
-        borderRadius: "medium" as const
+        borderRadius: "medium" as 'none' | 'small' | 'medium' | 'large'
       },
       features: {
         heroSection: true,
@@ -100,12 +100,12 @@ export default function MarketplaceTemplatesPage() {
       },
       sections: {
         hero: {
-          type: "gradient" as const,
-          height: "medium" as const,
+          type: "gradient" as 'image' | 'video' | 'gradient',
+          height: "medium" as 'small' | 'medium' | 'large' | 'full',
           overlay: true
         },
         products: {
-          layout: "grid" as const,
+          layout: "grid" as 'grid' | 'list' | 'carousel',
           itemsPerRow: 4,
           showFilters: true,
           showSorting: true
