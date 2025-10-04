@@ -14,59 +14,44 @@ export async function GET(
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
-    // Get merchant details
-    const merchant = await FirebaseService.getUserById(marketplace.merchantId)
-    
-    return NextResponse.json({
-      marketplace: {
-        ...marketplace,
-        merchant: merchant ? {
-          id: merchant.id,
-          businessName: merchant.businessName,
-          email: merchant.email,
-          category: merchant.category
-        } : null
-      }
-    })
+    // Only return approved marketplaces for public access
+    if (marketplace.status !== "approved") {
+      return NextResponse.json({ error: "Marketplace not available" }, { status: 403 })
+    }
+
+    return NextResponse.json({ marketplace })
   } catch (error: any) {
     console.error("Error fetching marketplace:", error)
     return NextResponse.json({ error: "Failed to fetch marketplace" }, { status: 500 })
   }
 }
 
-// PUT /api/marketplaces/[id] - Update marketplace (merchant only)
-export const PUT = requireRole(["merchant"])(async (request: NextRequest) => {
+// PUT /api/marketplaces/[id] - Update marketplace (merchant/admin only)
+export const PUT = requireRole(["merchant", "admin"])(async (
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
   try {
     const auth = (request as any).auth
-    const updateData = await request.json()
-    
-    // Extract ID from URL path
-    const url = new URL(request.url)
-    const pathParts = url.pathname.split('/')
-    const marketplaceId = pathParts[pathParts.length - 1]
+    const updates = await request.json()
 
-    // Get marketplace to verify ownership
-    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
-    if (!marketplace) {
+    // Check if marketplace exists
+    const existingMarketplace = await FirebaseService.getMarketplaceById(params.id)
+    if (!existingMarketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
-    // Get merchant to verify ownership
-    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId);
-    
-    if (!merchant || merchant.id !== marketplace.merchantId) {
+    // Check if user has permission to update this marketplace
+    if (auth.role !== "admin" && existingMarketplace.merchantId !== auth.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     // Update marketplace
-    await FirebaseService.updateMarketplace(marketplaceId, {
-      ...updateData,
-      updatedAt: new Date()
-    })
+    await FirebaseService.updateMarketplace(params.id, updates)
 
     return NextResponse.json({
       success: true,
-      message: "Marketplace updated successfully"
+      message: "Marketplace updated successfully",
     })
   } catch (error: any) {
     console.error("Error updating marketplace:", error)
@@ -74,34 +59,31 @@ export const PUT = requireRole(["merchant"])(async (request: NextRequest) => {
   }
 })
 
-// DELETE /api/marketplaces/[id] - Delete marketplace (merchant only)
-export const DELETE = requireRole(["merchant"])(async (request: NextRequest) => {
+// DELETE /api/marketplaces/[id] - Delete marketplace (merchant/admin only)
+export const DELETE = requireRole(["merchant", "admin"])(async (
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
   try {
     const auth = (request as any).auth
-    
-    // Extract ID from URL path
-    const url = new URL(request.url)
-    const pathParts = url.pathname.split('/')
-    const marketplaceId = pathParts[pathParts.length - 1]
 
-    // Get marketplace to verify ownership
-    const marketplace = await FirebaseService.getMarketplaceById(marketplaceId)
-    if (!marketplace) {
+    // Check if marketplace exists
+    const existingMarketplace = await FirebaseService.getMarketplaceById(params.id)
+    if (!existingMarketplace) {
       return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
     }
 
-    // Get merchant to verify ownership
-    const merchant = await FirebaseService.getMerchantById(marketplace.merchantId)
-    if (!merchant || merchant.id !== marketplace.merchantId) {
+    // Check if user has permission to delete this marketplace
+    if (auth.role !== "admin" && existingMarketplace.merchantId !== auth.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     // Delete marketplace
-    await FirebaseService.deleteMarketplace(marketplaceId)
+    await FirebaseService.deleteMarketplace(params.id)
 
     return NextResponse.json({
       success: true,
-      message: "Marketplace deleted successfully"
+      message: "Marketplace deleted successfully",
     })
   } catch (error: any) {
     console.error("Error deleting marketplace:", error)
