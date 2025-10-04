@@ -61,6 +61,9 @@ export interface NFT {
   createdAt: Date
   isUsed?: boolean
   listedForSale?: boolean
+  marketplaceId?: string
+  isEnabled: boolean
+  allowSwap: boolean
 }
 
 export interface Merchant {
@@ -96,13 +99,14 @@ export interface Marketplace {
   paymentMethod: string
   walletAddress: string
   status: "draft" | "pending" | "approved" | "rejected"
+  isEnabled: boolean
+  allowSwap: boolean
   createdAt: Date
   updatedAt?: Date
   // Enhanced marketplace features
   configuration?: MarketplaceConfiguration
   analytics?: MarketplaceAnalytics
   customDomain?: string
-  isActive: boolean
 }
 
 export interface MarketplaceConfiguration {
@@ -193,6 +197,96 @@ export interface MarketplacePage {
   seoDescription?: string
   createdAt: Date
   updatedAt?: Date
+}
+
+export interface MarketplaceTemplate {
+  id: string
+  name: string
+  description: string
+  preview: string
+  category: string
+  configuration: {
+    layout: {
+      headerStyle: 'fixed' | 'static'
+      navigationStyle: 'horizontal' | 'vertical' | 'minimal'
+      footerStyle: 'full' | 'minimal' | 'hidden'
+    }
+    theme: {
+      primaryColor: string
+      secondaryColor: string
+      accentColor: string
+      backgroundColor: string
+      textColor: string
+      cardStyle: 'flat' | 'elevated' | 'outlined'
+      borderRadius: 'none' | 'small' | 'medium' | 'large'
+    }
+    features: {
+      heroSection: boolean
+      featuredProducts: boolean
+      categories: boolean
+      testimonials: boolean
+      newsletter: boolean
+      socialLinks: boolean
+    }
+    sections: {
+      hero: {
+        type: 'image' | 'video' | 'gradient'
+        height: 'small' | 'medium' | 'large' | 'full'
+        overlay: boolean
+      }
+      products: {
+        layout: 'grid' | 'list' | 'carousel'
+        itemsPerRow: number
+        showFilters: boolean
+        showSorting: boolean
+      }
+      footer: {
+        showLinks: boolean
+        showSocial: boolean
+        showNewsletter: boolean
+      }
+    }
+  }
+  isActive: boolean
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface Transaction {
+  id: string
+  userId: string
+  marketplaceId: string
+  productId: string
+  productType: 'nft' | 'event' | 'merchandise'
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  currency: string
+  paymentMethod: string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled'
+  merchantId: string
+  buyerWalletAddress: string
+  sellerWalletAddress: string
+  blockchainTxId?: string
+  createdAt: Date
+  updatedAt?: Date
+  completedAt?: Date
+}
+
+export interface Swap {
+  id: string
+  proposerId: string
+  proposerWalletAddress: string
+  targetNftId: string
+  offeredNftId: string
+  targetNftOwnerId: string
+  marketplaceId: string
+  message?: string
+  status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled'
+  blockchainTxId?: string
+  createdAt: Date
+  updatedAt?: Date
+  completedAt?: Date
 }
 
 // Real Firestore collection services
@@ -590,6 +684,166 @@ export const marketplacePagesCollection = {
   },
 }
 
+export const marketplaceTemplatesCollection = {
+  async create(templateData: Omit<MarketplaceTemplate, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("marketplace_templates").add({
+      ...templateData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<MarketplaceTemplate | null> {
+    const doc = await adminDb.collection("marketplace_templates").doc(id).get()
+    if (!doc.exists) return null
+    return { id: doc.id, ...doc.data() } as MarketplaceTemplate
+  },
+
+  async getAll(): Promise<MarketplaceTemplate[]> {
+    const snapshot = await adminDb
+      .collection("marketplace_templates")
+      .where("isActive", "==", true)
+      .orderBy("name", "asc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as MarketplaceTemplate[]
+  },
+
+  async getByCategory(category: string): Promise<MarketplaceTemplate[]> {
+    const snapshot = await adminDb
+      .collection("marketplace_templates")
+      .where("category", "==", category)
+      .where("isActive", "==", true)
+      .orderBy("name", "asc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as MarketplaceTemplate[]
+  },
+
+  async update(id: string, updates: Partial<MarketplaceTemplate>): Promise<void> {
+    await adminDb.collection("marketplace_templates").doc(id).update({
+      ...updates,
+      updatedAt: new Date(),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("marketplace_templates").doc(id).delete()
+  },
+}
+
+export const transactionsCollection = {
+  async create(transactionData: Omit<Transaction, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("transactions").add({
+      ...transactionData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<Transaction | null> {
+    const doc = await adminDb.collection("transactions").doc(id).get()
+    if (!doc.exists) return null
+    return { id: doc.id, ...doc.data() } as Transaction
+  },
+
+  async getByUser(userId: string): Promise<Transaction[]> {
+    const snapshot = await adminDb
+      .collection("transactions")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Transaction[]
+  },
+
+  async getByMarketplace(marketplaceId: string): Promise<Transaction[]> {
+    const snapshot = await adminDb
+      .collection("transactions")
+      .where("marketplaceId", "==", marketplaceId)
+      .orderBy("createdAt", "desc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Transaction[]
+  },
+
+  async update(id: string, updates: Partial<Transaction>): Promise<void> {
+    await adminDb.collection("transactions").doc(id).update({
+      ...updates,
+      updatedAt: new Date(),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("transactions").doc(id).delete()
+  },
+}
+
+export const swapsCollection = {
+  async create(swapData: Omit<Swap, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("swaps").add({
+      ...swapData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<Swap | null> {
+    const doc = await adminDb.collection("swaps").doc(id).get()
+    if (!doc.exists) return null
+    return { id: doc.id, ...doc.data() } as Swap
+  },
+
+  async getByProposer(proposerId: string): Promise<Swap[]> {
+    const snapshot = await adminDb
+      .collection("swaps")
+      .where("proposerId", "==", proposerId)
+      .orderBy("createdAt", "desc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Swap[]
+  },
+
+  async getByTargetNft(targetNftId: string): Promise<Swap[]> {
+    const snapshot = await adminDb
+      .collection("swaps")
+      .where("targetNftId", "==", targetNftId)
+      .orderBy("createdAt", "desc")
+      .get()
+    
+    return snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Swap[]
+  },
+
+  async update(id: string, updates: Partial<Swap>): Promise<void> {
+    await adminDb.collection("swaps").doc(id).update({
+      ...updates,
+      updatedAt: new Date(),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("swaps").doc(id).delete()
+  },
+}
+
 // FirebaseService class for API routes
 export class FirebaseService {
   static async createUser(userData: Omit<User, "id" | "createdAt">): Promise<string> {
@@ -759,6 +1013,11 @@ export class FirebaseService {
     return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
   }
 
+  static async getNFTsByMarketplace(marketplaceId: string): Promise<NFT[]> {
+    const snapshot = await adminDb.collection("nfts").where("marketplaceId", "==", marketplaceId).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+  }
+
   static async getNFTsForSale(): Promise<NFT[]> {
     const snapshot = await adminDb.collection("nfts").where("listedForSale", "==", true).get()
     return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
@@ -833,5 +1092,80 @@ export class FirebaseService {
 
   static async deleteMarketplacePage(id: string): Promise<void> {
     return marketplacePagesCollection.delete(id)
+  }
+
+  // Marketplace Template methods
+  static async createMarketplaceTemplate(templateData: Omit<MarketplaceTemplate, "id" | "createdAt">): Promise<string> {
+    return marketplaceTemplatesCollection.create(templateData)
+  }
+
+  static async getMarketplaceTemplateById(id: string): Promise<MarketplaceTemplate | null> {
+    return marketplaceTemplatesCollection.getById(id)
+  }
+
+  static async getAllMarketplaceTemplates(): Promise<MarketplaceTemplate[]> {
+    return marketplaceTemplatesCollection.getAll()
+  }
+
+  static async getMarketplaceTemplatesByCategory(category: string): Promise<MarketplaceTemplate[]> {
+    return marketplaceTemplatesCollection.getByCategory(category)
+  }
+
+  static async updateMarketplaceTemplate(id: string, updates: Partial<MarketplaceTemplate>): Promise<void> {
+    return marketplaceTemplatesCollection.update(id, updates)
+  }
+
+  static async deleteMarketplaceTemplate(id: string): Promise<void> {
+    return marketplaceTemplatesCollection.delete(id)
+  }
+
+  // Transaction methods
+  static async createTransaction(transactionData: Omit<Transaction, "id" | "createdAt">): Promise<string> {
+    return transactionsCollection.create(transactionData)
+  }
+
+  static async getTransactionById(id: string): Promise<Transaction | null> {
+    return transactionsCollection.getById(id)
+  }
+
+  static async getTransactionsByUser(userId: string): Promise<Transaction[]> {
+    return transactionsCollection.getByUser(userId)
+  }
+
+  static async getTransactionsByMarketplace(marketplaceId: string): Promise<Transaction[]> {
+    return transactionsCollection.getByMarketplace(marketplaceId)
+  }
+
+  static async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
+    return transactionsCollection.update(id, updates)
+  }
+
+  static async deleteTransaction(id: string): Promise<void> {
+    return transactionsCollection.delete(id)
+  }
+
+  // Swap methods
+  static async createSwap(swapData: Omit<Swap, "id" | "createdAt">): Promise<string> {
+    return swapsCollection.create(swapData)
+  }
+
+  static async getSwapById(id: string): Promise<Swap | null> {
+    return swapsCollection.getById(id)
+  }
+
+  static async getSwapsByProposer(proposerId: string): Promise<Swap[]> {
+    return swapsCollection.getByProposer(proposerId)
+  }
+
+  static async getSwapsByTargetNft(targetNftId: string): Promise<Swap[]> {
+    return swapsCollection.getByTargetNft(targetNftId)
+  }
+
+  static async updateSwap(id: string, updates: Partial<Swap>): Promise<void> {
+    return swapsCollection.update(id, updates)
+  }
+
+  static async deleteSwap(id: string): Promise<void> {
+    return swapsCollection.delete(id)
   }
 }
