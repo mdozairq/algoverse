@@ -335,6 +335,12 @@ export default function MerchantDashboard() {
                     <span className="font-medium">Create Event</span>
                   </Button>
                 </Link>
+                <Link href="/dashboard/merchant/marketplace-management">
+                  <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                    <Settings className="h-6 w-6" />
+                    <span className="font-medium">Manage Marketplaces</span>
+                  </Button>
+                </Link>
                 <Link href="/dashboard/merchant/marketplaces/create-marketplace">
                   <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                     <Plus className="h-6 w-6" />
