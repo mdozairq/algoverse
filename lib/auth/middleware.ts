@@ -63,7 +63,7 @@ export function requireAuth(handler: Function, requiredRole?: string) {
 // Role-based middleware - this is the main export that's being imported
 export function requireRole(roles: string[]) {
   return (handler: Function) => {
-    return async (request: NextRequest) => {
+    return async (request: NextRequest, context?: any) => {
       const auth = await verifyAuthToken(request)
 
       if (!auth) {
@@ -75,7 +75,7 @@ export function requireRole(roles: string[]) {
       }
       ;(request as any).auth = auth
 
-      return handler(request)
+      return handler(request, context)
     }
   }
 }
