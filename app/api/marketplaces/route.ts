@@ -70,10 +70,9 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     const auth = (request as any).auth
     const marketplaceData = await request.json()
 
-    // Get merchant info - try to use merchantId from request body first, then fall back to UID
     let merchant = null
-    if (marketplaceData.merchantId) {
-      merchant = await FirebaseService.getUserById(marketplaceData.merchantId)
+    if (auth.userId) {
+      merchant = await FirebaseService.getMerchantById(auth.userId)
     }
     
     if (!merchant) {
@@ -84,23 +83,38 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     }
 
     // Validate required fields
-    if (!marketplaceData.businessName || !marketplaceData.description || !marketplaceData.category) {
+    if (!marketplaceData.businessName || !marketplaceData.description || !marketplaceData.category || !marketplaceData.template) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create marketplace
+    // Validate template exists
+    const template = await FirebaseService.getMarketplaceTemplatesByCategory(marketplaceData.template)
+    if (!template) {
+      return NextResponse.json({ error: "Invalid template" }, { status: 400 })
+    }
+
+    console.log("template", template);
+ 
+    // Create marketplace with template configuration
     const marketplacePayload = {
       ...marketplaceData,
       merchantId: merchant.id!,
-      walletAddress: merchant.walletAddress,
-      status: "pending", // All new marketplaces start as pending
+      walletAddress: merchant.walletAddress || "",
+      status: marketplaceData.status || "pending", // Allow draft creation
+      isEnabled: true, // Default to enabled
+      allowSwap: true, // Default to allowing swaps
+      // Apply template's default colors if not provided
+      primaryColor: marketplaceData.primaryColor || template.configuration.theme.primaryColor,
+      secondaryColor: marketplaceData.secondaryColor || template.configuration.theme.secondaryColor,
     }
     const marketplaceId = await FirebaseService.createMarketplace(marketplacePayload)
 
     return NextResponse.json({
       success: true,
       marketplaceId,
-      message: "Marketplace created successfully and submitted for approval",
+      message: marketplaceData.status === "draft" 
+        ? "Marketplace draft saved successfully" 
+        : "Marketplace created successfully and submitted for approval",
     })
   } catch (error: any) {
     console.error("Error creating marketplace:", error)
