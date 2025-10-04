@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,15 +8,70 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ArrowLeft, ArrowRight, Upload, Eye, Save, Check, Store, Palette, CreditCard, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Upload, Eye, Save, Check, Store, Palette, CreditCard, Loader2, Layout } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+
+interface MarketplaceTemplate {
+  id: string
+  name: string
+  description: string
+  preview: string
+  category: string
+  configuration: {
+    layout: {
+      headerStyle: 'fixed' | 'static'
+      navigationStyle: 'horizontal' | 'vertical' | 'minimal'
+      footerStyle: 'full' | 'minimal' | 'hidden'
+    }
+    theme: {
+      primaryColor: string
+      secondaryColor: string
+      accentColor: string
+      backgroundColor: string
+      textColor: string
+      cardStyle: 'flat' | 'elevated' | 'outlined'
+      borderRadius: 'none' | 'small' | 'medium' | 'large'
+    }
+    features: {
+      heroSection: boolean
+      featuredProducts: boolean
+      categories: boolean
+      testimonials: boolean
+      newsletter: boolean
+      socialLinks: boolean
+    }
+    sections: {
+      hero: {
+        type: 'image' | 'video' | 'gradient'
+        height: 'small' | 'medium' | 'large' | 'full'
+        overlay: boolean
+      }
+      products: {
+        layout: 'grid' | 'list' | 'carousel'
+        itemsPerRow: number
+        showFilters: boolean
+        showSorting: boolean
+      }
+      footer: {
+        showLinks: boolean
+        showSocial: boolean
+        showNewsletter: boolean
+      }
+    }
+  }
+  isActive: boolean
+  createdAt: Date
+  updatedAt?: Date
+}
 
 export default function CreateMarketplace() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [templates, setTemplates] = useState<MarketplaceTemplate[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(true)
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     businessName: "",
@@ -25,7 +80,7 @@ export default function CreateMarketplace() {
     website: "",
     logo: null,
     banner: null,
-    template: "modern",
+    template: "",
     primaryColor: "#3B82F6",
     secondaryColor: "#10B981",
     paymentMethod: "algorand",
@@ -40,12 +95,43 @@ export default function CreateMarketplace() {
     { id: 5, title: "Preview", icon: Eye, description: "Review & submit" },
   ]
 
-  const templates = [
-    { id: "modern", name: "Modern", preview: "/placeholder.svg?height=200&width=300&text=Modern+Template" },
-    { id: "classic", name: "Classic", preview: "/placeholder.svg?height=200&width=300&text=Classic+Template" },
-    { id: "minimal", name: "Minimal", preview: "/placeholder.svg?height=200&width=300&text=Minimal+Template" },
-    { id: "vibrant", name: "Vibrant", preview: "/placeholder.svg?height=200&width=300&text=Vibrant+Template" },
-  ]
+  // Fetch templates from API
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const res = await fetch("/api/marketplace-templates")
+        const data = await res.json()
+        if (res.ok) {
+          setTemplates(data.templates || [])
+          // Set default template if available
+          if (data.templates && data.templates.length > 0 && !formData.template) {
+            setFormData(prev => ({ ...prev, template: data.templates[0].id }))
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch templates:", e)
+      } finally {
+        setTemplatesLoading(false)
+      }
+    }
+
+    fetchTemplates()
+  }, [])
+
+  // Update colors when template changes
+  const handleTemplateChange = (templateId: string) => {
+    const selectedTemplate = templates.find(t => t.id === templateId)
+    if (selectedTemplate) {
+      setFormData(prev => ({
+        ...prev,
+        template: templateId,
+        primaryColor: selectedTemplate.configuration.theme.primaryColor,
+        secondaryColor: selectedTemplate.configuration.theme.secondaryColor,
+      }))
+    } else {
+      setFormData(prev => ({ ...prev, template: templateId }))
+    }
+  }
 
   const progress = (currentStep / steps.length) * 100
 
@@ -410,31 +496,81 @@ export default function CreateMarketplace() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {templates.map((template) => (
-                        <div
-                          key={template.id}
-                          onClick={() => handleInputChange("template", template.id)}
-                          className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                            formData.template === template.id
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                              : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
-                        >
-                          <img
-                            src={template.preview || "/placeholder.svg"}
-                            alt={template.name}
-                            className="w-full h-40 object-cover rounded-lg mb-3"
-                          />
-                          <h3 className="font-bold text-gray-900 dark:text-white">{template.name}</h3>
-                          {formData.template === template.id && (
-                            <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-1">
-                              <Check className="w-4 h-4" />
+                    {templatesLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">Loading templates...</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {templates.map((template) => (
+                          <div
+                            key={template.id}
+                            onClick={() => handleTemplateChange(template.id)}
+                            className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                              formData.template === template.id
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                            }`}
+                          >
+                            {/* Template Preview */}
+                            <div 
+                              className="w-full h-40 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden"
+                              style={{ 
+                                background: `linear-gradient(135deg, ${template.configuration.theme.primaryColor}20, ${template.configuration.theme.secondaryColor}20)` 
+                              }}
+                            >
+                              <div className="text-center">
+                                <div 
+                                  className="w-12 h-12 mx-auto mb-2 rounded-lg flex items-center justify-center"
+                                  style={{ backgroundColor: template.configuration.theme.primaryColor }}
+                                >
+                                  <Layout className="w-6 h-6 text-white" />
+                                </div>
+                                <p className="text-sm font-medium">{template.name}</p>
+                              </div>
+                              <div className="absolute top-2 left-2">
+                                <span 
+                                  className="text-xs px-2 py-1 rounded-full text-white"
+                                  style={{ backgroundColor: template.configuration.theme.secondaryColor }}
+                                >
+                                  {template.category}
+                                </span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                            
+                            <div>
+                              <h3 className="font-bold text-gray-900 dark:text-white mb-1">{template.name}</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                {template.description}
+                              </p>
+                              
+                              {/* Template Features */}
+                              <div className="mt-3 flex flex-wrap gap-1">
+                                {template.configuration.features.heroSection && (
+                                  <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Hero</span>
+                                )}
+                                {template.configuration.features.featuredProducts && (
+                                  <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Products</span>
+                                )}
+                                {template.configuration.features.categories && (
+                                  <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Categories</span>
+                                )}
+                                {template.configuration.features.testimonials && (
+                                  <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Reviews</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {formData.template === template.id && (
+                              <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-1">
+                                <Check className="w-4 h-4" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
