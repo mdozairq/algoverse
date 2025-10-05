@@ -188,7 +188,7 @@ export default function MarketplacePage() {
                             className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full"
                             asChild
                           >
-                            <Link href={`/marketplace/${marketplace.id}`}>
+                            <Link href={`/marketplace/details/${marketplace.id}`}>
                               View Marketplace
                               <ArrowRight className="w-4 h-4 ml-2" />
                             </Link>
