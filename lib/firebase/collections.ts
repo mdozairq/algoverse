@@ -252,6 +252,199 @@ export interface MarketplaceTemplate {
   updatedAt?: Date
 }
 
+// Launchpad Project Interfaces
+export interface LaunchpadProject {
+  id: string
+  name: string
+  description: string
+  longDescription: string
+  category: string
+  logo: string
+  banner: string
+  website?: string
+  twitter?: string
+  discord?: string
+  instagram?: string
+  socialLinks: {
+    website?: string
+    twitter?: string
+    discord?: string
+    instagram?: string
+    telegram?: string
+  }
+  keyMetrics: {
+    totalSupply: number
+    mintPrice: number
+    currency: string
+    chain: string
+    salePhase: 'upcoming' | 'live' | 'ended'
+    startDate: string
+    endDate?: string
+    minted: number
+    remaining: number
+    floorPrice?: number
+    volume?: number
+    holders?: number
+  }
+  tokenomics: {
+    totalSupply: number
+    publicSale: number
+    teamAllocation: number
+    communityRewards: number
+    treasury: number
+    liquidity: number
+  }
+  roadmap: {
+    phase: string
+    title: string
+    description: string
+    status: 'completed' | 'in-progress' | 'upcoming'
+    date: string
+  }[]
+  team: {
+    name: string
+    role: string
+    bio: string
+    avatar: string
+    socialLinks: {
+      twitter?: string
+      linkedin?: string
+      github?: string
+    }
+  }[]
+  faq: {
+    question: string
+    answer: string
+  }[]
+  traits: {
+    name: string
+    values: {
+      value: string
+      count: number
+      rarity: number
+    }[]
+  }[]
+  primaryColor: string
+  secondaryColor: string
+  isVerified: boolean
+  isFeatured: boolean
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface MintPhase {
+  id: string
+  projectId: string
+  name: string
+  description: string
+  startTime: string
+  endTime?: string
+  price: number
+  maxPerWallet: number
+  isWhitelist: boolean
+  isActive: boolean
+  minted: number
+  total: number
+  whitelistAddresses?: string[]
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface LaunchpadNFT {
+  id: string
+  tokenId: string
+  projectId: string
+  ownerAddress: string
+  phaseId: string
+  mintPrice: number
+  currency: string
+  mintedAt: Date
+  transactionHash: string
+  metadata: {
+    name: string
+    description: string
+    image: string
+    attributes: {
+      trait_type: string
+      value: string
+    }[]
+  }
+  traits: {
+    trait_type: string
+    value: string
+    rarity: number
+  }[]
+  rarityScore: number
+  rarityRank: number
+  price?: number
+  isListed: boolean
+  lastSale?: {
+    price: number
+    currency: string
+    date: string
+  }
+  views: number
+  likes: number
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface ActivityItem {
+  id: string
+  projectId: string
+  type: 'mint' | 'sale' | 'transfer' | 'list' | 'delist' | 'offer' | 'bid'
+  timestamp: Date
+  fromAddress: string
+  toAddress?: string
+  tokenId: string
+  nftName: string
+  nftImage: string
+  price?: number
+  currency?: string
+  transactionHash: string
+  blockNumber: number
+  gasUsed?: number
+  gasPrice?: number
+  status: 'pending' | 'confirmed' | 'failed'
+  createdAt: Date
+}
+
+export interface SupportTicket {
+  id: string
+  projectId: string
+  subject: string
+  description: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'in-progress' | 'resolved' | 'closed'
+  userEmail: string
+  userName: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Product {
+  id: string
+  marketplaceId: string
+  merchantId: string
+  name: string
+  description: string
+  price: number
+  currency: string
+  image: string
+  category: string
+  type: 'nft' | 'event' | 'merchandise'
+  inStock: boolean
+  rating: number
+  reviews: number
+  isEnabled: boolean
+  allowSwap: boolean
+  assetId?: number
+  metadata?: Record<string, any>
+  createdAt: Date
+  updatedAt?: Date
+}
+
 export interface Transaction {
   id: string
   userId: string
@@ -1167,5 +1360,298 @@ export class FirebaseService {
 
   static async deleteSwap(id: string): Promise<void> {
     return swapsCollection.delete(id)
+  }
+
+  // Launchpad Project methods
+  static async getLaunchpadProjectById(id: string): Promise<LaunchpadProject | null> {
+    try {
+      const doc = await adminDb.collection('launchpadProjects').doc(id).get()
+      if (!doc.exists) return null
+      
+      return {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate()
+      } as LaunchpadProject
+    } catch (error) {
+      console.error('Error fetching launchpad project:', error)
+      return null
+    }
+  }
+
+  static async getAllLaunchpadProjects(): Promise<LaunchpadProject[]> {
+    try {
+      const snapshot = await adminDb.collection('launchpadProjects')
+        .orderBy('createdAt', 'desc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      })) as LaunchpadProject[]
+    } catch (error) {
+      console.error('Error fetching launchpad projects:', error)
+      return []
+    }
+  }
+
+  static async createLaunchpadProject(projectData: Omit<LaunchpadProject, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const docRef = await adminDb.collection('launchpadProjects').add({
+        ...projectData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      return docRef.id
+    } catch (error) {
+      console.error('Error creating launchpad project:', error)
+      throw error
+    }
+  }
+
+  static async updateLaunchpadProject(id: string, updates: Partial<LaunchpadProject>): Promise<void> {
+    try {
+      await adminDb.collection('launchpadProjects').doc(id).update({
+        ...updates,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error updating launchpad project:', error)
+      throw error
+    }
+  }
+
+  static async deleteLaunchpadProject(id: string): Promise<void> {
+    try {
+      await adminDb.collection('launchpadProjects').doc(id).delete()
+    } catch (error) {
+      console.error('Error deleting launchpad project:', error)
+      throw error
+    }
+  }
+
+  // Mint Phase methods
+  static async getMintPhaseById(id: string): Promise<MintPhase | null> {
+    try {
+      const doc = await adminDb.collection('mintPhases').doc(id).get()
+      if (!doc.exists) return null
+      
+      return {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate()
+      } as MintPhase
+    } catch (error) {
+      console.error('Error fetching mint phase:', error)
+      return null
+    }
+  }
+
+  static async getMintPhasesByProject(projectId: string): Promise<MintPhase[]> {
+    try {
+      const snapshot = await adminDb.collection('mintPhases')
+        .where('projectId', '==', projectId)
+        .orderBy('startTime', 'asc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      })) as MintPhase[]
+    } catch (error) {
+      console.error('Error fetching mint phases:', error)
+      return []
+    }
+  }
+
+  static async updateMintPhase(id: string, updates: Partial<MintPhase>): Promise<void> {
+    try {
+      await adminDb.collection('mintPhases').doc(id).update({
+        ...updates,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error updating mint phase:', error)
+      throw error
+    }
+  }
+
+  // Launchpad NFT methods
+  static async getLaunchpadNFTsByProject(projectId: string): Promise<LaunchpadNFT[]> {
+    try {
+      const snapshot = await adminDb.collection('launchpadNFTs')
+        .where('projectId', '==', projectId)
+        .orderBy('mintedAt', 'desc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        mintedAt: doc.data().mintedAt?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      })) as LaunchpadNFT[]
+    } catch (error) {
+      console.error('Error fetching launchpad NFTs:', error)
+      return []
+    }
+  }
+
+  static async createLaunchpadNFT(nftData: Omit<LaunchpadNFT, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const docRef = await adminDb.collection('launchpadNFTs').add({
+        ...nftData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      return docRef.id
+    } catch (error) {
+      console.error('Error creating launchpad NFT:', error)
+      throw error
+    }
+  }
+
+  // Activity methods
+  static async getActivityByProject(projectId: string): Promise<ActivityItem[]> {
+    try {
+      const snapshot = await adminDb.collection('activity')
+        .where('projectId', '==', projectId)
+        .orderBy('timestamp', 'desc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date()
+      })) as ActivityItem[]
+    } catch (error) {
+      console.error('Error fetching activity:', error)
+      return []
+    }
+  }
+
+  static async createActivity(activityData: Omit<ActivityItem, 'id' | 'createdAt'>): Promise<string> {
+    try {
+      const docRef = await adminDb.collection('activity').add({
+        ...activityData,
+        createdAt: new Date()
+      })
+      return docRef.id
+    } catch (error) {
+      console.error('Error creating activity:', error)
+      throw error
+    }
+  }
+
+  // Support Ticket methods
+  static async createSupportTicket(ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const docRef = await adminDb.collection('supportTickets').add({
+        ...ticketData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      return docRef.id
+    } catch (error) {
+      console.error('Error creating support ticket:', error)
+      throw error
+    }
+  }
+
+  // Whitelist and Eligibility methods
+  static async checkWhitelistEligibility(walletAddress: string, phaseId: string): Promise<boolean> {
+    try {
+      const phase = await this.getMintPhaseById(phaseId)
+      if (!phase || !phase.isWhitelist || !phase.whitelistAddresses) return false
+      
+      return phase.whitelistAddresses.includes(walletAddress.toLowerCase())
+    } catch (error) {
+      console.error('Error checking whitelist eligibility:', error)
+      return false
+    }
+  }
+
+  static async getUserMintCount(walletAddress: string, phaseId: string): Promise<number> {
+    try {
+      const snapshot = await adminDb.collection('launchpadNFTs')
+        .where('ownerAddress', '==', walletAddress.toLowerCase())
+        .where('phaseId', '==', phaseId)
+        .get()
+      
+      return snapshot.size
+    } catch (error) {
+      console.error('Error getting user mint count:', error)
+      return 0
+    }
+  }
+
+  // Mint Phase CRUD methods
+  static async createMintPhase(phaseData: Omit<MintPhase, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const docRef = await adminDb.collection('mintPhases').add({
+        ...phaseData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      return docRef.id
+    } catch (error) {
+      console.error('Error creating mint phase:', error)
+      throw error
+    }
+  }
+
+  static async deleteMintPhase(id: string): Promise<void> {
+    try {
+      await adminDb.collection('mintPhases').doc(id).delete()
+    } catch (error) {
+      console.error('Error deleting mint phase:', error)
+      throw error
+    }
+  }
+
+  // Product methods
+  static async getProductById(id: string): Promise<Product | null> {
+    try {
+      const doc = await adminDb.collection('products').doc(id).get()
+      if (!doc.exists) return null
+      
+      return {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate()
+      } as Product
+    } catch (error) {
+      console.error('Error fetching product:', error)
+      return null
+    }
+  }
+
+  static async updateProduct(id: string, updates: Partial<Product>): Promise<void> {
+    try {
+      await adminDb.collection('products').doc(id).update({
+        ...updates,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error updating product:', error)
+      throw error
+    }
+  }
+
+  static async deleteProduct(id: string): Promise<void> {
+    try {
+      await adminDb.collection('products').doc(id).delete()
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      throw error
+    }
   }
 }
