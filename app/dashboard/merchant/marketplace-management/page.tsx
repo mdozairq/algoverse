@@ -165,8 +165,14 @@ export default function MarketplaceManagement() {
         const marketplacesData = data.marketplaces || []
         setMarketplaces(marketplacesData)
         
-        // Auto-select first marketplace if none selected
-        if (marketplacesData.length > 0 && !selectedMarketplace) {
+        // Update selected marketplace if it exists in the new data
+        if (selectedMarketplace) {
+          const updatedSelected = marketplacesData.find((m: Marketplace) => m.id === selectedMarketplace.id)
+          if (updatedSelected) {
+            setSelectedMarketplace(updatedSelected)
+          }
+        } else if (marketplacesData.length > 0) {
+          // Auto-select first marketplace if none selected
           setSelectedMarketplace(marketplacesData[0])
         }
       } else {
@@ -363,6 +369,7 @@ export default function MarketplaceManagement() {
   }
 
   const handleToggleMarketplaceEnabled = async (marketplaceId: string, enabled: boolean) => {
+    console.log('Toggle marketplace enabled:', marketplaceId, enabled)
     setActionLoading(marketplaceId)
     try {
       const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
@@ -376,9 +383,20 @@ export default function MarketplaceManagement() {
           title: "Success",
           description: `Marketplace ${enabled ? 'enabled' : 'disabled'} successfully!`,
         })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            isEnabled: enabled
+          })
+        }
+        
+        // Refresh the marketplaces list
         fetchMarketplaces(true)
       } else {
-        throw new Error("Failed to update marketplace")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
       }
     } catch (error: any) {
       toast({
@@ -392,6 +410,7 @@ export default function MarketplaceManagement() {
   }
 
   const handleToggleMarketplaceSwap = async (marketplaceId: string, allowSwap: boolean) => {
+    console.log('Toggle marketplace swap:', marketplaceId, allowSwap)
     setActionLoading(marketplaceId)
     try {
       const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
@@ -405,9 +424,20 @@ export default function MarketplaceManagement() {
           title: "Success",
           description: `Swap functionality ${allowSwap ? 'enabled' : 'disabled'} successfully!`,
         })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            allowSwap: allowSwap
+          })
+        }
+        
+        // Refresh the marketplaces list
         fetchMarketplaces(true)
       } else {
-        throw new Error("Failed to update marketplace")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
       }
     } catch (error: any) {
       toast({
@@ -1431,7 +1461,10 @@ export default function MarketplaceManagement() {
                                 <TooltipTrigger asChild>
                                   <Switch
                                     checked={selectedMarketplace.isEnabled}
-                                    onCheckedChange={(checked) => handleToggleMarketplaceEnabled(selectedMarketplace.id, checked)}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Switch clicked:', checked)
+                                      handleToggleMarketplaceEnabled(selectedMarketplace.id, checked)
+                                    }}
                                     disabled={actionLoading === selectedMarketplace.id}
                                   />
                                 </TooltipTrigger>
@@ -1457,7 +1490,10 @@ export default function MarketplaceManagement() {
                                 <TooltipTrigger asChild>
                                   <Switch
                                     checked={selectedMarketplace.allowSwap}
-                                    onCheckedChange={(checked) => handleToggleMarketplaceSwap(selectedMarketplace.id, checked)}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Swap switch clicked:', checked)
+                                      handleToggleMarketplaceSwap(selectedMarketplace.id, checked)
+                                    }}
                                     disabled={actionLoading === selectedMarketplace.id}
                                   />
                                 </TooltipTrigger>
