@@ -159,6 +159,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import { useParams } from "next/navigation"
 import Image from "next/image"
+import TemplateEngine from "@/lib/marketplace/template-engine"
 
 interface Marketplace {
   id: string
@@ -282,6 +283,13 @@ export default function MarketplacePage() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [renderedComponents, setRenderedComponents] = useState<{
+    header: JSX.Element
+    hero: JSX.Element
+    products: JSX.Element
+    footer: JSX.Element
+    styles: React.CSSProperties
+  } | null>(null)
 
   useEffect(() => {
     fetchMarketplaceData()
@@ -294,13 +302,13 @@ export default function MarketplacePage() {
       const marketplaceRes = await fetch(`/api/marketplaces/${marketplaceId}`)
       const marketplaceData = await marketplaceRes.json()
       
-    if (marketplaceRes.ok) {
-      // Check if marketplace is enabled
-      if (!marketplaceData.marketplace.isEnabled) {
-        setMarketplace(null)
-        return
-      }
-      setMarketplace(marketplaceData.marketplace)
+      if (marketplaceRes.ok) {
+        // Check if marketplace is enabled
+        if (!marketplaceData.marketplace.isEnabled) {
+          setMarketplace(null)
+          return
+        }
+        setMarketplace(marketplaceData.marketplace)
         
         // Fetch template configuration
         const templateRes = await fetch(`/api/marketplace-templates/${marketplaceData.marketplace.template}`)
@@ -358,6 +366,19 @@ export default function MarketplacePage() {
       setLoading(false)
     }
   }
+
+  // Render components using template engine
+  useEffect(() => {
+    if (marketplace && template) {
+      try {
+        const templateEngine = TemplateEngine.getInstance()
+        const rendered = templateEngine.renderMarketplace(marketplace, template, products)
+        setRenderedComponents(rendered)
+      } catch (error) {
+        console.error("Error rendering marketplace with template engine:", error)
+      }
+    }
+  }, [marketplace, template, products])
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -615,6 +636,23 @@ export default function MarketplacePage() {
           <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
         </div>
       </div>
+    )
+  }
+
+  // Use template engine rendered components if available, otherwise fallback to original
+  if (renderedComponents) {
+    return (
+      <PageTransition>
+        <div 
+          className="min-h-screen transition-all duration-500"
+          style={renderedComponents.styles}
+        >
+          {renderedComponents.header}
+          {renderedComponents.hero}
+          {renderedComponents.products}
+          {renderedComponents.footer}
+        </div>
+      </PageTransition>
     )
   }
 
@@ -1101,7 +1139,10 @@ export default function MarketplacePage() {
                         ...getCardStyle(),
                         borderColor: `${marketplace.primaryColor}20`
                       }}
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={() => {
+                        // Navigate to product page instead of opening modal
+                        window.location.href = `/marketplace/${merchantId}/${marketplaceId}/product/${product.id}`
+                      }}
                     >
                       {/* Product Image */}
                       <div className={`relative ${
