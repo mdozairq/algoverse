@@ -368,63 +368,68 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   <img
                     src={marketplace.banner}
                     alt={marketplace.businessName}
-                    className="w-full h-64 object-cover"
+                    className="w-full h-48 sm:h-56 lg:h-64 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-64 flex items-center justify-center">
-                    <Store className="w-24 h-24 text-gray-400" />
+                  <div className="w-full h-48 sm:h-56 lg:h-64 flex items-center justify-center">
+                    <Store className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-gray-400" />
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/20"></div>
-                <div className="absolute bottom-6 left-6 text-white">
-                  <h1 className="text-4xl font-black mb-2">{marketplace.businessName}</h1>
-                  <p className="text-lg opacity-90">{marketplace.description}</p>
+                <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 text-white">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-2">{marketplace.businessName}</h1>
+                  <p className="text-sm sm:text-base lg:text-lg opacity-90 line-clamp-2">{marketplace.description}</p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 mb-6">
-                <Badge 
-                  className="text-sm px-3 py-1"
-                  style={{ 
-                    backgroundColor: `${marketplace.primaryColor}20`,
-                    color: marketplace.primaryColor,
-                    borderColor: `${marketplace.primaryColor}40`
-                  }}
-                >
-                  {marketplace.category}
-                </Badge>
-                <Badge variant="outline" className="text-sm px-3 py-1">
-                  {marketplace.template} Template
-                </Badge>
-                <Badge variant="outline" className="text-sm px-3 py-1">
-                  {marketplace.paymentMethod} Payments
-                </Badge>
-                <div className="flex items-center gap-2 ml-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                <div className="flex flex-wrap gap-2">
+                  <Badge 
+                    className="text-sm px-3 py-1"
+                    style={{ 
+                      backgroundColor: `${marketplace.primaryColor}20`,
+                      color: marketplace.primaryColor,
+                      borderColor: `${marketplace.primaryColor}40`
+                    }}
+                  >
+                    {marketplace.category}
+                  </Badge>
+                  <Badge variant="outline" className="text-sm px-3 py-1">
+                    {marketplace.template} Template
+                  </Badge>
+                  <Badge variant="outline" className="text-sm px-3 py-1">
+                    {marketplace.paymentMethod} Payments
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 sm:ml-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     asChild
+                    className="flex-1 sm:flex-none"
                   >
-                    <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`}>
+                    <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      Open Marketplace
+                      <span className="hidden sm:inline">Open Marketplace</span>
+                      <span className="sm:hidden">Open</span>
                     </Link>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="flex-1 sm:flex-none"
                   >
                     <Share2 className="w-4 h-4 mr-2" />
-                    Share
+                    <span className="hidden sm:inline">Share</span>
                   </Button>
                 </div>
               </div>
             </div>
           </FadeIn>
 
-          <div className="grid gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
-            <div className="space-y-6">
+            <div className="lg:col-span-2 space-y-6">
               {/* Featured Collections Section */}
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
@@ -440,7 +445,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       <p>No collections available yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                       {products.slice(0, 4).map((product, index) => (
                         <motion.div
                           key={product.id}
@@ -450,7 +455,13 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                           whileHover={{ y: -5 }}
                           className="group"
                         >
-                          <Card className="overflow-hidden cursor-pointer">
+                          <Link 
+                            href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300">
                             <div className="relative aspect-square">
                               <Image
                                 src={product.image}
@@ -474,7 +485,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                                 {product.name}
                               </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                                 {product.description}
                               </p>
                               <div className="flex items-center justify-between">
@@ -487,6 +498,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                               </div>
                             </CardContent>
                           </Card>
+                          </Link>
                         </motion.div>
                       ))}
                     </div>
@@ -504,7 +516,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
                       <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.totalProducts}
@@ -593,85 +605,149 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                         </thead>
                         <tbody>
                           {sortedProducts.map((product, index) => (
-                            <motion.tr
-                              key={product.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ duration: 0.3, delay: index * 0.05 }}
-                              className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                              onClick={() => window.location.href = `/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                            <Link 
+                              href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="contents"
                             >
-                              <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
-                                {index + 1}
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="relative w-12 h-12 rounded-lg overflow-hidden">
-                                    <Image
-                                      src={product.image}
-                                      alt={product.name}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                  <div>
-                                    <div className="font-medium text-gray-900 dark:text-white">
-                                      {product.name}
+                              <motion.tr
+                                key={product.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                              >
+                                <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
+                                  {index + 1}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                                      <Image
+                                        src={product.image}
+                                        alt={product.name}
+                                        fill
+                                        className="object-cover"
+                                      />
                                     </div>
-                                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                                      {product.nftData?.totalSupply || 'N/A'} items
+                                    <div>
+                                      <div className="font-medium text-gray-900 dark:text-white">
+                                        {product.name}
+                                      </div>
+                                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        {product.nftData?.totalSupply || 'N/A'} items
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="font-medium text-gray-900 dark:text-white">
-                                  {product.floorPrice || product.price} ETH
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {product.topOffer ? `${product.topOffer} ETH` : '--'}
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className={`flex items-center gap-1 ${
-                                  (product.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                                }`}>
-                                  {(product.floorChange || 0) >= 0 ? (
-                                    <TrendingUp className="w-4 h-4" />
-                                  ) : (
-                                    <TrendingDown className="w-4 h-4" />
-                                  )}
-                                  <span className="font-medium">
-                                    {Math.abs(product.floorChange || 0).toFixed(1)}%
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="font-medium text-gray-900 dark:text-white">
-                                  {product.volume || 0} ETH
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {product.sales || 0}
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {product.listed ? `${product.listed}%` : '0%'}
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="w-16 h-8 bg-gradient-to-r from-green-400 to-red-400 rounded opacity-60"></div>
-                              </td>
-                            </motion.tr>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {product.floorPrice || product.price} ETH
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    {product.topOffer ? `${product.topOffer} ETH` : '--'}
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className={`flex items-center gap-1 ${
+                                    (product.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {(product.floorChange || 0) >= 0 ? (
+                                      <TrendingUp className="w-4 h-4" />
+                                    ) : (
+                                      <TrendingDown className="w-4 h-4" />
+                                    )}
+                                    <span className="font-medium">
+                                      {Math.abs(product.floorChange || 0).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {product.volume || 0} ETH
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    {product.sales || 0}
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    {product.listed ? `${product.listed}%` : '0%'}
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="w-16 h-8 bg-gradient-to-r from-green-400 to-red-400 rounded opacity-60"></div>
+                                </td>
+                              </motion.tr>
+                            </Link>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Contact Info */}
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {marketplace.website && (
+                    <div className="flex items-center gap-3">
+                      <Globe className="w-5 h-5 text-gray-400" />
+                      <Link 
+                        href={marketplace.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2"
+                      >
+                        Visit Website
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Wallet className="w-5 h-5 text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {marketplace.paymentMethod} Payments
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Template Preview */}
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">Template Preview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div 
+                    className="rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${marketplace.primaryColor}10, ${marketplace.secondaryColor}10)` 
+                    }}
+                  >
+                    <div className="text-center">
+                      <div 
+                        className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold text-xl"
+                        style={{ backgroundColor: marketplace.primaryColor }}
+                      >
+                        {marketplace.businessName.charAt(0)}
+                      </div>
+                      <h3 className="font-bold text-gray-900 dark:text-white mb-1">{marketplace.businessName}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{marketplace.template} Template</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
