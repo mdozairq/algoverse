@@ -4,55 +4,320 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, ExternalLink, Store, Calendar, MapPin, Globe, Wallet } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { 
+  ArrowLeft, 
+  ExternalLink, 
+  Store, 
+  Calendar, 
+  MapPin, 
+  Globe, 
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Eye,
+  Heart,
+  Share2,
+  Star,
+  Users,
+  Activity,
+  DollarSign,
+  BarChart3,
+  LineChart,
+  PieChart,
+  Target,
+  Zap,
+  Award,
+  Clock,
+  ShoppingCart,
+  Filter,
+  Search,
+  Grid3X3,
+  List,
+  ChevronRight,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Settings,
+  Bell,
+  User,
+  LogOut,
+  Home,
+  Package,
+  HelpCircle,
+  Info,
+  AlertCircle,
+  Unlock,
+  Wifi,
+  WifiOff,
+  Battery,
+  BatteryLow,
+  Sun,
+  Moon,
+  Palette,
+  Layout,
+  Layers,
+  Box,
+  Tag,
+  Percent,
+  CreditCard,
+  Banknote,
+  Coins,
+  MousePointer,
+  Hand,
+  ThumbsUp,
+  ThumbsDown,
+  Flag,
+  Edit,
+  Trash2,
+  Save,
+  Upload,
+  Send,
+  Paperclip,
+  Image as ImageIcon,
+  Video,
+  FileText,
+  File,
+  Folder,
+  Archive,
+  Database,
+  Server,
+  Cloud,
+  CloudOff,
+  Wrench,
+  Hammer,
+  Cog,
+  Sliders,
+  ToggleLeft,
+  ToggleRight,
+  Power,
+  PowerOff,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Shuffle,
+  Volume1,
+  Mic,
+  MicOff,
+  Camera,
+  CameraOff,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Laptop,
+  Headphones,
+  Speaker,
+  Radio,
+  Tv,
+  Gamepad2,
+  Joystick,
+  Keyboard,
+  Mouse,
+  Printer,
+  PhoneCall,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneMissed,
+  Voicemail,
+  MessageSquare,
+  MessageSquareText,
+  MessageSquareReply,
+  MessageSquareMore,
+  MessageSquareX,
+  MessageSquareWarning,
+  MessageSquarePlus,
+  MessageSquareShare,
+  MessageSquareHeart,
+  MessageSquareLock
+} from "lucide-react"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { PageTransition, FadeIn } from "@/components/animations/page-transition"
+import { motion, AnimatePresence } from "framer-motion"
+import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import Image from "next/image"
+
+interface Marketplace {
+  id: string
+  merchantId: string
+  businessName: string
+  description: string
+  category: string
+  website?: string
+  logo?: string
+  banner?: string
+  template: string
+  primaryColor: string
+  secondaryColor: string
+  paymentMethod: string
+  walletAddress: string
+  status: "draft" | "pending" | "approved" | "rejected"
+  isEnabled: boolean
+  allowSwap: boolean
+  createdAt: Date
+  updatedAt?: Date
+}
+
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  currency: string
+  image: string
+  category: string
+  inStock: boolean
+  rating: number
+  reviews: number
+  type: "nft" | "event" | "merchandise"
+  isEnabled: boolean
+  allowSwap: boolean
+  nftData?: {
+    assetId: number
+    totalSupply: number
+    availableSupply: number
+    royaltyPercentage: number
+    traits?: {
+      trait_type: string
+      value: string
+      rarity: number
+    }[]
+    rarityScore?: number
+    rarityRank?: number
+  }
+  floorPrice?: number
+  volume?: number
+  sales?: number
+  listed?: number
+  floorChange?: number
+  topOffer?: number
+  lastSale?: {
+    price: number
+    currency: string
+    date: string
+  }
+}
+
+interface Analytics {
+  totalProducts: number
+  totalVolume: number
+  totalSales: number
+  averagePrice: number
+  floorPrice: number
+  topOffer: number
+  listedPercentage: number
+  uniqueHolders: number
+  priceChange24h: number
+  volumeChange24h: number
+}
 
 export default function MarketplaceDetailPage({ params }: { params: { id: string } }) {
-  const [marketplace, setMarketplace] = useState<any>(null)
+  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
-  const [events, setEvents] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState("top")
+  const [timeFilter, setTimeFilter] = useState("1d")
+  const [currency, setCurrency] = useState("USD")
+  const [badged, setBadged] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState("volume")
 
-  const fetchMarketplace = async () => {
+  const fetchMarketplaceData = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/marketplaces/${params.id}`)
-      const data = await res.json()
-      if (res.ok) {
-        setMarketplace(data.marketplace)
-        // Fetch events for this marketplace
-        const eventsRes = await fetch(`/api/events?merchantId=${data.marketplace.merchantId}`)
-        const eventsData = await eventsRes.json()
-        if (eventsRes.ok) {
-          setEvents(eventsData.events || [])
+      // Fetch marketplace details
+      const marketplaceRes = await fetch(`/api/marketplaces/${params.id}`)
+      const marketplaceData = await marketplaceRes.json()
+      
+      if (marketplaceRes.ok) {
+        setMarketplace(marketplaceData.marketplace)
+        
+        // Fetch products
+        const productsRes = await fetch(`/api/marketplaces/${params.id}/products`)
+        const productsData = await productsRes.json()
+        
+        if (productsRes.ok) {
+          setProducts(productsData.products || [])
+          
+          // Calculate analytics
+          const analyticsData = calculateAnalytics(productsData.products || [])
+          setAnalytics(analyticsData)
         }
       }
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      console.error("Failed to fetch marketplace data:", error)
     } finally {
       setLoading(false)
     }
   }
 
+  const calculateAnalytics = (products: Product[]): Analytics => {
+    const totalProducts = products.length
+    const totalVolume = products.reduce((sum, product) => sum + (product.volume || 0), 0)
+    const totalSales = products.reduce((sum, product) => sum + (product.sales || 0), 0)
+    const averagePrice = products.reduce((sum, product) => sum + product.price, 0) / totalProducts
+    const floorPrice = Math.min(...products.map(p => p.floorPrice || p.price))
+    const topOffer = Math.max(...products.map(p => p.topOffer || 0))
+    const listedPercentage = (products.filter(p => p.listed && p.listed > 0).length / totalProducts) * 100
+    const uniqueHolders = Math.floor(Math.random() * 1000) + 500 // Mock data
+    const priceChange24h = Math.random() * 20 - 10 // Mock data
+    const volumeChange24h = Math.random() * 30 - 15 // Mock data
+
+    return {
+      totalProducts,
+      totalVolume,
+      totalSales,
+      averagePrice,
+      floorPrice,
+      topOffer,
+      listedPercentage,
+      uniqueHolders,
+      priceChange24h,
+      volumeChange24h
+    }
+  }
+
   useEffect(() => {
-    fetchMarketplace()
+    fetchMarketplaceData()
   }, [params.id])
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         product.description.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "floor":
+        return (a.floorPrice || a.price) - (b.floorPrice || b.price)
+      case "volume":
+        return (b.volume || 0) - (a.volume || 0)
+      case "sales":
+        return (b.sales || 0) - (a.sales || 0)
+      case "listed":
+        return (b.listed || 0) - (a.listed || 0)
+      default:
+        return a.name.localeCompare(b.name)
+    }
+  })
 
   if (loading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-          <Header showSearch={false} />
-          <div className="container mx-auto px-6 py-8">
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading marketplace...</p>
-            </div>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading marketplace...</p>
           </div>
-          <Footer />
         </div>
       </PageTransition>
     )
@@ -61,21 +326,12 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
   if (!marketplace) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-          <Header showSearch={false} />
-          <div className="container mx-auto px-6 py-8">
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Marketplace Not Found</h1>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">The marketplace you're looking for doesn't exist or has been removed.</p>
-              <Link href="/marketplace">
-                <Button>
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Marketplaces
-                </Button>
-              </Link>
-            </div>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Marketplace Not Found</h1>
+            <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
           </div>
-          <Footer />
         </div>
       </PageTransition>
     )
@@ -143,122 +399,279 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                 <Badge variant="outline" className="text-sm px-3 py-1">
                   {marketplace.paymentMethod} Payments
                 </Badge>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`}>
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Marketplace
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               </div>
             </div>
           </FadeIn>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* About Section */}
+            <div className="space-y-6">
+              {/* Featured Collections Section */}
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">About This Marketplace</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {marketplace.description}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Events Section */}
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Available Events</CardTitle>
+                  <CardTitle className="text-gray-900 dark:text-white">Featured Collections</CardTitle>
                   <CardDescription className="text-gray-600 dark:text-gray-400">
-                    Events hosted by this marketplace
+                    Top collections from this marketplace
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {events.length === 0 ? (
+                  {products.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No events available yet</p>
+                      <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No collections available yet</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {events.map((event) => (
-                        <div key={event.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{event.title}</h3>
-                          <p className="text-gray-600 dark:text-gray-400 mb-3">{event.description}</p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {new Date(event.date).toLocaleDateString()}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {event.location}
-                              </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {products.slice(0, 4).map((product, index) => (
+                        <motion.div
+                          key={product.id}
+                          initial={{ y: 30, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
+                          whileHover={{ y: -5 }}
+                          className="group"
+                        >
+                          <Card className="overflow-hidden cursor-pointer">
+                            <div className="relative aspect-square">
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute top-3 left-3">
+                                <Badge 
+                                  className="text-xs"
+                                  style={{ 
+                                    backgroundColor: `${marketplace.primaryColor}90`,
+                                    color: 'white'
+                                  }}
+                                >
+                                  #{index + 1}
+                                </Badge>
+                              </div>
                             </div>
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                              {event.price} ALGO
-                            </Badge>
-                          </div>
-                        </div>
+                            <CardContent className="p-4">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                {product.name}
+                              </h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                {product.description}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                  {product.price} {product.currency}
+                                </span>
+                                <Button size="sm" style={{ backgroundColor: marketplace.primaryColor }}>
+                                  <ChevronRight className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
                       ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Contact Info */}
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {marketplace.website && (
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-5 h-5 text-gray-400" />
-                      <Link 
-                        href={marketplace.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2"
-                      >
-                        Visit Website
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
+              {/* Analytics Section */}
+              {analytics && (
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-gray-900 dark:text-white">Marketplace Analytics</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-400">
+                      Key metrics and performance data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.totalProducts}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Products</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.totalVolume.toFixed(1)} ETH
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Volume</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.totalSales}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Sales</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.averagePrice.toFixed(2)} ETH
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Avg Price</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.floorPrice.toFixed(2)} ETH
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Floor Price</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {analytics.uniqueHolders}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Holders</div>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <Wallet className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {marketplace.paymentMethod} Payments
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-              {/* Template Preview */}
+              {/* Collections Table */}
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Template Preview</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-gray-900 dark:text-white">Collections</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-400">
+                        Browse all collections in this marketplace
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={currency} onValueChange={setCurrency}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="ETH">ETH</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div 
-                    className="rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${marketplace.primaryColor}10, ${marketplace.secondaryColor}10)` 
-                    }}
-                  >
-                    <div className="text-center">
-                      <div 
-                        className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold text-xl"
-                        style={{ backgroundColor: marketplace.primaryColor }}
-                      >
-                        {marketplace.businessName.charAt(0)}
-                      </div>
-                      <h3 className="font-bold text-gray-900 dark:text-white mb-1">{marketplace.businessName}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{marketplace.template} Template</p>
+                  {sortedProducts.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No collections available yet</p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">#</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Collection</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Floor</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Top Offer</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Floor 1d %</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Volume</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Sales</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Listed</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Last 1d</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedProducts.map((product, index) => (
+                            <motion.tr
+                              key={product.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.3, delay: index * 0.05 }}
+                              className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                              onClick={() => window.location.href = `/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                            >
+                              <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
+                                {index + 1}
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                                    <Image
+                                      src={product.image}
+                                      alt={product.name}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-gray-900 dark:text-white">
+                                      {product.name}
+                                    </div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {product.nftData?.totalSupply || 'N/A'} items
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {product.floorPrice || product.price} ETH
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="text-gray-600 dark:text-gray-400">
+                                  {product.topOffer ? `${product.topOffer} ETH` : '--'}
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className={`flex items-center gap-1 ${
+                                  (product.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {(product.floorChange || 0) >= 0 ? (
+                                    <TrendingUp className="w-4 h-4" />
+                                  ) : (
+                                    <TrendingDown className="w-4 h-4" />
+                                  )}
+                                  <span className="font-medium">
+                                    {Math.abs(product.floorChange || 0).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {product.volume || 0} ETH
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="text-gray-600 dark:text-gray-400">
+                                  {product.sales || 0}
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="text-gray-600 dark:text-gray-400">
+                                  {product.listed ? `${product.listed}%` : '0%'}
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="w-16 h-8 bg-gradient-to-r from-green-400 to-red-400 rounded opacity-60"></div>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
