@@ -88,11 +88,12 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     }
 
     // Validate template exists
-    const template = await FirebaseService.getMarketplaceTemplatesByCategory(marketplaceData.template)
-    if (!template) {
+    const templates = await FirebaseService.getMarketplaceTemplatesByCategory(marketplaceData.template)
+    if (!templates || templates.length === 0) {
       return NextResponse.json({ error: "Invalid template" }, { status: 400 })
     }
 
+    const template = templates[0]
     console.log("template", template);
  
     // Create marketplace with template configuration
