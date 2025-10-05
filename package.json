@@ -53,6 +53,7 @@
     "cmdk": "latest",
     "crypto": "latest",
     "date-fns": "latest",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "latest",
     "firebase-admin": "latest",
     "framer-motion": "latest",
