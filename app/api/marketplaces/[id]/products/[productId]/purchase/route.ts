@@ -1,115 +1,105 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { FirebaseService } from "@/lib/firebase/collections"
-import { requireRole } from "@/lib/auth/middleware"
+import { NextRequest, NextResponse } from 'next/server'
+import { adminDb } from '@/lib/firebase/admin'
+import { AlgorandNFTService } from '@/lib/algorand/nft-service'
 
-// POST /api/marketplaces/[id]/products/[productId]/purchase - Purchase a product
-export const POST = requireRole(["user"])(async (
+export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; productId: string } }
-) => {
+) {
   try {
-    const auth = (request as any).auth
-    const { quantity = 1, paymentMethod = "algorand" } = await request.json()
+    const { id: marketplaceId, productId } = params
+    const body = await request.json()
+    const { quantity, paymentMethod, transactionId, buyerAddress } = body
+
+    // Validate required fields
+    if (!quantity || !paymentMethod || !transactionId || !buyerAddress) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
 
     // Get marketplace details
-    const marketplace = await FirebaseService.getMarketplaceById(params.id)
-    if (!marketplace) {
-      return NextResponse.json({ error: "Marketplace not found" }, { status: 404 })
+    const marketplaceRef = adminDb.collection('marketplaces').doc(marketplaceId)
+    const marketplaceDoc = await marketplaceRef.get()
+    
+    if (!marketplaceDoc.exists) {
+      return NextResponse.json(
+        { error: 'Marketplace not found' },
+        { status: 404 }
+      )
     }
 
-    if (marketplace.status !== "approved") {
-      return NextResponse.json({ error: "Marketplace not available" }, { status: 403 })
+    const marketplace = marketplaceDoc.data()
+
+    // Get product details
+    const productRef = adminDb.collection('products').doc(productId)
+    const productDoc = await productRef.get()
+    
+    if (!productDoc.exists) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      )
     }
 
-    // Get user details
-    const user = await FirebaseService.getUserById(auth.userId)
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const product = productDoc.data()
+
+    // Check if product is available
+    if (!product.isEnabled || !product.inStock) {
+      return NextResponse.json(
+        { error: 'Product not available' },
+        { status: 400 }
+      )
     }
 
-    // Check if user has wallet connected
-    if (!user.walletAddress) {
-      return NextResponse.json({ 
-        error: "Wallet not connected. Please connect your wallet to make purchases." 
-      }, { status: 400 })
-    }
-
-    // Get product details (check both NFTs and Events)
-    let product = null
-    let productType = null
-
-    // Check if it's an NFT
-    const nft = await FirebaseService.getNFTById(params.productId)
-    if (nft) {
-      product = nft
-      productType = "nft"
-    } else {
-      // Check if it's an Event
-      const event = await FirebaseService.getEventById(params.productId)
-      if (event) {
-        product = event
-        productType = "event"
-      }
-    }
-
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 })
-    }
-
-    // Check availability
-    if (product.availableSupply < quantity) {
-      return NextResponse.json({ 
-        error: `Only ${product.availableSupply} items available` 
-      }, { status: 400 })
-    }
-
-    // Calculate total price
-    const unitPrice = productType === "event" ? parseFloat(product.price) : product.price
-    const totalPrice = unitPrice * quantity
-
-    // Create purchase transaction record
-    const transactionData = {
-      userId: auth.userId,
-      marketplaceId: params.id,
-      productId: params.productId,
-      productType,
+    // Create purchase record
+    const purchaseData = {
+      productId,
+      marketplaceId,
+      buyerAddress,
       quantity,
-      unitPrice,
-      totalPrice,
-      currency: "ALGO",
       paymentMethod,
-      status: "pending",
-      merchantId: marketplace.merchantId,
-      buyerWalletAddress: user.walletAddress,
-      sellerWalletAddress: marketplace.walletAddress,
+      transactionId,
+      price: product.price,
+      currency: product.currency,
+      status: 'completed',
       createdAt: new Date(),
+      updatedAt: new Date()
     }
 
-    const transactionId = await FirebaseService.createTransaction(transactionData)
+    const purchaseRef = await adminDb.collection('purchases').add(purchaseData)
 
-    // For now, we'll create the transaction record and return success
-    // In a real implementation, you would integrate with Algorand blockchain
-    // to process the actual payment and transfer
+    // Update product availability if it's an NFT
+    if (product.type === 'nft' && product.nftData) {
+      const newAvailableSupply = Math.max(0, product.nftData.availableSupply - quantity)
+      
+      await productRef.update({
+        'nftData.availableSupply': newAvailableSupply,
+        inStock: newAvailableSupply > 0,
+        updatedAt: new Date()
+      })
+    }
+
+    // Update marketplace stats
+    await marketplaceRef.update({
+      totalSales: (marketplace.totalSales || 0) + 1,
+      totalRevenue: (marketplace.totalRevenue || 0) + (product.price * quantity),
+      updatedAt: new Date()
+    })
 
     return NextResponse.json({
       success: true,
+      purchaseId: purchaseRef.id,
       transactionId,
-      message: "Purchase initiated successfully",
-      data: {
-        productName: productType === "event" ? product.title : product.name,
-        quantity,
-        totalPrice,
-        currency: "ALGO",
-        transactionId,
-        // Include blockchain transaction details when implemented
-        blockchainTx: {
-          status: "pending",
-          message: "Transaction will be processed on Algorand blockchain"
-        }
-      }
+      message: 'Purchase completed successfully'
     })
-  } catch (error: any) {
-    console.error("Error processing purchase:", error)
-    return NextResponse.json({ error: "Failed to process purchase" }, { status: 500 })
+
+  } catch (error) {
+    console.error('Purchase error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
-})
+}
