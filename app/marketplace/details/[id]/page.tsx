@@ -342,14 +342,15 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <Header showSearch={false} />
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
           {/* Back Button */}
           <FadeIn>
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <Link href="/marketplace">
-                <Button variant="outline" className="rounded-full">
+                <Button variant="outline" className="rounded-full text-sm sm:text-base">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Marketplaces
+                  <span className="hidden sm:inline">Back to Marketplaces</span>
+                  <span className="sm:hidden">Back</span>
                 </Button>
               </Link>
             </div>
@@ -359,7 +360,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
           <FadeIn>
             <div className="mb-8">
               <div 
-                className="relative rounded-lg overflow-hidden mb-6"
+                className="relative rounded-lg overflow-hidden mb-4 sm:mb-6"
                 style={{ 
                   background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
                 }}
@@ -368,24 +369,24 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   <img
                     src={marketplace.banner}
                     alt={marketplace.businessName}
-                    className="w-full h-48 sm:h-56 lg:h-64 object-cover"
+                    className="w-full h-32 sm:h-48 md:h-56 lg:h-64 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-48 sm:h-56 lg:h-64 flex items-center justify-center">
-                    <Store className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-gray-400" />
+                  <div className="w-full h-32 sm:h-48 md:h-56 lg:h-64 flex items-center justify-center">
+                    <Store className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-gray-400" />
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/20"></div>
-                <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 text-white">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-2">{marketplace.businessName}</h1>
-                  <p className="text-sm sm:text-base lg:text-lg opacity-90 line-clamp-2">{marketplace.description}</p>
+                <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 md:bottom-6 md:left-6 text-white">
+                  <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black mb-1 sm:mb-2">{marketplace.businessName}</h1>
+                  <p className="text-xs sm:text-sm md:text-base lg:text-lg opacity-90 line-clamp-2">{marketplace.description}</p>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+              <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="flex flex-wrap gap-2">
                   <Badge 
-                    className="text-sm px-3 py-1"
+                    className="text-xs sm:text-sm px-2 sm:px-3 py-1"
                     style={{ 
                       backgroundColor: `${marketplace.primaryColor}20`,
                       color: marketplace.primaryColor,
@@ -394,22 +395,22 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   >
                     {marketplace.category}
                   </Badge>
-                  <Badge variant="outline" className="text-sm px-3 py-1">
+                  <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
                     {marketplace.template} Template
                   </Badge>
-                  <Badge variant="outline" className="text-sm px-3 py-1">
+                  <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
                     {marketplace.paymentMethod} Payments
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2 sm:ml-auto">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     asChild
-                    className="flex-1 sm:flex-none"
+                    className="flex-1 sm:flex-none text-xs sm:text-sm"
                   >
                     <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       <span className="hidden sm:inline">Open Marketplace</span>
                       <span className="sm:hidden">Open</span>
                     </Link>
@@ -417,19 +418,20 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 sm:flex-none"
+                    className="flex-1 sm:flex-none text-xs sm:text-sm"
                   >
-                    <Share2 className="w-4 h-4 mr-2" />
+                    <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Share</span>
+                    <span className="sm:hidden">Share</span>
                   </Button>
                 </div>
               </div>
             </div>
           </FadeIn>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid gap-4 sm:gap-6 lg:gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Featured Collections Section */}
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
@@ -445,7 +447,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       <p>No collections available yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                       {products.slice(0, 4).map((product, index) => (
                         <motion.div
                           key={product.id}
@@ -481,19 +483,19 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                 </Badge>
                               </div>
                             </div>
-                            <CardContent className="p-4">
-                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            <CardContent className="p-3 sm:p-4">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">
                                 {product.name}
                               </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                                 {product.description}
                               </p>
                               <div className="flex items-center justify-between">
-                                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                <span className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                                   {product.price} {product.currency}
                                 </span>
-                                <Button size="sm" style={{ backgroundColor: marketplace.primaryColor }}>
-                                  <ChevronRight className="w-4 h-4" />
+                                <Button size="sm" className="h-8 w-8 p-0" style={{ backgroundColor: marketplace.primaryColor }}>
+                                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>
                             </CardContent>
@@ -516,42 +518,42 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.totalProducts}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Products</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Products</div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.totalVolume.toFixed(1)} ETH
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Volume</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Volume</div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.totalSales}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Total Sales</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Sales</div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.averagePrice.toFixed(2)} ETH
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Avg Price</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Avg Price</div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.floorPrice.toFixed(2)} ETH
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Floor Price</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Floor Price</div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {analytics.uniqueHolders}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Holders</div>
+                        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Holders</div>
                       </div>
                     </div>
                   </CardContent>
@@ -561,16 +563,16 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
               {/* Collections Table */}
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                     <div>
-                      <CardTitle className="text-gray-900 dark:text-white">Collections</CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-400">
+                      <CardTitle className="text-gray-900 dark:text-white text-lg sm:text-xl">Collections</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">
                         Browse all collections in this marketplace
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                       <Select value={currency} onValueChange={setCurrency}>
-                        <SelectTrigger className="w-20">
+                        <SelectTrigger className="w-20 h-8 sm:h-10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -592,15 +594,15 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">#</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Collection</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Floor</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Top Offer</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Floor 1d %</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Volume</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Sales</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Listed</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Last 1d</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm">#</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Collection</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden sm:table-cell">Floor</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden lg:table-cell">Top Offer</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden lg:table-cell">Floor 1d %</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden sm:table-cell">Volume</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden lg:table-cell">Sales</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden lg:table-cell">Listed</th>
+                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-gray-600 dark:text-gray-400 text-xs sm:text-sm hidden xl:table-cell">Last 1d</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -618,12 +620,12 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                 transition={{ duration: 0.3, delay: index * 0.05 }}
                                 className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
                               >
-                                <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                                   {index + 1}
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4">
+                                  <div className="flex items-center gap-2 sm:gap-3">
+                                    <div className="relative w-8 h-8 sm:w-12 sm:h-12 rounded-lg overflow-hidden">
                                       <Image
                                         src={product.image}
                                         alt={product.name}
@@ -632,56 +634,56 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                       />
                                     </div>
                                     <div>
-                                      <div className="font-medium text-gray-900 dark:text-white">
+                                      <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
                                         {product.name}
                                       </div>
-                                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                                         {product.nftData?.totalSupply || 'N/A'} items
                                       </div>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="font-medium text-gray-900 dark:text-white">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
+                                  <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
                                     {product.floorPrice || product.price} ETH
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="text-gray-600 dark:text-gray-400">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                                     {product.topOffer ? `${product.topOffer} ETH` : '--'}
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className={`flex items-center gap-1 ${
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div className={`flex items-center gap-1 text-xs sm:text-sm ${
                                     (product.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
                                     {(product.floorChange || 0) >= 0 ? (
-                                      <TrendingUp className="w-4 h-4" />
+                                      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                                     ) : (
-                                      <TrendingDown className="w-4 h-4" />
+                                      <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4" />
                                     )}
                                     <span className="font-medium">
                                       {Math.abs(product.floorChange || 0).toFixed(1)}%
                                     </span>
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="font-medium text-gray-900 dark:text-white">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
+                                  <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
                                     {product.volume || 0} ETH
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="text-gray-600 dark:text-gray-400">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                                     {product.sales || 0}
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="text-gray-600 dark:text-gray-400">
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
                                     {product.listed ? `${product.listed}%` : '0%'}
                                   </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <div className="w-16 h-8 bg-gradient-to-r from-green-400 to-red-400 rounded opacity-60"></div>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden xl:table-cell">
+                                  <div className="w-12 sm:w-16 h-6 sm:h-8 bg-gradient-to-r from-green-400 to-red-400 rounded opacity-60"></div>
                                 </td>
                               </motion.tr>
                             </Link>
@@ -690,64 +692,6 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       </table>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Contact Info */}
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {marketplace.website && (
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-5 h-5 text-gray-400" />
-                      <Link 
-                        href={marketplace.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-2"
-                      >
-                        Visit Website
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <Wallet className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {marketplace.paymentMethod} Payments
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Template Preview */}
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Template Preview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div 
-                    className="rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${marketplace.primaryColor}10, ${marketplace.secondaryColor}10)` 
-                    }}
-                  >
-                    <div className="text-center">
-                      <div 
-                        className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold text-xl"
-                        style={{ backgroundColor: marketplace.primaryColor }}
-                      >
-                        {marketplace.businessName.charAt(0)}
-                      </div>
-                      <h3 className="font-bold text-gray-900 dark:text-white mb-1">{marketplace.businessName}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{marketplace.template} Template</p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
