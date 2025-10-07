@@ -70,6 +70,8 @@ interface Marketplace {
   isActive: boolean
   isEnabled: boolean
   allowSwap: boolean
+  allowMint?: boolean
+  allowTrading?: boolean
   walletAddress: string
   createdAt: Date
   updatedAt?: Date
@@ -173,7 +175,7 @@ export default function MarketplaceManagement() {
           }
         } else if (marketplacesData.length > 0) {
           // Auto-select first marketplace if none selected
-          setSelectedMarketplace(marketplacesData[0])
+          setSelectedMarketplace(marketplacesData[0] as Marketplace)
         }
       } else {
         throw new Error("Failed to fetch marketplaces")
@@ -430,6 +432,88 @@ export default function MarketplaceManagement() {
           setSelectedMarketplace({
             ...selectedMarketplace,
             allowSwap: allowSwap
+          })
+        }
+        
+        // Refresh the marketplaces list
+        fetchMarketplaces(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update marketplace",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleToggleMarketplaceMint = async (marketplaceId: string, allowMint: boolean) => {
+    console.log('Toggle marketplace mint:', marketplaceId, allowMint)
+    setActionLoading(marketplaceId)
+    try {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowMint }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Minting functionality ${allowMint ? 'enabled' : 'disabled'} successfully!`,
+        })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            allowMint: allowMint
+          })
+        }
+        
+        // Refresh the marketplaces list
+        fetchMarketplaces(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update marketplace",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleToggleMarketplaceTrading = async (marketplaceId: string, allowTrading: boolean) => {
+    console.log('Toggle marketplace trading:', marketplaceId, allowTrading)
+    setActionLoading(marketplaceId)
+    try {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowTrading }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Trading functionality ${allowTrading ? 'enabled' : 'disabled'} successfully!`,
+        })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            allowTrading: allowTrading
           })
         }
         
@@ -1499,6 +1583,64 @@ export default function MarketplaceManagement() {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>{selectedMarketplace.allowSwap ? 'Disable' : 'Enable'} swap functionality</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg border">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">Minting Functionality</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {selectedMarketplace.allowMint ? 'Users can mint NFTs in your marketplace' : 'Minting functionality is disabled'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Switch
+                                    checked={selectedMarketplace.allowMint || false}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Mint switch clicked:', checked)
+                                      handleToggleMarketplaceMint(selectedMarketplace.id, checked)
+                                    }}
+                                    disabled={actionLoading === selectedMarketplace.id}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{selectedMarketplace.allowMint ? 'Disable' : 'Enable'} minting functionality</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg border">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                                  <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">Trading Functionality</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {selectedMarketplace.allowTrading ? 'Users can trade NFTs in your marketplace' : 'Trading functionality is disabled'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Switch
+                                    checked={selectedMarketplace.allowTrading || false}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Trading switch clicked:', checked)
+                                      handleToggleMarketplaceTrading(selectedMarketplace.id, checked)
+                                    }}
+                                    disabled={actionLoading === selectedMarketplace.id}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{selectedMarketplace.allowTrading ? 'Disable' : 'Enable'} trading functionality</p>
                                 </TooltipContent>
                               </Tooltip>
                             </div>
