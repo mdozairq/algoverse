@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { FirebaseService } from "@/lib/firebase/collections"
+import { NextRequest, NextResponse } from 'next/server'
+import { adminDb } from '@/lib/firebase/admin'
+import { AlgorandNFTService } from '@/lib/algorand/nft-service'
 
 export async function POST(
   request: NextRequest,
@@ -7,109 +8,145 @@ export async function POST(
 ) {
   try {
     const { id: marketplaceId, productId } = params
-    const { quantity, walletAddress } = await request.json()
+    const body = await request.json()
+    const { buyerAddress, assetId, amount } = body
 
-    // Validate input
-    if (!quantity || quantity < 1 || quantity > 10) {
+    // Validate required fields
+    if (!buyerAddress || !assetId || !amount) {
       return NextResponse.json(
-        { error: "Invalid quantity. Must be between 1 and 10." },
+        { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    if (!walletAddress) {
+    // Get marketplace details
+    const marketplaceRef = adminDb.collection('marketplaces').doc(marketplaceId)
+    const marketplaceDoc = await marketplaceRef.get()
+    
+    if (!marketplaceDoc.exists) {
       return NextResponse.json(
-        { error: "Wallet address is required" },
-        { status: 400 }
-      )
-    }
-
-    // Fetch the product
-    const product = await FirebaseService.getProductById(productId)
-    if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
+        { error: 'Marketplace not found' },
         { status: 404 }
       )
     }
 
-    // Verify the product belongs to this marketplace
-    if (product.marketplaceId !== marketplaceId) {
+    const marketplace = marketplaceDoc.data()
+
+    // Get product details
+    const productRef = adminDb.collection('products').doc(productId)
+    const productDoc = await productRef.get()
+    
+    if (!productDoc.exists) {
       return NextResponse.json(
-        { error: "Product not found in this marketplace" },
+        { error: 'Product not found' },
         { status: 404 }
       )
     }
 
-    // Check if product is available for minting
-    if (product.type !== "nft") {
+    const product = productDoc.data()
+
+    // Check if product is an NFT and available for minting
+    if (product.type !== 'nft' || !product.nftData) {
       return NextResponse.json(
-        { error: "This product is not available for minting" },
+        { error: 'Product is not an NFT' },
         { status: 400 }
       )
     }
 
-    if (!product.inStock) {
+    if (!product.isEnabled || !product.inStock) {
       return NextResponse.json(
-        { error: "Product is out of stock" },
+        { error: 'Product not available for minting' },
         { status: 400 }
       )
     }
 
     // Check available supply
-    if (product.nftData && product.nftData.availableSupply < quantity) {
+    if (product.nftData.availableSupply < amount) {
       return NextResponse.json(
-        { error: `Only ${product.nftData.availableSupply} items available` },
+        { error: 'Insufficient supply available' },
         { status: 400 }
       )
     }
 
-    // Simulate minting process
-    const totalCost = product.price * quantity
-    const mintFee = 0.00025 * quantity
-    const transactionId = `0x${Math.random().toString(16).substr(2, 40)}`
+    // Mint NFT using Algorand
+    try {
+      // For demo purposes, we'll use a mock private key
+      // In production, this should be securely managed
+      const minterPrivateKey = process.env.MINTER_PRIVATE_KEY || 'demo_key'
+      
+      const mintResult = await AlgorandNFTService.mintNFT(
+        assetId,
+        buyerAddress,
+        amount,
+        minterPrivateKey
+      )
 
-    // Update product availability
-    if (product.nftData) {
-      const updatedSupply = product.nftData.availableSupply - quantity
-      await FirebaseService.updateProduct(productId, {
-        nftData: {
-          ...product.nftData,
-          availableSupply: updatedSupply,
-          inStock: updatedSupply > 0
-        }
+      // Update product supply
+      const newAvailableSupply = product.nftData.availableSupply - amount
+      const newCurrentSupply = (product.nftData.currentSupply || 0) + amount
+      
+      await productRef.update({
+        'nftData.availableSupply': newAvailableSupply,
+        'nftData.currentSupply': newCurrentSupply,
+        inStock: newAvailableSupply > 0,
+        updatedAt: new Date()
       })
+
+      // Record the mint transaction
+      const mintData = {
+        productId,
+        marketplaceId,
+        buyerAddress,
+        assetId,
+        amount,
+        transactionId: mintResult.transactionId,
+        status: 'completed',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+
+      const mintRef = await adminDb.collection('mints').add(mintData)
+
+      // Update user's NFT holdings
+      const userNFTRef = adminDb.collection('user_nfts').doc(`${buyerAddress}_${assetId}`)
+      const userNFTDoc = await userNFTRef.get()
+      
+      if (userNFTDoc.exists) {
+        const currentBalance = userNFTDoc.data().balance || 0
+        await userNFTRef.update({
+          balance: currentBalance + amount,
+          updatedAt: new Date()
+        })
+      } else {
+        await userNFTRef.set({
+          address: buyerAddress,
+          assetId,
+          balance: amount,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+      }
+
+      return NextResponse.json({
+        success: true,
+        mintId: mintRef.id,
+        transactionId: mintResult.transactionId,
+        amount: mintResult.amount,
+        message: 'NFT minted successfully'
+      })
+
+    } catch (algorandError) {
+      console.error('Algorand minting error:', algorandError)
+      return NextResponse.json(
+        { error: 'Failed to mint NFT on Algorand blockchain' },
+        { status: 500 }
+      )
     }
 
-    // Create mint transaction record
-    const mintTransaction = {
-      id: `mint_${Date.now()}`,
-      productId,
-      marketplaceId,
-      walletAddress: walletAddress.toLowerCase(),
-      quantity,
-      totalCost,
-      mintFee,
-      transactionId,
-      status: "completed",
-      timestamp: new Date()
-    }
-
-    // In a real implementation, you would:
-    // 1. Verify the wallet has sufficient funds
-    // 2. Execute the blockchain transaction
-    // 3. Create NFT tokens
-    // 4. Update the database with the new NFTs
-
-    return NextResponse.json({
-      success: true,
-      transaction: mintTransaction,
-      message: `Successfully minted ${quantity} ${product.name}`
-    })
   } catch (error) {
-    console.error("Error processing mint:", error)
+    console.error('Mint error:', error)
     return NextResponse.json(
-      { error: "Failed to process mint transaction" },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
