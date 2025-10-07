@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Switch Colors */
+[data-state="checked"] {
+  background-color: #07f3a4 !important; /* green-500 */
+}
+
+[data-state="unchecked"] {
+  background-color: #000 !important; /* red-500 */
+}
+
 @layer base {
   :root {
     --background: 0 0% 98%; /* Very light gray */
