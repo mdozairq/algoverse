@@ -160,6 +160,9 @@ import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/compone
 import { useParams } from "next/navigation"
 import Image from "next/image"
 import TemplateEngine from "@/lib/marketplace/template-engine"
+import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
+import { useWallet } from "@/hooks/use-wallet"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface Marketplace {
   id: string
@@ -278,6 +281,7 @@ export default function MarketplacePage() {
   const [sortBy, setSortBy] = useState("name")
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [swapping, setSwapping] = useState<string | null>(null)
+  const [minting, setMinting] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
@@ -290,6 +294,10 @@ export default function MarketplacePage() {
     footer: JSX.Element
     styles: React.CSSProperties
   } | null>(null)
+
+  // Wallet and auth hooks
+  const { isConnected, account, balance, connect, disconnect, sendTransaction } = useWallet()
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     fetchMarketplaceData()
@@ -551,8 +559,26 @@ export default function MarketplacePage() {
   }
 
   const handlePurchase = async (productId: string) => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
+      return
+    }
+
     setPurchasing(productId)
     try {
+      const product = products.find(p => p.id === productId)
+      if (!product) {
+        throw new Error("Product not found")
+      }
+
+      // Send Algorand transaction
+      const transaction = await sendTransaction(
+        marketplace?.walletAddress || "",
+        product.price,
+        product.currency
+      )
+
+      // Record the purchase
       const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/purchase`, {
         method: "POST",
         headers: {
@@ -560,14 +586,16 @@ export default function MarketplacePage() {
         },
         body: JSON.stringify({
           quantity: 1,
-          paymentMethod: "algorand"
+          paymentMethod: "algorand",
+          transactionId: transaction.id,
+          buyerAddress: account.address
         })
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Purchase successful! Transaction ID: ${data.transactionId}`)
+        alert(`Purchase successful! Transaction ID: ${transaction.id}`)
         // Refresh products to update availability
         fetchMarketplaceData()
       } else {
@@ -582,27 +610,48 @@ export default function MarketplacePage() {
   }
 
   const handleSwap = async (productId: string) => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
+      return
+    }
+
     setSwapping(productId)
     try {
+      const product = products.find(p => p.id === productId)
+      if (!product || !product.nftData) {
+        throw new Error("Product not found or not an NFT")
+      }
+
+      // Get user's NFTs for selection
+      const response = await fetch(`/api/user/nfts?address=${account.address}`)
+      const userNFTs = await response.json()
+
+      if (!userNFTs.nfts || userNFTs.nfts.length === 0) {
+        alert("You don't have any NFTs to swap")
+        return
+      }
+
       // For now, we'll show a simple prompt for demo
       const offeredNftId = prompt("Enter the ID of the NFT you want to offer for swap:")
       const message = prompt("Enter a message for the swap proposal (optional):")
 
       if (offeredNftId) {
-        const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/swap`, {
+        const swapResponse = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/swap`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             offeredNftId,
-            message: message || ""
+            message: message || "",
+            buyerAddress: account.address,
+            productAssetId: product.nftData.assetId
           })
         })
 
-        const data = await response.json()
+        const data = await swapResponse.json()
 
-        if (response.ok) {
+        if (swapResponse.ok) {
           alert(`Swap proposal created successfully! Swap ID: ${data.swapId}`)
         } else {
           alert(`Swap proposal failed: ${data.error}`)
@@ -613,6 +662,49 @@ export default function MarketplacePage() {
       alert("Swap proposal failed. Please try again.")
     } finally {
       setSwapping(null)
+    }
+  }
+
+  const handleMint = async (productId: string) => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    setMinting(productId)
+    try {
+      const product = products.find(p => p.id === productId)
+      if (!product || !product.nftData) {
+        throw new Error("Product not found or not an NFT")
+      }
+
+      // Mint NFT using Algorand
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/mint`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          buyerAddress: account.address,
+          assetId: product.nftData.assetId,
+          amount: 1
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`NFT minted successfully! Transaction ID: ${data.transactionId}`)
+        // Refresh products to update availability
+        fetchMarketplaceData()
+      } else {
+        alert(`Minting failed: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("Minting error:", error)
+      alert("Minting failed. Please try again.")
+    } finally {
+      setMinting(null)
     }
   }
 
@@ -765,6 +857,12 @@ export default function MarketplacePage() {
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Cart
                   </Button>
+                  {/* Wallet Connect Button */}
+                  <WalletConnectButton 
+                    variant="outline" 
+                    size="sm"
+                    className="ml-2"
+                  />
                 </div>
               </div>
 
@@ -830,6 +928,12 @@ export default function MarketplacePage() {
                         <ShoppingCart className="w-4 h-4 mr-2" />
                         Cart
                       </Button>
+                      {/* Mobile Wallet Connect Button */}
+                      <WalletConnectButton 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -1250,12 +1354,17 @@ export default function MarketplacePage() {
                               <span className="text-sm text-gray-500 ml-1">{product.currency}</span>
                             </div>
                             <div className="flex gap-2">
+                              {/* Buy Button - Always available */}
                               <Button 
                                 size="sm"
-                                disabled={!product.inStock || purchasing === product.id}
+                                disabled={!product.inStock || purchasing === product.id || !isConnected}
                                 style={getButtonStyle('primary')}
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (!isConnected) {
+                                    connect()
+                                    return
+                                  }
                                   handlePurchase(product.id)
                                 }}
                               >
@@ -1264,17 +1373,22 @@ export default function MarketplacePage() {
                                 ) : (
                                   <ShoppingCart className="w-4 h-4 mr-2" />
                                 )}
-                                Buy
+                                {!isConnected ? 'Connect to Buy' : 'Buy'}
                               </Button>
                               
+                              {/* Swap Button - Only for NFTs when enabled */}
                               {product.type === "nft" && marketplace.allowSwap && product.allowSwap && (
                                 <Button 
                                   size="sm"
                                   variant="outline"
-                                  disabled={swapping === product.id}
+                                  disabled={swapping === product.id || !isConnected}
                                   style={getButtonStyle('outline')}
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    if (!isConnected) {
+                                      connect()
+                                      return
+                                    }
                                     handleSwap(product.id)
                                   }}
                                 >
@@ -1283,7 +1397,32 @@ export default function MarketplacePage() {
                                   ) : (
                                     <ArrowLeftRight className="w-4 h-4 mr-2" />
                                   )}
-                                  Swap
+                                  {!isConnected ? 'Connect to Swap' : 'Swap'}
+                                </Button>
+                              )}
+
+                              {/* Mint Button - Only for NFTs when enabled */}
+                              {product.type === "nft" && product.nftData && (
+                                <Button 
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={minting === product.id || !isConnected}
+                                  style={getButtonStyle('outline')}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (!isConnected) {
+                                      connect()
+                                      return
+                                    }
+                                    handleMint(product.id)
+                                  }}
+                                >
+                                  {minting === product.id ? (
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Zap className="w-4 h-4 mr-2" />
+                                  )}
+                                  {!isConnected ? 'Connect to Mint' : 'Mint'}
                                 </Button>
                               )}
                             </div>
