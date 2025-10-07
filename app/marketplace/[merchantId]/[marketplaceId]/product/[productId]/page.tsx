@@ -4,59 +4,44 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
-  ArrowLeft, 
+  ArrowLeft,
+  ShoppingCart, 
+  Heart, 
+  Share2, 
   ExternalLink, 
-  Globe, 
-  Twitter, 
-  MessageCircle,
-  Heart,
-  Share2,
-  Copy,
-  CheckCircle,
-  Lock,
-  Star,
-  Users,
-  Activity,
-  DollarSign,
-  Clock,
-  Eye,
-  Maximize2,
-  Minus,
-  Plus,
-  ShoppingCart,
-  Wallet,
-  Shield,
+  Star, 
+  Users, 
+  Calendar, 
+  MapPin, 
+  RefreshCw,
+  ArrowLeftRight,
   Zap,
-  Award,
-  TrendingUp,
-  BarChart3,
-  PieChart,
-  Target,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
-  MessageSquare,
-  Bookmark,
+  Eye,
   Download,
   Play,
   Pause,
   Volume2,
   VolumeX,
+  Maximize2,
+  Minimize2,
   Settings,
   Bell,
   User,
   LogOut,
   Home,
   Package,
+  BarChart3,
   HelpCircle,
   Info,
+  CheckCircle,
   AlertCircle,
+  Shield,
+  Lock,
   Unlock,
+  Globe,
   Wifi,
   WifiOff,
   Battery,
@@ -69,10 +54,15 @@ import {
   Box,
   Tag,
   Percent,
+  DollarSign,
   CreditCard,
+  Wallet,
   Banknote,
   Coins,
   TrendingDown,
+  Activity,
+  Target,
+  PieChart,
   LineChart,
   BarChart,
   MousePointer,
@@ -82,8 +72,10 @@ import {
   Flag,
   Edit,
   Trash2,
+  Copy,
   Save,
   Upload,
+  Download as DownloadIcon,
   Send,
   Paperclip,
   Image as ImageIcon,
@@ -134,6 +126,7 @@ import {
   PhoneOutgoing,
   PhoneMissed,
   Voicemail,
+  MessageSquare,
   MessageSquareText,
   MessageSquareReply,
   MessageSquareMore,
@@ -147,12 +140,11 @@ import {
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import { CountdownTimer } from "@/components/launchpad/countdown-timer"
-import { MintWidget } from "@/components/launchpad/mint-widget"
-import { StatsCard, CollectionStatsCard } from "@/components/launchpad/stats-card"
-import { ProgressBar, MintProgressBar } from "@/components/launchpad/progress-bar"
+import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
+import { useWallet } from "@/hooks/use-wallet"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface Marketplace {
   id: string
@@ -181,7 +173,7 @@ interface Product {
   description: string
   price: number
   currency: string
-  image: string
+  images: string[]
   category: string
   inStock: boolean
   rating: number
@@ -194,13 +186,6 @@ interface Product {
     totalSupply: number
     availableSupply: number
     royaltyPercentage: number
-    traits?: {
-      trait_type: string
-      value: string
-      rarity: number
-    }[]
-    rarityScore?: number
-    rarityRank?: number
   }
   eventData?: {
     date: string
@@ -209,34 +194,16 @@ interface Product {
     availableSupply: number
     nftAssetId?: number
   }
-  mintData?: {
-    phases: {
-      id: string
-      name: string
-      startTime: string
-      endTime: string
-      price: number
-      limit: number
-      minted: number
-      isActive: boolean
-      isWhitelist: boolean
-    }[]
-    currentPhase?: {
-      id: string
-      name: string
-      startTime: string
-      endTime: string
-      price: number
-      limit: number
-      minted: number
-      isActive: boolean
-      isWhitelist: boolean
-    }
+  specifications?: {
+    [key: string]: string
   }
+  features?: string[]
+  tags?: string[]
 }
 
-export default function ProductPage() {
+export default function ProductDetailsPage() {
   const params = useParams()
+  const router = useRouter()
   const merchantId = params.merchantId as string
   const marketplaceId = params.marketplaceId as string
   const productId = params.productId as string
@@ -244,19 +211,16 @@ export default function ProductPage() {
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
-  const [mintQuantity, setMintQuantity] = useState(1)
-  const [isLiked, setIsLiked] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(false)
-  const [walletAddress, setWalletAddress] = useState("")
-  const [isEligible, setIsEligible] = useState(false)
-  const [mintProgress, setMintProgress] = useState(0)
-  const [totalMinted, setTotalMinted] = useState(0)
-  const [totalSupply, setTotalSupply] = useState(0)
-  const [floorPrice, setFloorPrice] = useState(0)
-  const [volume, setVolume] = useState(0)
-  const [holders, setHolders] = useState(0)
-  const [listed, setListed] = useState(0)
+  const [purchasing, setPurchasing] = useState(false)
+  const [swapping, setSwapping] = useState(false)
+  const [minting, setMinting] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [showImageModal, setShowImageModal] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
+
+  // Wallet and auth hooks
+  const { isConnected, account, balance, connect, disconnect, sendTransaction } = useWallet()
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     fetchProductData()
@@ -278,19 +242,43 @@ export default function ProductPage() {
         
         if (productRes.ok) {
           setProduct(productData.product)
-          
-          // Set mint progress data
-          if (productData.product.nftData) {
-            setTotalMinted(productData.product.nftData.totalSupply - productData.product.nftData.availableSupply)
-            setTotalSupply(productData.product.nftData.totalSupply)
-            setMintProgress(((productData.product.nftData.totalSupply - productData.product.nftData.availableSupply) / productData.product.nftData.totalSupply) * 100)
-          }
-          
-          // Mock stats data
-          setFloorPrice(productData.product.price)
-          setVolume(productData.product.price * 150)
-          setHolders(1200)
-          setListed(45)
+        } else {
+          // Fallback to mock data if API fails
+          setProduct({
+            id: productId,
+            name: "Premium Event Ticket",
+            description: "VIP access to exclusive event with backstage passes and meet & greet opportunities",
+            price: 150,
+            currency: "ALGO",
+            images: ["/placeholder.jpg", "/placeholder.jpg", "/placeholder.jpg"],
+            category: "event",
+            inStock: true,
+            rating: 4.8,
+            reviews: 24,
+            type: "event" as const,
+            isEnabled: true,
+            allowSwap: false,
+            eventData: {
+              date: "2024-12-25",
+              location: "Madison Square Garden, NYC",
+              totalSupply: 100,
+              availableSupply: 75,
+              nftAssetId: 12345
+            },
+            specifications: {
+              "Event Type": "Concert",
+              "Duration": "3 hours",
+              "Age Restriction": "18+",
+              "Dress Code": "Smart Casual"
+            },
+            features: [
+              "VIP Backstage Access",
+              "Meet & Greet with Artist",
+              "Exclusive Merchandise",
+              "Premium Seating"
+            ],
+            tags: ["VIP", "Exclusive", "Limited Edition", "Backstage"]
+          })
         }
       }
     } catch (error) {
@@ -300,65 +288,148 @@ export default function ProductPage() {
     }
   }
 
-  const handleMint = async () => {
-    if (!walletConnected) {
-      // Connect wallet logic
-      setWalletConnected(true)
-      setWalletAddress("0x1234...5678")
-      setIsEligible(true)
+  const handlePurchase = async () => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
       return
     }
 
+    setPurchasing(true)
     try {
-      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/mint`, {
+      if (!product) return
+
+      // Send Algorand transaction
+      const transaction = await sendTransaction(
+        marketplace?.walletAddress || "",
+        product.price,
+        product.currency
+      )
+
+      // Record the purchase
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/purchase`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          quantity: mintQuantity,
-          walletAddress: walletAddress
+          quantity: 1,
+          paymentMethod: "algorand",
+          transactionId: transaction.id,
+          buyerAddress: account.address
         })
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Mint successful! Transaction ID: ${data.transactionId}`)
+        alert(`Purchase successful! Transaction ID: ${transaction.id}`)
         // Refresh product data
         fetchProductData()
       } else {
-        alert(`Mint failed: ${data.error}`)
+        alert(`Purchase failed: ${data.error}`)
       }
     } catch (error) {
-      console.error("Mint error:", error)
-      alert("Mint failed. Please try again.")
+      console.error("Purchase error:", error)
+      alert("Purchase failed. Please try again.")
+    } finally {
+      setPurchasing(false)
     }
   }
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
+  const handleSwap = async () => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    setSwapping(true)
+    try {
+      if (!product || !product.nftData) {
+        throw new Error("Product not found or not an NFT")
+      }
+
+      // Get user's NFTs for selection
+      const response = await fetch(`/api/user/nfts?address=${account.address}`)
+      const userNFTs = await response.json()
+
+      if (!userNFTs.nfts || userNFTs.nfts.length === 0) {
+        alert("You don't have any NFTs to swap")
+        return
+      }
+
+      // For now, we'll show a simple prompt for demo
+      const offeredNftId = prompt("Enter the ID of the NFT you want to offer for swap:")
+      const message = prompt("Enter a message for the swap proposal (optional):")
+
+      if (offeredNftId) {
+        const swapResponse = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/swap`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            offeredNftId,
+            message: message || "",
+            buyerAddress: account.address,
+            productAssetId: product.nftData.assetId
+          })
+        })
+
+        const data = await swapResponse.json()
+
+        if (swapResponse.ok) {
+          alert(`Swap proposal created successfully! Swap ID: ${data.swapId}`)
+        } else {
+          alert(`Swap proposal failed: ${data.error}`)
+        }
+      }
+    } catch (error) {
+      console.error("Swap error:", error)
+      alert("Swap proposal failed. Please try again.")
+    } finally {
+      setSwapping(false)
+    }
   }
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: product?.name,
-        text: product?.description,
-        url: window.location.href
+  const handleMint = async () => {
+    if (!isConnected || !account) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    setMinting(true)
+    try {
+      if (!product || !product.nftData) {
+        throw new Error("Product not found or not an NFT")
+      }
+
+      // Mint NFT using Algorand
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/mint`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          buyerAddress: account.address,
+          assetId: product.nftData.assetId,
+          amount: 1
+        })
       })
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
 
-  const copyProductId = () => {
-    if (product) {
-      navigator.clipboard.writeText(product.id)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`NFT minted successfully! Transaction ID: ${data.transactionId}`)
+        // Refresh product data
+        fetchProductData()
+      } else {
+        alert(`Minting failed: ${data.error}`)
+      }
+    } catch (error) {
+      console.error("Minting error:", error)
+      alert("Minting failed. Please try again.")
+    } finally {
+      setMinting(false)
     }
   }
 
@@ -367,55 +438,52 @@ export default function ProductPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading product...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading product details...</p>
         </div>
       </div>
     )
   }
 
-  if (!marketplace || !product) {
+  if (!product || !marketplace) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Product Not Found</h1>
           <p className="text-gray-600 dark:text-gray-400">The product you're looking for doesn't exist or has been removed.</p>
+          <Button 
+            onClick={() => router.back()} 
+            className="mt-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
       </div>
     )
   }
 
-  const currentPhase = product.mintData?.currentPhase
-  const isMintActive = currentPhase?.isActive || false
-  const mintEndTime = currentPhase?.endTime ? new Date(currentPhase.endTime) : null
-
   return (
     <PageTransition>
-      <div 
-        className="min-h-screen bg-gray-50 dark:bg-gray-900"
-        style={{
-          '--primary-color': marketplace.primaryColor,
-          '--secondary-color': marketplace.secondaryColor,
-        } as React.CSSProperties}
-      >
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <motion.header 
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50"
+          className="bg-white dark:bg-gray-800 shadow-sm border-b"
         >
           <div className="container mx-auto px-4 lg:px-6 py-4">
             <div className="flex items-center justify-between">
-              {/* Back Button and Brand */}
               <div className="flex items-center gap-4">
-                <Link href={`/marketplace/${merchantId}/${marketplaceId}`}>
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
-                
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => router.back()}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
                 <div className="flex items-center gap-3">
                   {marketplace.logo ? (
                     <Image
@@ -436,52 +504,22 @@ export default function ProductPage() {
                     </div>
                   )}
                   <div>
-                    <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                      {marketplace.businessName}
-                    </h1>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs"
-                        style={{ 
-                          borderColor: marketplace.primaryColor,
-                          color: marketplace.primaryColor 
-                        }}
-                      >
-                        {marketplace.category}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-xs text-gray-500">Live</span>
-                      </div>
-                    </div>
+                    <h1 className="text-lg font-bold">{marketplace.businessName}</h1>
+                    <p className="text-sm text-gray-500">{marketplace.category}</p>
                   </div>
                 </div>
               </div>
               
-              {/* Actions */}
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLike}
-                >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                <Button variant="outline" size="sm">
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleShare}
-                >
-                  {copied ? <CheckCircle className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                <Button variant="outline" size="sm">
+                  <Heart className="w-4 h-4 mr-2" />
+                  Save
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyProductId}
-                >
-                  {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
+                <WalletConnectButton variant="outline" size="sm" />
               </div>
             </div>
           </div>
@@ -490,300 +528,351 @@ export default function ProductPage() {
         {/* Main Content */}
         <main className="container mx-auto px-4 lg:px-6 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Product Image */}
+            {/* Product Images */}
             <motion.div
-              initial={{ x: -50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-4"
             >
-              {/* Main Product Image */}
-              <div className="relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden group">
+              {/* Main Image */}
+              <div className="relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 <Image
-                  src={product.image}
+                  src={product.images[selectedImageIndex]}
                   alt={product.name}
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="object-cover cursor-pointer"
+                  onClick={() => setShowImageModal(true)}
                 />
-                
-                {/* Fullscreen Button */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white border-0"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </Button>
-                
-                {/* Overlay Badges */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  {product.nftData?.rarityRank && (
+                <div className="absolute top-4 right-4 flex gap-2">
+                  {!product.inStock && (
+                    <Badge variant="destructive">Out of Stock</Badge>
+                  )}
+                  {product.allowSwap && (
                     <Badge 
-                      className="text-xs"
                       style={{ 
                         backgroundColor: `${marketplace.primaryColor}90`,
                         color: 'white'
                       }}
                     >
-                      #{product.nftData.rarityRank}
-                    </Badge>
-                  )}
-                  {!product.inStock && (
-                    <Badge variant="destructive" className="text-xs">
-                      Out of Stock
+                      <ArrowLeftRight className="w-3 h-3 mr-1" />
+                      Swappable
                     </Badge>
                   )}
                 </div>
-              </div>
-
-              {/* Product Title */}
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {product.name}
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-
-              {/* Collection Stats */}
-              {product.type === "nft" && (
-                <CollectionStatsCard
-                  floorPrice={floorPrice}
-                  volume={volume}
-                  holders={holders}
-                  listed={listed}
-                  change={5.2}
-                />
-              )}
-            </motion.div>
-
-            {/* Right Column - Minting Details */}
-            <motion.div
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="space-y-6"
-            >
-              {/* Contract and Social Links */}
-              <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Contract
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm">
-                    <Globe className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Twitter className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <MessageCircle className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Eligibility and Phase Status */}
-              <div className="flex items-center gap-3">
-                {isEligible && (
-                  <Badge className="bg-green-500 text-white">
-                    Eligible
-                  </Badge>
-                )}
-                <Badge 
-                  className="flex items-center gap-2"
-                  style={{ 
-                    backgroundColor: isMintActive ? `${marketplace.primaryColor}20` : '#6B7280',
-                    color: isMintActive ? marketplace.primaryColor : 'white'
-                  }}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="absolute bottom-4 right-4"
+                  onClick={() => setShowImageModal(true)}
                 >
-                  <div className={`w-2 h-2 rounded-full ${isMintActive ? 'bg-green-500' : 'bg-gray-500'}`} />
-                  {currentPhase?.name || 'PUBLIC'}
-                </Badge>
+                  <Maximize2 className="w-4 h-4 mr-2" />
+                  View Full Size
+                </Button>
               </div>
 
-              {/* Mint Progress */}
-              {product.type === "nft" && (
-                <MintProgressBar
-                  minted={totalMinted}
-                  totalSupply={totalSupply}
-                />
-              )}
-
-              {/* Price */}
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Price</h3>
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {product.price} {product.currency}
-                  <span className="text-lg text-gray-500 ml-2">
-                    (${(product.price * 38.71).toFixed(2)})
-                  </span>
-                </div>
-              </div>
-
-              {/* Mint Widget */}
-              {product.type === "nft" && (
-                <MintWidget
-                  currentPhase={currentPhase}
-                  price={product.price}
-                  currency={product.currency}
-                  quantity={mintQuantity}
-                  onQuantityChange={setMintQuantity}
-                  onMint={handleMint}
-                  walletConnected={walletConnected}
-                  isEligible={isEligible}
-                  isActive={isMintActive}
-                  mintFee={0.00025}
-                  style={{
-                    primaryColor: marketplace.primaryColor,
-                    secondaryColor: marketplace.secondaryColor
-                  }}
-                />
-              )}
-
-              {/* Countdown Timer */}
-              {mintEndTime && isMintActive && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sale Ends In</h3>
-                  <CountdownTimer targetDate={mintEndTime} />
-                </div>
-              )}
-
-              {/* Terms and Conditions */}
-              <div className="flex items-start gap-2">
-                <Checkbox id="terms" />
-                <label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400">
-                  By clicking 'mint', you agree to the {marketplace.businessName} Terms of Service.
-                </label>
-              </div>
-
-              {/* Trading Lock Notice */}
-              {product.type === "nft" && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <Lock className="w-4 h-4 text-red-500" />
-                  <span className="text-sm text-red-700 dark:text-red-400">
-                    Collection is locked from trading until all items have been minted.
-                  </span>
-                </div>
-              )}
-
-              {/* Past Mint Phases */}
-              {product.mintData?.phases && (
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Mint Phases</h3>
-                  {product.mintData.phases.map((phase) => (
+              {/* Thumbnail Images */}
+              {product.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {product.images.map((image, index) => (
                     <div
-                      key={phase.id}
-                      className={`p-4 rounded-lg border ${
-                        phase.isActive 
-                          ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' 
-                          : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                      key={index}
+                      className={`relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer border-2 ${
+                        selectedImageIndex === index ? 'border-blue-500' : 'border-transparent'
                       }`}
+                      onClick={() => setSelectedImageIndex(index)}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {phase.name}
-                          </span>
-                        </div>
-                        <Badge variant={phase.isActive ? "default" : "secondary"}>
-                          {phase.isActive ? "ACTIVE" : "ENDED"}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        <div>
-                          <span className="font-medium">Mint Limit:</span> {phase.limit}
-                        </div>
-                        <div>
-                          <span className="font-medium">Price:</span> {phase.price} {product.currency}
-                        </div>
-                        <div>
-                          <span className="font-medium">Minted:</span> {phase.minted}
-                        </div>
-                        <div>
-                          <span className="font-medium">Progress:</span> {((phase.minted / phase.limit) * 100).toFixed(1)}%
-                        </div>
-                      </div>
+                      <Image
+                        src={image}
+                        alt={`${product.name} ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
                   ))}
                 </div>
               )}
             </motion.div>
-          </div>
 
-          {/* Product Details Section */}
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="mt-16 space-y-8"
-          >
-            {/* Traits Section */}
-            {product.nftData?.traits && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-white">Traits</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {product.nftData.traits.map((trait, index) => (
-                      <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                          {trait.trait_type}
-                        </div>
-                        <div className="font-medium text-gray-900 dark:text-white mb-1">
-                          {trait.value}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {trait.rarity.toFixed(1)}% rarity
-                        </div>
+            {/* Product Details */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="space-y-6"
+            >
+              <div>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                      {product.name}
+                    </h1>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                        <span className="font-medium">{product.rating}</span>
+                        <span className="text-gray-500">({product.reviews} reviews)</span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* About Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">About This Collection</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose prose-gray dark:prose-invert max-w-none">
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {product.description}
-                  </p>
-                  
-                  {product.type === "nft" && (
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Collection Details</h4>
-                        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                          <li>Total Supply: {product.nftData?.totalSupply || 'N/A'}</li>
-                          <li>Available: {product.nftData?.availableSupply || 'N/A'}</li>
-                          <li>Royalty: {product.nftData?.royaltyPercentage || 0}%</li>
-                          <li>Blockchain: Ethereum</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Utility</h4>
-                        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                          <li>• Exclusive access to community events</li>
-                          <li>• Special merchandise discounts</li>
-                          <li>• Voting rights in project decisions</li>
-                          <li>• Future airdrops and rewards</li>
-                        </ul>
-                      </div>
+                      <Badge 
+                        style={{ 
+                          backgroundColor: `${marketplace.secondaryColor}20`,
+                          color: marketplace.secondaryColor
+                        }}
+                      >
+                        {product.type}
+                      </Badge>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                  {product.description}
+                </p>
+
+                {/* Price and Actions */}
+                <div className="border-t pt-6 mb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <span className="text-4xl font-bold">{product.price}</span>
+                      <span className="text-lg text-gray-500 ml-2">{product.currency}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500">Category</div>
+                      <div className="font-medium">{product.category}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Button 
+                      size="lg"
+                      disabled={!product.inStock || purchasing || !isConnected}
+                      style={{
+                        backgroundColor: marketplace.primaryColor,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        transition: 'all 0.3s ease',
+                        boxShadow: `0 4px 14px 0 ${marketplace.primaryColor}40`
+                      }}
+                      onClick={() => {
+                        if (!isConnected) {
+                          connect()
+                          return
+                        }
+                        handlePurchase()
+                      }}
+                      className="flex-1"
+                    >
+                      {purchasing ? (
+                        <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                      ) : (
+                        <ShoppingCart className="w-5 h-5 mr-2" />
+                      )}
+                      {!isConnected ? 'Connect to Buy' : purchasing ? 'Processing...' : !product.inStock ? 'Out of Stock' : 'Buy Now'}
+                    </Button>
+                    
+                    {product.type === "nft" && marketplace.allowSwap && product.allowSwap && (
+                      <Button 
+                        size="lg"
+                        variant="outline"
+                        disabled={swapping || !isConnected}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: marketplace.primaryColor,
+                          border: `2px solid ${marketplace.primaryColor}`,
+                          borderRadius: '12px',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onClick={() => {
+                          if (!isConnected) {
+                            connect()
+                            return
+                          }
+                          handleSwap()
+                        }}
+                      >
+                        {swapping ? (
+                          <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                        ) : (
+                          <ArrowLeftRight className="w-5 h-5 mr-2" />
+                        )}
+                        {!isConnected ? 'Connect to Swap' : swapping ? 'Processing...' : 'Swap'}
+                      </Button>
+                    )}
+
+                    {product.type === "nft" && product.nftData && (
+                      <Button 
+                        size="lg"
+                        variant="outline"
+                        disabled={minting || !isConnected}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: marketplace.secondaryColor,
+                          border: `2px solid ${marketplace.secondaryColor}`,
+                          borderRadius: '12px',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onClick={() => {
+                          if (!isConnected) {
+                            connect()
+                            return
+                          }
+                          handleMint()
+                        }}
+                      >
+                        {minting ? (
+                          <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-5 h-5 mr-2" />
+                        )}
+                        {!isConnected ? 'Connect to Mint' : minting ? 'Processing...' : 'Mint'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="specifications">Specs</TabsTrigger>
+                  <TabsTrigger value="features">Features</TabsTrigger>
+                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Product Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Type</h4>
+                          <p className="text-gray-600 dark:text-gray-400 capitalize">{product.type}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Category</h4>
+                          <p className="text-gray-600 dark:text-gray-400 capitalize">{product.category}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Rating</h4>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-gray-600 dark:text-gray-400">{product.rating} ({product.reviews} reviews)</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Availability</h4>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            {product.inStock ? 'In Stock' : 'Out of Stock'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="specifications" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Specifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {product.specifications ? (
+                        <div className="space-y-3">
+                          {Object.entries(product.specifications).map(([key, value]) => (
+                            <div key={key} className="flex justify-between py-2 border-b">
+                              <span className="font-medium text-gray-900 dark:text-white">{key}</span>
+                              <span className="text-gray-600 dark:text-gray-400">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No specifications available</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="features" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Features</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {product.features ? (
+                        <ul className="space-y-2">
+                          {product.features.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                              <span className="text-gray-600 dark:text-gray-400">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-500">No features listed</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="reviews" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Reviews ({product.reviews})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">No reviews yet</p>
+                        <p className="text-sm text-gray-400">Be the first to review this product!</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          </div>
         </main>
+
+        {/* Image Modal */}
+        <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{product.name}</DialogTitle>
+            </DialogHeader>
+            <div className="relative aspect-square">
+              <Image
+                src={product.images[selectedImageIndex]}
+                alt={product.name}
+                fill
+                className="object-contain"
+              />
+            </div>
+            {product.images.length > 1 && (
+              <div className="flex gap-2 mt-4 overflow-x-auto">
+                {product.images.map((image, index) => (
+                  <div
+                    key={index}
+                    className={`relative w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer border-2 ${
+                      selectedImageIndex === index ? 'border-blue-500' : 'border-transparent'
+                    }`}
+                    onClick={() => setSelectedImageIndex(index)}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${product.name} ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </PageTransition>
   )
