@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Upload, Eye, Save, Check, Store, Palette, Credit
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 interface MarketplaceTemplate {
   id: string
@@ -94,6 +95,8 @@ export default function CreateMarketplace() {
     { id: 4, title: "Payment", icon: CreditCard, description: "Setup payments" },
     { id: 5, title: "Preview", icon: Eye, description: "Review & submit" },
   ]
+
+  const router = useRouter();
 
   // Fetch templates from API
   useEffect(() => {
@@ -252,6 +255,7 @@ export default function CreateMarketplace() {
           walletAddress:"",
         })
         setCurrentStep(1)
+        router.push("/dashboard/merchant/marketplaces")
       } else {
         throw new Error(data.error || "Failed to submit marketplace")
       }
