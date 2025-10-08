@@ -4,7 +4,7 @@
 
 /* Custom Switch Colors */
 [data-state="checked"] {
-  background-color: #07f3a4 !important; /* green-500 */
+  background-color: #099525 !important; /* green-500 */
 }
 
 [data-state="unchecked"] {
