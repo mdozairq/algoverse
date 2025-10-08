@@ -56,6 +56,7 @@ import AuthGuard from "@/components/auth-guard"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 
 interface Marketplace {
@@ -150,6 +151,7 @@ export default function MarketplaceManagement() {
   
   const { toast } = useToast()
   const { user } = useAuth()
+  const router = useRouter()
 
   const fetchMarketplaces = async (isRefresh = false) => {
     if (!user) return
@@ -708,7 +710,7 @@ export default function MarketplaceManagement() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-bold bbg-clip-text">
                       Marketplace Management
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
@@ -726,135 +728,13 @@ export default function MarketplaceManagement() {
                 <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Marketplace
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Create New Marketplace</DialogTitle>
-                    <DialogDescription>
-                      Set up your independent marketplace with custom branding and features
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="businessName">Business Name</Label>
-                        <Input
-                          id="businessName"
-                          value={formData.businessName}
-                          onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                          placeholder="Enter business name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="category">Category</Label>
-                        <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="entertainment">Entertainment</SelectItem>
-                            <SelectItem value="sports">Sports</SelectItem>
-                            <SelectItem value="art">Art & Culture</SelectItem>
-                            <SelectItem value="technology">Technology</SelectItem>
-                            <SelectItem value="education">Education</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Describe your marketplace"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="template">Template</Label>
-                        <Select value={formData.template} onValueChange={(value) => setFormData({ ...formData, template: value })}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="modern">Modern</SelectItem>
-                            <SelectItem value="classic">Classic</SelectItem>
-                            <SelectItem value="minimal">Minimal</SelectItem>
-                            <SelectItem value="creative">Creative</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="customDomain">Custom Domain (Optional)</Label>
-                        <Input
-                          id="customDomain"
-                          value={formData.customDomain}
-                          onChange={(e) => setFormData({ ...formData, customDomain: e.target.value })}
-                          placeholder="yourmarketplace.com"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="primaryColor">Primary Color</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="primaryColor"
-                            type="color"
-                            value={formData.primaryColor}
-                            onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                            className="w-16 h-10 p-1"
-                          />
-                          <Input
-                            value={formData.primaryColor}
-                            onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="secondaryColor">Secondary Color</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="secondaryColor"
-                            type="color"
-                            value={formData.secondaryColor}
-                            onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
-                            className="w-16 h-10 p-1"
-                          />
-                          <Input
-                            value={formData.secondaryColor}
-                            onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleCreateMarketplace} disabled={actionLoading === "create"}>
-                        {actionLoading === "create" ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Plus className="w-4 h-4 mr-2" />
-                        )}
-                        Create Marketplace
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                className="flex items-center gap-2"
+                onClick={() => router.push("/dashboard/merchant/marketplaces/create-marketplace")}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Marketplace
+              </Button>
             </div>
           </div>
 
