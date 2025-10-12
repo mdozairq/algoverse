@@ -36,6 +36,11 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
   try {
     const { merchantId, approved } = await request.json()
 
+    // Validate merchantId
+    if (!merchantId || merchantId.trim() === "") {
+      return NextResponse.json({ error: "Merchant ID is required" }, { status: 400 })
+    }
+
     // Resolve the correct document ID. merchantId may be a doc ID or a UID from older data.
     let target = await FirebaseService.getUserById(merchantId)
     if (!target) {

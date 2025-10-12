@@ -821,6 +821,9 @@ export const marketplacePagesCollection = {
   },
 
   async getById(id: string): Promise<MarketplacePage | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("marketplace_pages").doc(id).get()
     if (!doc.exists) return null
     return { id: doc.id, ...doc.data() } as MarketplacePage
@@ -887,6 +890,9 @@ export const marketplaceTemplatesCollection = {
   },
 
   async getById(id: string): Promise<MarketplaceTemplate | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("marketplace_templates").doc(id).get()
     if (!doc.exists) return null
     return { id: doc.id, ...doc.data() } as MarketplaceTemplate
@@ -941,6 +947,9 @@ export const transactionsCollection = {
   },
 
   async getById(id: string): Promise<Transaction | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("transactions").doc(id).get()
     if (!doc.exists) return null
     return { id: doc.id, ...doc.data() } as Transaction
@@ -994,6 +1003,9 @@ export const swapsCollection = {
   },
 
   async getById(id: string): Promise<Swap | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const doc = await adminDb.collection("swaps").doc(id).get()
     if (!doc.exists) return null
     return { id: doc.id, ...doc.data() } as Swap
@@ -1186,6 +1198,9 @@ export class FirebaseService {
   }
 
   static async getMerchantById(id: string): Promise<Merchant | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
     const snapshot = await adminDb.collection("merchants")
       .doc(id)
       .get()
@@ -1365,6 +1380,9 @@ export class FirebaseService {
   // Launchpad Project methods
   static async getLaunchpadProjectById(id: string): Promise<LaunchpadProject | null> {
     try {
+      if (!id || id.trim() === "") {
+        return null
+      }
       const doc = await adminDb.collection('launchpadProjects').doc(id).get()
       if (!doc.exists) return null
       
@@ -1436,6 +1454,9 @@ export class FirebaseService {
   // Mint Phase methods
   static async getMintPhaseById(id: string): Promise<MintPhase | null> {
     try {
+      if (!id || id.trim() === "") {
+        return null
+      }
       const doc = await adminDb.collection('mintPhases').doc(id).get()
       if (!doc.exists) return null
       
@@ -1619,6 +1640,9 @@ export class FirebaseService {
   // Product methods
   static async getProductById(id: string): Promise<Product | null> {
     try {
+      if (!id || id.trim() === "") {
+        return null
+      }
       const doc = await adminDb.collection('products').doc(id).get()
       if (!doc.exists) return null
       

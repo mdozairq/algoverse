@@ -36,8 +36,12 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     const auth = (request as any).auth
     const eventData = await request.json()
 
-    // Get merchant info
-    const merchant = await FirebaseService.getMerchantById(eventData.merchantId)
+    // Get merchant info from authenticated user
+    let merchant = null
+    if (auth.userId) {
+      merchant = await FirebaseService.getMerchantById(auth.userId)
+    }
+    
     if (!merchant) {
       return NextResponse.json({ error: "Merchant not found" }, { status: 404 })
     }
