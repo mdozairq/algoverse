@@ -962,9 +962,9 @@ export default function MarketplaceManagement() {
                 className="flex items-center gap-2"
                 onClick={() => router.push("/dashboard/merchant/marketplaces/create-marketplace")}
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Marketplace
-              </Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Marketplace
+                  </Button>
             </div>
           </div>
 
@@ -1808,18 +1808,18 @@ export default function MarketplaceManagement() {
                                               onClick={() => handleDeleteCollection(collection.id)}
                                             >
                                               <Trash2 className="w-4 h-4 mr-2" />
-                                              Delete
+                                Delete
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
                                       </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
                             </motion.div>
-                          ))}
-                        </div>
+              ))}
+            </div>
 
                         {collections.length === 0 && (
                           <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600">

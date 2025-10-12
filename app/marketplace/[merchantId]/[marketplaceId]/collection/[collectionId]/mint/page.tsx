@@ -16,7 +16,8 @@ import {
   Users,
   DollarSign,
   Shield,
-  CheckCircle2
+  CheckCircle2,
+  Wallet
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -47,6 +48,7 @@ interface Marketplace {
   allowSwap: boolean
   allowMint?: boolean
   allowTrading?: boolean
+  allowCreate?: boolean
   createdAt: Date
   updatedAt?: Date
 }

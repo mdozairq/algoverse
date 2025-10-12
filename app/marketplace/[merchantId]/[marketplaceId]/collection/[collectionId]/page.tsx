@@ -176,6 +176,7 @@ interface Marketplace {
   allowSwap: boolean
   allowMint?: boolean
   allowTrading?: boolean
+  allowCreate?: boolean
   createdAt: Date
   updatedAt?: Date
 }

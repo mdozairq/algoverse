@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { 
   ExternalLink, 
   Share2, 
   ShoppingCart, 
   Menu, 
-  X 
+  X
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -34,6 +35,7 @@ interface Marketplace {
   allowSwap: boolean
   allowMint?: boolean
   allowTrading?: boolean
+  allowCreate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -153,9 +155,6 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
           {/* Navigation */}
           <div className="hidden md:flex items-center gap-4">
             <nav className="flex items-center gap-6">
-              <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                Products
-              </Link>
               {marketplace.allowSwap && (
                 <Link href={`/marketplace/${merchantId}/${marketplaceId}/swap`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                   Swap
@@ -171,12 +170,16 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                   Trade
                 </Link>
               )}
-              <Link href={`/marketplace/${merchantId}/${marketplaceId}/create`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+              {marketplace.allowCreate && (<Link href={`/marketplace/${merchantId}/${marketplaceId}/create`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                 Create
               </Link>
+              )}
             </nav>
             
             <div className="flex items-center gap-2">
+              {/* Theme Toggle Button */}
+              <ThemeToggle />
+              
               {marketplace.website && (
                 <Button 
                   variant="outline" 
@@ -245,6 +248,11 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                   </Link>
                 </nav>
                 <div className="flex flex-col gap-2">
+                  {/* Mobile Theme Toggle Button */}
+                  <div className="w-full flex justify-center">
+                    <ThemeToggle />
+                  </div>
+                  
                   {marketplace.website && (
                     <Button 
                       variant="outline" 
