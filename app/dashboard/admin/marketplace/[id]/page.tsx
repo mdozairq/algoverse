@@ -256,7 +256,7 @@ export default function AdminMarketplaceDetailPage() {
               )}
               <Button
                 variant="outline"
-                onClick={() => window.open(`/marketplace/${marketplace.id}`, '_blank')}
+                onClick={() => window.open(`/marketplace/${marketplace.merchantId}/${marketplace.id}`, '_blank')}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View Public
