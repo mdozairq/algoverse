@@ -163,6 +163,8 @@ import TemplateEngine from "@/lib/marketplace/template-engine"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
 import { useWallet } from "@/hooks/use-wallet"
 import { useAuth } from "@/lib/auth/auth-context"
+import MarketplaceHeader from "@/components/marketplace/marketplace-header"
+import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
 
 interface Marketplace {
   id: string
@@ -181,6 +183,8 @@ interface Marketplace {
   status: "draft" | "pending" | "approved" | "rejected"
   isEnabled: boolean
   allowSwap: boolean
+  allowMint?: boolean
+  allowTrading?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -755,192 +759,11 @@ export default function MarketplacePage() {
         style={getThemeStyles()}
       >
         {/* Dynamic Header */}
-        <motion.header 
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          style={getHeaderStyle()}
-          className="w-full"
-        >
-          <div className="container mx-auto px-4 lg:px-6 py-4">
-            <div className="flex items-center justify-between">
-              {/* Logo and Brand */}
-              <motion.div 
-                className="flex items-center gap-4"
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-              >
-                {marketplace.logo ? (
-                  <div className="relative">
-                    <Image
-                      src={marketplace.logo}
-                      alt={marketplace.businessName}
-                      width={48}
-                      height={48}
-                      className="rounded-xl shadow-lg"
-                    />
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
-                  </div>
-                ) : (
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})` 
-                    }}
-                  >
-                    {marketplace.businessName.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                    {marketplace.businessName}
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs"
-                      style={{ 
-                        borderColor: marketplace.primaryColor,
-                        color: marketplace.primaryColor 
-                      }}
-                    >
-                      {marketplace.category}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-xs text-gray-500">Live</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              
-              {/* Navigation */}
-              <div className="hidden md:flex items-center gap-4">
-                <nav className="flex items-center gap-6">
-                  <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                    Products
-                  </Link>
-                  <Link href="#about" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                    About
-                  </Link>
-                  <Link href="#contact" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                    Contact
-                  </Link>
-                </nav>
-                
-                <div className="flex items-center gap-2">
-                  {marketplace.website && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      asChild
-                      style={getButtonStyle('outline')}
-                    >
-                      <Link href={marketplace.website} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Website
-                      </Link>
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    style={getButtonStyle('outline')}
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                  <Button 
-                    size="sm"
-                    style={getButtonStyle('primary')}
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Cart
-                  </Button>
-                  {/* Wallet Connect Button */}
-                  <WalletConnectButton 
-                    variant="outline" 
-                    size="sm"
-                    className="ml-2"
-                  />
-                </div>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </Button>
-            </div>
-
-            {/* Mobile Menu */}
-            <AnimatePresence>
-              {mobileMenuOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="md:hidden overflow-hidden"
-                >
-                  <div className="py-4 space-y-4 border-t border-gray-200 mt-4">
-                    <nav className="flex flex-col gap-3">
-                      <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                        Products
-                      </Link>
-                      <Link href="#about" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                        About
-                      </Link>
-                      <Link href="#contact" className="text-sm font-medium hover:opacity-80 transition-opacity">
-                        Contact
-                      </Link>
-                    </nav>
-                    <div className="flex flex-col gap-2">
-                      {marketplace.website && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          asChild
-                          style={getButtonStyle('outline')}
-                        >
-                          <Link href={marketplace.website} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Website
-                          </Link>
-                        </Button>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        style={getButtonStyle('outline')}
-                      >
-                        <Share2 className="w-4 h-4 mr-2" />
-                        Share
-                      </Button>
-                      <Button 
-                        size="sm"
-                        style={getButtonStyle('primary')}
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Cart
-                      </Button>
-                      {/* Mobile Wallet Connect Button */}
-                      <WalletConnectButton 
-                        variant="outline" 
-                        size="sm"
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.header>
+        <MarketplaceHeader 
+          marketplace={marketplace} 
+          merchantId={merchantId} 
+          marketplaceId={marketplaceId} 
+        />
 
         {/* Dynamic Hero Section */}
         {template?.configuration.features.heroSection && (
@@ -1702,6 +1525,9 @@ export default function MarketplacePage() {
             </div>
           </motion.footer>
         )}
+        
+        {/* Dynamic Footer */}
+        <MarketplaceFooter marketplace={marketplace} />
       </div>
     </PageTransition>
   )
