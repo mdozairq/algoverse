@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronRight,
   Grid3X3,
   List,
   SlidersHorizontal,
@@ -152,7 +153,8 @@ import {
   MessageSquarePlus,
   MessageSquareShare,
   MessageSquareHeart,
-  MessageSquareLock
+  MessageSquareLock,
+  Plus
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -242,7 +244,7 @@ interface MarketplaceTemplate {
   updatedAt?: Date
 }
 
-interface Product {
+interface Collection {
   id: string
   name: string
   description: string
@@ -256,6 +258,10 @@ interface Product {
   type: "nft" | "event" | "merchandise"
   isEnabled: boolean
   allowSwap: boolean
+  nftCount: number // Minimum 1 NFT required
+  mintPrice?: number
+  floorPrice?: number
+  topOffer?: number
   nftData?: {
     assetId: number
     totalSupply: number
@@ -278,7 +284,7 @@ export default function MarketplacePage() {
 
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [template, setTemplate] = useState<MarketplaceTemplate | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
+  const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
@@ -289,12 +295,12 @@ export default function MarketplacePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [renderedComponents, setRenderedComponents] = useState<{
     header: JSX.Element
     hero: JSX.Element
-    products: JSX.Element
+    collections: JSX.Element
     footer: JSX.Element
     styles: React.CSSProperties
   } | null>(null)
@@ -330,18 +336,18 @@ export default function MarketplacePage() {
           setTemplate(templateData.template)
         }
         
-        // Fetch marketplace products from API
-        const productsRes = await fetch(`/api/marketplaces/${marketplaceId}/products`)
-        const productsData = await productsRes.json()
+        // Fetch marketplace collections from API
+        const collectionsRes = await fetch(`/api/marketplaces/${marketplaceId}/collections`)
+        const collectionsData = await collectionsRes.json()
         
-        if (productsRes.ok) {
-          setProducts(productsData.products || [])
+        if (collectionsRes.ok) {
+          setCollections(collectionsData.collections || [])
         } else {
           // Fallback to mock data if API fails
-          setProducts([
+          setCollections([
             {
               id: "1",
-              name: "Premium Event Ticket",
+              name: "Premium Event Collection",
               description: "VIP access to exclusive event",
               price: 150,
               currency: "ALGO",
@@ -352,11 +358,15 @@ export default function MarketplacePage() {
               reviews: 24,
               type: "event" as const,
               isEnabled: true,
-              allowSwap: false
+              allowSwap: false,
+              nftCount: 1,
+              mintPrice: 150,
+              floorPrice: 140,
+              topOffer: 160
             },
             {
               id: "2",
-              name: "Limited Edition NFT",
+              name: "Limited Edition NFT Collection",
               description: "Rare digital collectible",
               price: 500,
               currency: "ALGO",
@@ -367,7 +377,11 @@ export default function MarketplacePage() {
               reviews: 12,
               type: "nft" as const,
               isEnabled: true,
-              allowSwap: true
+              allowSwap: true,
+              nftCount: 5,
+              mintPrice: 500,
+              floorPrice: 480,
+              topOffer: 520
             }
           ])
         }
@@ -384,23 +398,26 @@ export default function MarketplacePage() {
     if (marketplace && template) {
       try {
         const templateEngine = TemplateEngine.getInstance()
-        const rendered = templateEngine.renderMarketplace(marketplace, template, products)
-        setRenderedComponents(rendered)
+        const rendered = templateEngine.renderMarketplace(marketplace, template, collections)
+        setRenderedComponents({
+          ...rendered,
+          collections: rendered.products // Map products to collections for compatibility
+        })
       } catch (error) {
         console.error("Error rendering marketplace with template engine:", error)
       }
     }
-  }, [marketplace, template, products])
+  }, [marketplace, template, collections])
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
-    const isEnabled = product.isEnabled
+  const filteredCollections = collections.filter(collection => {
+    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         collection.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = categoryFilter === "all" || collection.category === categoryFilter
+    const isEnabled = collection.isEnabled
     return matchesSearch && matchesCategory && isEnabled
   })
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  const sortedCollections = [...filteredCollections].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
         return a.price - b.price
@@ -410,6 +427,8 @@ export default function MarketplacePage() {
         return b.rating - a.rating
       case "reviews":
         return b.reviews - a.reviews
+      case "nftCount":
+        return b.nftCount - a.nftCount
       default:
         return a.name.localeCompare(b.name)
     }
@@ -562,28 +581,28 @@ export default function MarketplacePage() {
     return gridMap[itemsPerRow] || 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
   }
 
-  const handlePurchase = async (productId: string) => {
+  const handlePurchase = async (collectionId: string) => {
     if (!isConnected || !account) {
       alert("Please connect your wallet first")
       return
     }
 
-    setPurchasing(productId)
+    setPurchasing(collectionId)
     try {
-      const product = products.find(p => p.id === productId)
-      if (!product) {
-        throw new Error("Product not found")
+      const collection = collections.find(c => c.id === collectionId)
+      if (!collection) {
+        throw new Error("Collection not found")
       }
 
       // Send Algorand transaction
       const transaction = await sendTransaction(
         marketplace?.walletAddress || "",
-        product.price,
-        product.currency
+        collection.price,
+        collection.currency
       )
 
       // Record the purchase
-      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/purchase`, {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/collections/${collectionId}/purchase`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -600,7 +619,7 @@ export default function MarketplacePage() {
 
       if (response.ok) {
         alert(`Purchase successful! Transaction ID: ${transaction.id}`)
-        // Refresh products to update availability
+        // Refresh collections to update availability
         fetchMarketplaceData()
       } else {
         alert(`Purchase failed: ${data.error}`)
@@ -613,17 +632,17 @@ export default function MarketplacePage() {
     }
   }
 
-  const handleSwap = async (productId: string) => {
+  const handleSwap = async (collectionId: string) => {
     if (!isConnected || !account) {
       alert("Please connect your wallet first")
       return
     }
 
-    setSwapping(productId)
+    setSwapping(collectionId)
     try {
-      const product = products.find(p => p.id === productId)
-      if (!product || !product.nftData) {
-        throw new Error("Product not found or not an NFT")
+      const collection = collections.find(c => c.id === collectionId)
+      if (!collection || !collection.nftData) {
+        throw new Error("Collection not found or not an NFT collection")
       }
 
       // Get user's NFTs for selection
@@ -640,7 +659,7 @@ export default function MarketplacePage() {
       const message = prompt("Enter a message for the swap proposal (optional):")
 
       if (offeredNftId) {
-        const swapResponse = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/swap`, {
+        const swapResponse = await fetch(`/api/marketplaces/${marketplaceId}/collections/${collectionId}/swap`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -649,7 +668,7 @@ export default function MarketplacePage() {
             offeredNftId,
             message: message || "",
             buyerAddress: account.address,
-            productAssetId: product.nftData.assetId
+            collectionAssetId: collection.nftData.assetId
           })
         })
 
@@ -669,28 +688,28 @@ export default function MarketplacePage() {
     }
   }
 
-  const handleMint = async (productId: string) => {
+  const handleMint = async (collectionId: string) => {
     if (!isConnected || !account) {
       alert("Please connect your wallet first")
       return
     }
 
-    setMinting(productId)
+    setMinting(collectionId)
     try {
-      const product = products.find(p => p.id === productId)
-      if (!product || !product.nftData) {
-        throw new Error("Product not found or not an NFT")
+      const collection = collections.find(c => c.id === collectionId)
+      if (!collection || !collection.nftData) {
+        throw new Error("Collection not found or not an NFT collection")
       }
 
       // Mint NFT using Algorand
-      const response = await fetch(`/api/marketplaces/${marketplaceId}/products/${productId}/mint`, {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/collections/${collectionId}/mint`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           buyerAddress: account.address,
-          assetId: product.nftData.assetId,
+          assetId: collection.nftData.assetId,
           amount: 1
         })
       })
@@ -699,7 +718,7 @@ export default function MarketplacePage() {
 
       if (response.ok) {
         alert(`NFT minted successfully! Transaction ID: ${data.transactionId}`)
-        // Refresh products to update availability
+        // Refresh collections to update availability
         fetchMarketplaceData()
       } else {
         alert(`Minting failed: ${data.error}`)
@@ -745,7 +764,7 @@ export default function MarketplacePage() {
         >
           {renderedComponents.header}
           {renderedComponents.hero}
-          {renderedComponents.products}
+          {renderedComponents.collections}
           {renderedComponents.footer}
         </div>
       </PageTransition>
@@ -873,9 +892,9 @@ export default function MarketplacePage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        {products.length}+
+                        {collections.length}+
                       </div>
-                      <div className="text-sm text-white/70">Products</div>
+                      <div className="text-sm text-white/70">Collections</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
@@ -914,395 +933,538 @@ export default function MarketplacePage() {
           </motion.section>
         )}
 
-        {/* Main Content */}
-        <main className="container mx-auto px-4 lg:px-6 py-8">
-          {/* Dynamic Search and Filters */}
-          {template?.configuration.sections.products.showFilters && (
-            <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <Card className="mb-8 shadow-lg" style={getCardStyle()}>
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-                    {/* Search Bar */}
-                    <div className="relative flex-1 max-w-md">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search products..."
-                        className="pl-10 pr-4 py-3"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ borderRadius: template?.configuration.theme.borderRadius === 'large' ? '12px' : '8px' }}
-                      />
-                    </div>
-                    
-                    {/* Filter Controls */}
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger className="w-48">
-                          <Filter className="h-4 w-4 mr-2 text-gray-500" />
-                          <SelectValue placeholder="Filter by Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          <SelectItem value="event">Events</SelectItem>
-                          <SelectItem value="nft">NFTs</SelectItem>
-                          <SelectItem value="merchandise">Merchandise</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-48">
-                          <SlidersHorizontal className="h-4 w-4 mr-2 text-gray-500" />
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="name">Name</SelectItem>
-                          <SelectItem value="price-low">Price: Low to High</SelectItem>
-                          <SelectItem value="price-high">Price: High to Low</SelectItem>
-                          <SelectItem value="rating">Rating</SelectItem>
-                          <SelectItem value="reviews">Reviews</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                        <Button
-                          variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('grid')}
-                          style={viewMode === 'grid' ? getButtonStyle('primary') : {}}
-                        >
-                          <Grid3X3 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={viewMode === 'list' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('list')}
-                          style={viewMode === 'list' ? getButtonStyle('primary') : {}}
-                        >
-                          <List className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Active Filters */}
-                  {(searchTerm || categoryFilter !== 'all') && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="mt-4 pt-4 border-t border-gray-200"
+        {/* Main Content - Details Page Layout with Magic Eden Style */}
+        <main 
+          className="min-h-screen"
+          style={{ 
+            backgroundColor: template?.configuration.theme.backgroundColor || '#ffffff',
+            color: template?.configuration.theme.textColor || '#000000'
+          }}
+        >
+          <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+            <div className="grid gap-4 sm:gap-6 lg:gap-8">
+              {/* Main Content */}
+              <div className="space-y-4 sm:space-y-6">
+                {/* Featured Collections Section */}
+                <Card 
+                  className="border-gray-200 dark:border-gray-700"
+                  style={{
+                    backgroundColor: template?.configuration.theme.backgroundColor || '#ffffff',
+                    borderColor: `${marketplace.primaryColor}20`
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle 
+                      className="text-lg sm:text-xl"
+                      style={{ color: template?.configuration.theme.textColor || '#000000' }}
                     >
-                      <div className="flex flex-wrap gap-2">
-                        {searchTerm && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            Search: "{searchTerm}"
-                            <X 
-                              className="w-3 h-3 cursor-pointer" 
-                              onClick={() => setSearchTerm('')}
-                            />
-                          </Badge>
-                        )}
-                        {categoryFilter !== 'all' && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            Category: {categoryFilter}
-                            <X 
-                              className="w-3 h-3 cursor-pointer" 
-                              onClick={() => setCategoryFilter('all')}
-                            />
-                          </Badge>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Dynamic Products Grid */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Products & NFTs
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <Package className="w-4 h-4" />
-                <span>{sortedProducts.length} items</span>
-              </div>
-            </div>
-            
-            <StaggerContainer 
-              className={`grid gap-6 ${
-                viewMode === 'list' 
-                  ? 'grid-cols-1' 
-                  : getGridLayout()
-              }`}
-            >
-              {sortedProducts.map((product, index) => (
-                <StaggerItem key={product.id}>
-                  <motion.div
-                    whileHover={{ 
-                      scale: 1.02,
-                      y: -5
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    className="h-full"
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Card 
-                      className={`overflow-hidden h-full group cursor-pointer ${
-                        viewMode === 'list' ? 'flex flex-row' : ''
-                      }`}
-                      style={{
-                        ...getCardStyle(),
-                        borderColor: `${marketplace.primaryColor}20`
-                      }}
-                      onClick={() => {
-                        // Navigate to product page instead of opening modal
-                        window.location.href = `/marketplace/${merchantId}/${marketplaceId}/product/${product.id}`
-                      }}
+                      Featured Collections
+                    </CardTitle>
+                    <CardDescription 
+                      style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
                     >
-                      {/* Product Image */}
-                      <div className={`relative ${
-                        viewMode === 'list' 
-                          ? 'w-48 h-32 flex-shrink-0' 
-                          : 'aspect-square'
-                      } bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900`}>
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        
-                        {/* Overlay Badges */}
-                        <div className="absolute top-3 left-3 flex flex-col gap-2">
-                          {!product.inStock && (
-                            <Badge variant="destructive" className="text-xs">
-                              Out of Stock
-                            </Badge>
-                          )}
-                          {product.allowSwap && (
-                            <Badge 
-                              className="text-xs"
-                              style={{ 
-                                backgroundColor: `${marketplace.secondaryColor}90`,
-                                color: 'white'
+                      Top collections from this marketplace
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {collections.length === 0 ? (
+                      <div 
+                        className="text-center py-8"
+                        style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                      >
+                        <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No collections available yet</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                        {collections.slice(0, 4).map((collection, index) => (
+                          <motion.div
+                            key={collection.id}
+                            initial={{ y: 30, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
+                            whileHover={{ y: -5 }}
+                            className="group"
+                          >
+                            <div 
+                              className="block cursor-pointer"
+                              onClick={() => {
+                                window.location.href = `/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`
                               }}
                             >
-                              <ArrowLeftRight className="w-3 h-3 mr-1" />
-                              Swappable
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Quick Actions Overlay */}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="bg-white/90 hover:bg-white"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="bg-white/90 hover:bg-white"
-                            >
-                              <Heart className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="bg-white/90 hover:bg-white"
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className={`${viewMode === 'list' ? 'flex-1' : ''}`}>
-                        <CardHeader className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-lg line-clamp-2 mb-1">
-                                {product.name}
-                              </CardTitle>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                {product.description}
-                              </p>
-                            </div>
-                            <Badge 
-                              className="text-xs ml-2 flex-shrink-0"
-                              style={{ 
-                                backgroundColor: `${marketplace.secondaryColor}20`,
-                                color: marketplace.secondaryColor
-                              }}
-                            >
-                              {product.type}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        
-                        <CardContent className="p-4 pt-0">
-                          {/* Rating and Reviews */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium">{product.rating}</span>
-                              <span className="text-xs text-gray-500">({product.reviews})</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Eye className="w-3 h-3" />
-                              <span>1.2k views</span>
-                            </div>
-                          </div>
-                          
-                          {/* Price and Actions */}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-2xl font-bold">{product.price}</span>
-                              <span className="text-sm text-gray-500 ml-1">{product.currency}</span>
-                            </div>
-                            <div className="flex gap-2">
-                              {/* Buy Button - Always available */}
-                              <Button 
-                                size="sm"
-                                disabled={!product.inStock || purchasing === product.id || !isConnected}
-                                style={getButtonStyle('primary')}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (!isConnected) {
-                                    connect()
-                                    return
-                                  }
-                                  handlePurchase(product.id)
+                              <Card 
+                                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300"
+                                style={{
+                                  backgroundColor: `${marketplace.primaryColor}05`,
+                                  borderColor: `${marketplace.primaryColor}20`
                                 }}
                               >
-                                {purchasing === product.id ? (
-                                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                  <ShoppingCart className="w-4 h-4 mr-2" />
-                                )}
-                                {!isConnected ? 'Connect to Buy' : 'Buy'}
-                              </Button>
-                              
-                              {/* Swap Button - Only for NFTs when enabled */}
-                              {product.type === "nft" && marketplace.allowSwap && product.allowSwap && (
-                                <Button 
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={swapping === product.id || !isConnected}
-                                  style={getButtonStyle('outline')}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (!isConnected) {
-                                      connect()
-                                      return
-                                    }
-                                    handleSwap(product.id)
-                                  }}
-                                >
-                                  {swapping === product.id ? (
-                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                <div className="relative aspect-square">
+                                  {collection.image ? (
+                                    <Image
+                                      src={collection.image}
+                                      alt={collection.name}
+                                      fill
+                                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
                                   ) : (
-                                    <ArrowLeftRight className="w-4 h-4 mr-2" />
+                                    <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200">
+                                      <Package className="w-16 h-16 text-gray-400" />
+                                    </div>
                                   )}
-                                  {!isConnected ? 'Connect to Swap' : 'Swap'}
-                                </Button>
-                              )}
-
-                              {/* Mint Button - Only for NFTs when enabled */}
-                              {product.type === "nft" && product.nftData && (
-                                <Button 
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={minting === product.id || !isConnected}
-                                  style={getButtonStyle('outline')}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (!isConnected) {
-                                      connect()
-                                      return
-                                    }
-                                    handleMint(product.id)
-                                  }}
-                                >
-                                  {minting === product.id ? (
-                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                  ) : (
-                                    <Zap className="w-4 h-4 mr-2" />
-                                  )}
-                                  {!isConnected ? 'Connect to Mint' : 'Mint'}
-                                </Button>
-                              )}
+                                  <div className="absolute top-3 left-3">
+                                    <Badge 
+                                      className="text-xs"
+                                      style={{ 
+                                        backgroundColor: `${marketplace.primaryColor}90`,
+                                        color: 'white'
+                                      }}
+                                    >
+                                      #{index + 1}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <CardContent className="p-3 sm:p-4">
+                                  <h3 
+                                    className="font-semibold mb-1 text-sm sm:text-base"
+                                    style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                  >
+                                    {collection.name}
+                                  </h3>
+                                  <p 
+                                    className="text-xs sm:text-sm mb-2 line-clamp-2"
+                                    style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                  >
+                                    {collection.description}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <span 
+                                      className="text-sm sm:text-lg font-bold"
+                                      style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                    >
+                                      {collection.mintPrice || 0} ALGO
+                                    </span>
+                                    <Button 
+                                      size="sm" 
+                                      className="h-8 w-8 p-0" 
+                                      style={{ backgroundColor: marketplace.primaryColor }}
+                                    >
+                                      <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
                             </div>
-                          </div>
-                        </CardContent>
+                          </motion.div>
+                        ))}
                       </div>
-                    </Card>
-                  </motion.div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
 
-          {sortedProducts.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
-            >
-              <Store className="w-20 h-20 text-gray-400 mx-auto mb-6" />
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">No products found</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                Try adjusting your search or filter criteria to find what you're looking for.
-              </p>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('')
-                  setCategoryFilter('all')
-                }}
-                style={getButtonStyle('outline')}
-              >
-                Clear Filters
-              </Button>
-            </motion.div>
-          )}
+                {/* Analytics Section */}
+                <Card 
+                  className="border-gray-200 dark:border-gray-700"
+                  style={{
+                    backgroundColor: template?.configuration.theme.backgroundColor || '#ffffff',
+                    borderColor: `${marketplace.primaryColor}20`
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle 
+                      className="text-lg sm:text-xl"
+                      style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                    >
+                      Marketplace Analytics
+                    </CardTitle>
+                    <CardDescription 
+                      style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                    >
+                      Key metrics and performance data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {collections.length}
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Total Collections
+                        </div>
+                      </div>
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {collections.length}
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Collections
+                        </div>
+                      </div>
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {Math.floor(Math.random() * 1000 + 100)}
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Total Sales
+                        </div>
+                      </div>
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {Math.floor(Math.random() * 100 + 1)}%
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Listed
+                        </div>
+                      </div>
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {Math.floor(Math.random() * 1000 + 500)}
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Holders
+                        </div>
+                      </div>
+                      <div 
+                        className="text-center p-3 sm:p-4 rounded-lg"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}10`,
+                          borderColor: `${marketplace.primaryColor}20`
+                        }}
+                      >
+                        <div 
+                          className="text-lg sm:text-2xl font-bold mb-1"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          {Math.floor(Math.random() * 20 + 1)}%
+                        </div>
+                        <div 
+                          className="text-xs sm:text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Floor Change
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Collections Table */}
+                <Card 
+                  className="border-gray-200 dark:border-gray-700"
+                  style={{
+                    backgroundColor: template?.configuration.theme.backgroundColor || '#ffffff',
+                    borderColor: `${marketplace.primaryColor}20`
+                  }}
+                >
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      <div>
+                        <CardTitle 
+                          className="text-lg sm:text-xl"
+                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                        >
+                          Collections
+                        </CardTitle>
+                        <CardDescription 
+                          className="text-sm"
+                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        >
+                          Browse all collections in this marketplace
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select value="ALGO" onValueChange={() => {}}>
+                          <SelectTrigger className="w-20 h-8 sm:h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALGO">ALGO</SelectItem>
+                            <SelectItem value="ETH">ETH</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {sortedCollections.length === 0 ? (
+                      <div 
+                        className="text-center py-8"
+                        style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                      >
+                        <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No collections available yet</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr 
+                              className="border-b"
+                              style={{ borderColor: `${marketplace.primaryColor}20` }}
+                            >
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                #
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Collection
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Floor
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Top Offer
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Floor 1d %
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Volume
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Sales
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Listed
+                              </th>
+                              <th 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden xl:table-cell"
+                                style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                              >
+                                Last 1d
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedCollections.map((collection, index) => (
+                              <motion.tr
+                                key={collection.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                                className="border-b cursor-pointer hover:opacity-80 transition-opacity"
+                                style={{
+                                  borderColor: `${marketplace.primaryColor}10`
+                                }}
+                                onClick={() => {
+                                  window.location.href = `/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`
+                                }}
+                              >
+                                <td 
+                                  className="py-2 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm"
+                                  style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                >
+                                  {index + 1}
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4">
+                                  <div className="flex items-center gap-2 sm:gap-3">
+                                    <div className="relative w-8 h-8 sm:w-12 sm:h-12 rounded-lg overflow-hidden">
+                                      {collection.image ? (
+                                        <Image
+                                          src={collection.image}
+                                          alt={collection.name}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <div 
+                                          className="w-full h-full flex items-center justify-center"
+                                          style={{
+                                            background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                          }}
+                                        >
+                                          <Package className="w-4 h-4 text-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div 
+                                        className="font-medium text-xs sm:text-sm"
+                                        style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                      >
+                                        {collection.name}
+                                      </div>
+                                      <div 
+                                        className="text-xs sm:text-sm"
+                                        style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                      >
+                                        {collection.nftCount} NFTs
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
+                                  <div 
+                                    className="font-medium text-xs sm:text-sm"
+                                    style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                  >
+                                    {collection.floorPrice || collection.price} ALGO
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div 
+                                    className="text-xs sm:text-sm"
+                                    style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                  >
+                                    {collection.topOffer ? `${collection.topOffer} ALGO` : '--'}
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div className="flex items-center gap-1 text-xs sm:text-sm text-green-600">
+                                    <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    <span className="font-medium">
+                                      {Math.abs(Math.random() * 20 - 10).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
+                                  <div 
+                                    className="font-medium text-xs sm:text-sm"
+                                    style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                  >
+                                    {Math.floor(Math.random() * 1000 + 100)} ALGO
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div 
+                                    className="text-xs sm:text-sm"
+                                    style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                  >
+                                    {Math.floor(Math.random() * 100 + 1)}
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                                  <div 
+                                    className="text-xs sm:text-sm"
+                                    style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                  >
+                                    {Math.floor(Math.random() * 20 + 1)}%
+                                  </div>
+                                </td>
+                                <td className="py-2 sm:py-4 px-2 sm:px-4 hidden xl:table-cell">
+                                  <div 
+                                    className="w-12 sm:w-16 h-6 sm:h-8 rounded flex items-center justify-center"
+                                    style={{ backgroundColor: marketplace.primaryColor }}
+                                  >
+                                    <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </main>
 
-        {/* Product Detail Modal */}
-        <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
+        {/* Collection Detail Modal */}
+        <Dialog open={!!selectedCollection} onOpenChange={() => setSelectedCollection(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            {selectedProduct && (
+            {selectedCollection && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Product Image */}
+                  {/* Collection Image */}
                   <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <Image
-                      src={selectedProduct.image}
-                      alt={selectedProduct.name}
+                      src={selectedCollection.image}
+                      alt={selectedCollection.name}
                       fill
                       className="object-cover"
                     />
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
-                      {!selectedProduct.inStock && (
+                      {!selectedCollection.inStock && (
                         <Badge variant="destructive">Out of Stock</Badge>
                       )}
-                      {selectedProduct.allowSwap && (
+                      {selectedCollection.allowSwap && (
                         <Badge 
                           style={{ 
                             backgroundColor: `${marketplace.primaryColor}90`,
@@ -1313,18 +1475,26 @@ export default function MarketplacePage() {
                           Swappable
                         </Badge>
                       )}
+                      <Badge 
+                        style={{ 
+                          backgroundColor: `${marketplace.primaryColor}90`,
+                          color: 'white'
+                        }}
+                      >
+                        {selectedCollection.nftCount} NFTs
+                      </Badge>
                     </div>
                   </div>
                   
-                  {/* Product Details */}
+                  {/* Collection Details */}
                   <div className="space-y-4">
                     <div>
-                      <h2 className="text-3xl font-bold mb-2">{selectedProduct.name}</h2>
+                      <h2 className="text-3xl font-bold mb-2">{selectedCollection.name}</h2>
                       <div className="flex items-center gap-4 mb-4">
                         <div className="flex items-center gap-1">
                           <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                          <span className="font-medium">{selectedProduct.rating}</span>
-                          <span className="text-gray-500">({selectedProduct.reviews} reviews)</span>
+                          <span className="font-medium">{selectedCollection.rating}</span>
+                          <span className="text-gray-500">({selectedCollection.reviews} reviews)</span>
                         </div>
                         <Badge 
                           style={{ 
@@ -1332,51 +1502,51 @@ export default function MarketplacePage() {
                             color: marketplace.secondaryColor
                           }}
                         >
-                          {selectedProduct.type}
+                          {selectedCollection.type}
                         </Badge>
                       </div>
                       <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                        {selectedProduct.description}
+                        {selectedCollection.description}
                       </p>
                     </div>
                     
                     <div className="border-t pt-4">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <span className="text-4xl font-bold">{selectedProduct.price}</span>
-                          <span className="text-lg text-gray-500 ml-2">{selectedProduct.currency}</span>
+                          <span className="text-4xl font-bold">{selectedCollection.price}</span>
+                          <span className="text-lg text-gray-500 ml-2">{selectedCollection.currency}</span>
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-gray-500">Category</div>
-                          <div className="font-medium">{selectedProduct.category}</div>
+                          <div className="font-medium">{selectedCollection.category}</div>
                         </div>
                       </div>
                       
                       <div className="flex gap-3">
                         <Button 
                           size="lg"
-                          disabled={!selectedProduct.inStock || purchasing === selectedProduct.id}
+                          disabled={!selectedCollection.inStock || purchasing === selectedCollection.id}
                           style={getButtonStyle('primary')}
-                          onClick={() => handlePurchase(selectedProduct.id)}
+                          onClick={() => handlePurchase(selectedCollection.id)}
                           className="flex-1"
                         >
-                          {purchasing === selectedProduct.id ? (
+                          {purchasing === selectedCollection.id ? (
                             <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                           ) : (
                             <ShoppingCart className="w-5 h-5 mr-2" />
                           )}
-                          {!selectedProduct.inStock ? 'Out of Stock' : 'Add to Cart'}
+                          {!selectedCollection.inStock ? 'Out of Stock' : 'Add to Cart'}
                         </Button>
                         
-                        {selectedProduct.type === "nft" && marketplace.allowSwap && selectedProduct.allowSwap && (
+                        {selectedCollection.type === "nft" && marketplace.allowSwap && selectedCollection.allowSwap && (
                           <Button 
                             size="lg"
                             variant="outline"
-                            disabled={swapping === selectedProduct.id}
+                            disabled={swapping === selectedCollection.id}
                             style={getButtonStyle('outline')}
-                            onClick={() => handleSwap(selectedProduct.id)}
+                            onClick={() => handleSwap(selectedCollection.id)}
                           >
-                            {swapping === selectedProduct.id ? (
+                            {swapping === selectedCollection.id ? (
                               <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                             ) : (
                               <ArrowLeftRight className="w-5 h-5 mr-2" />
@@ -1460,8 +1630,8 @@ export default function MarketplacePage() {
                 <div>
                   <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Quick Links</h4>
                   <div className="space-y-3">
-                    <Link href="#products" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                      Products
+                    <Link href="#collections" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                      Collections
                     </Link>
                     <Link href="#about" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                       About Us

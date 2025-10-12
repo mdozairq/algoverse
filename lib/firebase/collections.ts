@@ -1678,4 +1678,99 @@ export class FirebaseService {
       throw error
     }
   }
+
+  // Collection methods
+  static async createCollection(collectionData: any): Promise<string> {
+    try {
+      const doc = await adminDb.collection('collections').add({
+        ...collectionData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      return doc.id
+    } catch (error) {
+      console.error('Error creating collection:', error)
+      throw error
+    }
+  }
+
+  static async getCollectionById(id: string): Promise<any> {
+    try {
+      if (!id || id.trim() === "") {
+        return null
+      }
+      const doc = await adminDb.collection('collections').doc(id).get()
+      if (!doc.exists) return null
+      
+      return {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate()
+      }
+    } catch (error) {
+      console.error('Error fetching collection:', error)
+      return null
+    }
+  }
+
+  static async getCollectionsByMarketplace(marketplaceId: string): Promise<any[]> {
+    try {
+      const snapshot = await adminDb.collection('collections')
+        .where('marketplaceId', '==', marketplaceId)
+        .orderBy('createdAt', 'desc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate()
+      }))
+    } catch (error) {
+      console.error('Error fetching collections:', error)
+      return []
+    }
+  }
+
+  // Additional NFT methods for collections
+  static async getNFTsByCollection(collectionId: string): Promise<any[]> {
+    try {
+      const snapshot = await adminDb.collection('nfts')
+        .where('collectionId', '==', collectionId)
+        .orderBy('mintedAt', 'desc')
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate(),
+        mintedAt: doc.data()?.mintedAt?.toDate() || new Date()
+      }))
+    } catch (error) {
+      console.error('Error fetching collection NFTs:', error)
+      return []
+    }
+  }
+
+  static async getUserMintsInCollection(collectionId: string, userAddress: string): Promise<any[]> {
+    try {
+      const snapshot = await adminDb.collection('nfts')
+        .where('collectionId', '==', collectionId)
+        .where('ownerAddress', '==', userAddress)
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate(),
+        mintedAt: doc.data()?.mintedAt?.toDate() || new Date()
+      }))
+    } catch (error) {
+      console.error('Error fetching user mints:', error)
+      return []
+    }
+  }
 }

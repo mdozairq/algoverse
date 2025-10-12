@@ -58,7 +58,20 @@ export class WalletService {
     // Listen for wallet events
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
-        this.disconnect()
+        // Don't disconnect on page unload, keep connection persistent
+        console.log('Page unloading, keeping wallet connection persistent')
+      })
+      
+      // Listen for storage changes (from other tabs)
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'wallet-connected' || e.key === 'wallet-address') {
+          this.checkConnection()
+        }
+      })
+      
+      // Listen for focus events to check connection
+      window.addEventListener('focus', () => {
+        this.checkConnection()
       })
     }
   }
@@ -124,6 +137,11 @@ export class WalletService {
       if (typeof window !== 'undefined') {
         localStorage.setItem('wallet-connected', 'true')
         localStorage.setItem('wallet-address', address)
+        
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('wallet-connected', { 
+          detail: { address, balance } 
+        }))
       }
 
       return account
@@ -208,6 +226,14 @@ export class WalletService {
           },
           balance
         })
+        
+        // Dispatch custom event to notify other components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wallet-connected', { 
+            detail: { address, balance } 
+          }))
+        }
+        
         return true
       }
 
@@ -395,6 +421,11 @@ export class WalletService {
     }
     
     console.log('Wallet force-disconnected')
+  }
+
+  public async refreshConnection(): Promise<boolean> {
+    // Force refresh the connection state
+    return await this.checkConnection()
   }
 
   public isWalletInstalled(): boolean {

@@ -204,6 +204,55 @@ interface Product {
   }
 }
 
+interface Collection {
+  id: string
+  name: string
+  description: string
+  price: number
+  currency: string
+  image: string
+  category: string
+  inStock: boolean
+  rating: number
+  reviews: number
+  type: "nft" | "event" | "merchandise"
+  isEnabled: boolean
+  allowSwap: boolean
+  nftCount: number // Minimum 1 NFT required
+  mintPrice?: number
+  floorPrice?: number
+  topOffer?: number
+  volume?: number
+  sales?: number
+  listed?: number
+  floorChange?: number
+  nftData?: {
+    assetId: number
+    totalSupply: number
+    availableSupply: number
+    royaltyPercentage: number
+    traits?: {
+      trait_type: string
+      value: string
+      rarity: number
+    }[]
+    rarityScore?: number
+    rarityRank?: number
+  }
+  eventData?: {
+    date: string
+    location: string
+    totalSupply: number
+    availableSupply: number
+    nftAssetId?: number
+  }
+  lastSale?: {
+    price: number
+    currency: string
+    date: string
+  }
+}
+
 interface Analytics {
   totalProducts: number
   totalVolume: number
@@ -219,7 +268,7 @@ interface Analytics {
 
 export default function MarketplaceDetailPage({ params }: { params: { id: string } }) {
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
+  const [collections, setCollections] = useState<Collection[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("top")
@@ -240,15 +289,15 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
       if (marketplaceRes.ok) {
         setMarketplace(marketplaceData.marketplace)
         
-        // Fetch products
-        const productsRes = await fetch(`/api/marketplaces/${params.id}/products`)
-        const productsData = await productsRes.json()
+        // Fetch collections
+        const collectionsRes = await fetch(`/api/marketplaces/${params.id}/collections`)
+        const collectionsData = await collectionsRes.json()
         
-        if (productsRes.ok) {
-          setProducts(productsData.products || [])
+        if (collectionsRes.ok) {
+          setCollections(collectionsData.collections || [])
           
           // Calculate analytics
-          const analyticsData = calculateAnalytics(productsData.products || [])
+          const analyticsData = calculateAnalytics(collectionsData.collections || [])
           setAnalytics(analyticsData)
         }
       }
@@ -259,20 +308,20 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
     }
   }
 
-  const calculateAnalytics = (products: Product[]): Analytics => {
-    const totalProducts = products.length
-    const totalVolume = products.reduce((sum, product) => sum + (product.volume || 0), 0)
-    const totalSales = products.reduce((sum, product) => sum + (product.sales || 0), 0)
-    const averagePrice = products.reduce((sum, product) => sum + product.price, 0) / totalProducts
-    const floorPrice = Math.min(...products.map(p => p.floorPrice || p.price))
-    const topOffer = Math.max(...products.map(p => p.topOffer || 0))
-    const listedPercentage = (products.filter(p => p.listed && p.listed > 0).length / totalProducts) * 100
+  const calculateAnalytics = (collections: Collection[]): Analytics => {
+    const totalCollections = collections.length
+    const totalVolume = collections.reduce((sum, collection) => sum + (collection.volume || 0), 0)
+    const totalSales = collections.reduce((sum, collection) => sum + (collection.sales || 0), 0)
+    const averagePrice = collections.reduce((sum, collection) => sum + collection.price, 0) / totalCollections
+    const floorPrice = Math.min(...collections.map(c => c.floorPrice || c.price))
+    const topOffer = Math.max(...collections.map(c => c.topOffer || 0))
+    const listedPercentage = (collections.filter(c => c.listed && c.listed > 0).length / totalCollections) * 100
     const uniqueHolders = Math.floor(Math.random() * 1000) + 500 // Mock data
     const priceChange24h = Math.random() * 20 - 10 // Mock data
     const volumeChange24h = Math.random() * 30 - 15 // Mock data
 
     return {
-      totalProducts,
+      totalProducts: totalCollections,
       totalVolume,
       totalSales,
       averagePrice,
@@ -289,13 +338,13 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
     fetchMarketplaceData()
   }, [params.id])
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCollections = collections.filter(collection => {
+    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         collection.description.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  const sortedCollections = [...filteredCollections].sort((a, b) => {
     switch (sortBy) {
       case "floor":
         return (a.floorPrice || a.price) - (b.floorPrice || b.price)
@@ -305,6 +354,8 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
         return (b.sales || 0) - (a.sales || 0)
       case "listed":
         return (b.listed || 0) - (a.listed || 0)
+      case "nftCount":
+        return b.nftCount - a.nftCount
       default:
         return a.name.localeCompare(b.name)
     }
@@ -441,16 +492,16 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {products.length === 0 ? (
+                  {collections.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No collections available yet</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {products.slice(0, 4).map((product, index) => (
+                      {collections.slice(0, 4).map((collection, index) => (
                         <motion.div
-                          key={product.id}
+                          key={collection.id}
                           initial={{ y: 30, opacity: 0 }}
                           animate={{ y: 0, opacity: 1 }}
                           transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
@@ -458,7 +509,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                           className="group"
                         >
                           <Link 
-                            href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                            href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/collection/${collection.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block"
@@ -466,8 +517,8 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                             <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300">
                             <div className="relative aspect-square">
                               <Image
-                                src={product.image}
-                                alt={product.name}
+                                src={collection.image}
+                                alt={collection.name}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-300"
                               />
@@ -485,14 +536,14 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                             </div>
                             <CardContent className="p-3 sm:p-4">
                               <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">
-                                {product.name}
+                                {collection.name}
                               </h3>
                               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                                {product.description}
+                                {collection.description}
                               </p>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
-                                  {product.price} {product.currency}
+                                  {collection.price} {collection.currency}
                                 </span>
                                 <Button size="sm" className="h-8 w-8 p-0" style={{ backgroundColor: marketplace.primaryColor }}>
                                   <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -584,7 +635,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {sortedProducts.length === 0 ? (
+                  {sortedCollections.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No collections available yet</p>
@@ -606,15 +657,15 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                           </tr>
                         </thead>
                         <tbody>
-                          {sortedProducts.map((product, index) => (
+                          {sortedCollections.map((collection, index) => (
                             <Link 
-                              href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/product/${product.id}`}
+                              href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/collection/${collection.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="contents"
                             >
                               <motion.tr
-                                key={product.id}
+                                key={collection.id}
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -627,59 +678,59 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                   <div className="flex items-center gap-2 sm:gap-3">
                                     <div className="relative w-8 h-8 sm:w-12 sm:h-12 rounded-lg overflow-hidden">
                                       <Image
-                                        src={product.image}
-                                        alt={product.name}
+                                        src={collection.image}
+                                        alt={collection.name}
                                         fill
                                         className="object-cover"
                                       />
                                     </div>
                                     <div>
                                       <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                                        {product.name}
+                                        {collection.name}
                                       </div>
                                       <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                                        {product.nftData?.totalSupply || 'N/A'} items
+                                        {collection.nftCount} NFTs
                                       </div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                                    {product.floorPrice || product.price} ETH
+                                    {collection.floorPrice || collection.price} ETH
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                                    {product.topOffer ? `${product.topOffer} ETH` : '--'}
+                                    {collection.topOffer ? `${collection.topOffer} ETH` : '--'}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div className={`flex items-center gap-1 text-xs sm:text-sm ${
-                                    (product.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                    (collection.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
-                                    {(product.floorChange || 0) >= 0 ? (
+                                    {(collection.floorChange || 0) >= 0 ? (
                                       <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                                     ) : (
                                       <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4" />
                                     )}
                                     <span className="font-medium">
-                                      {Math.abs(product.floorChange || 0).toFixed(1)}%
+                                      {Math.abs(collection.floorChange || 0).toFixed(1)}%
                                     </span>
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                                    {product.volume || 0} ETH
+                                    {collection.volume || 0} ETH
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                                    {product.sales || 0}
+                                    {collection.sales || 0}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                                    {product.listed ? `${product.listed}%` : '0%'}
+                                    {collection.listed ? `${collection.listed}%` : '0%'}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden xl:table-cell">

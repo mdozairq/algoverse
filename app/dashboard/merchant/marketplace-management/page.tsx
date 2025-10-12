@@ -86,7 +86,7 @@ interface Marketplace {
   }
 }
 
-interface Product {
+interface Collection {
   id: string
   name: string
   description: string
@@ -104,6 +104,7 @@ interface Product {
   sales?: number
   rating?: number
   reviews?: number
+  nftCount: number // Minimum 1 NFT required
 }
 
 interface MarketplaceStats {
@@ -120,20 +121,21 @@ export default function MarketplaceManagement() {
   const [refreshing, setRefreshing] = useState(false)
   const [marketplaces, setMarketplaces] = useState<Marketplace[]>([])
   const [selectedMarketplace, setSelectedMarketplace] = useState<Marketplace | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
+  const [collections, setCollections] = useState<Collection[]>([])
   const [marketplaceStats, setMarketplaceStats] = useState<MarketplaceStats | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showWalletDialog, setShowWalletDialog] = useState(false)
   const [editingMarketplace, setEditingMarketplace] = useState<Marketplace | null>(null)
-  const [newProduct, setNewProduct] = useState({
+  const [newCollection, setNewCollection] = useState({
     name: "",
     description: "",
     price: 0,
     currency: "ALGO",
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
-    image: ""
+    image: "",
+    nftCount: 1 // Minimum 1 NFT required
   })
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("name")
@@ -195,15 +197,15 @@ export default function MarketplaceManagement() {
     }
   }
 
-  const fetchProducts = async (marketplaceId: string) => {
+  const fetchCollections = async (marketplaceId: string) => {
     try {
-      const response = await fetch(`/api/marketplaces/${marketplaceId}/products`)
+      const response = await fetch(`/api/marketplaces/${marketplaceId}/collections`)
       if (response.ok) {
         const data = await response.json()
-        setProducts(data.products || [])
+        setCollections(data.collections || [])
       }
     } catch (error) {
-      console.error("Error fetching products:", error)
+      console.error("Error fetching collections:", error)
     }
   }
 
@@ -214,7 +216,7 @@ export default function MarketplaceManagement() {
         totalViews: Math.floor(Math.random() * 10000) + 1000,
         totalSales: Math.floor(Math.random() * 100) + 10,
         totalRevenue: Math.floor(Math.random() * 50000) + 5000,
-        activeProducts: products.filter(p => p.isEnabled).length,
+        activeProducts: collections.filter(c => c.isEnabled).length,
         conversionRate: Math.random() * 10 + 2,
         averageRating: Math.random() * 2 + 3
       }
@@ -230,7 +232,7 @@ export default function MarketplaceManagement() {
 
   useEffect(() => {
     if (selectedMarketplace) {
-      fetchProducts(selectedMarketplace.id)
+      fetchCollections(selectedMarketplace.id)
       fetchMarketplaceStats(selectedMarketplace.id)
     }
   }, [selectedMarketplace])
@@ -536,16 +538,26 @@ export default function MarketplaceManagement() {
     }
   }
 
-  const handleAddProduct = async () => {
+  const handleAddCollection = async () => {
     if (!selectedMarketplace) return
 
-    setActionLoading("add-product")
+    // Validate that collection has at least 1 NFT
+    if (newCollection.nftCount < 1) {
+      toast({
+        title: "Error",
+        description: "Collection must have at least 1 NFT",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setActionLoading("add-collection")
     try {
-      const response = await fetch(`/api/marketplaces/${selectedMarketplace.id}/products`, {
+      const response = await fetch(`/api/marketplaces/${selectedMarketplace.id}/collections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...newProduct,
+          ...newCollection,
           marketplaceId: selectedMarketplace.id,
           isEnabled: true,
           allowSwap: selectedMarketplace.allowSwap
@@ -555,25 +567,26 @@ export default function MarketplaceManagement() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Product added successfully!",
+          description: "Collection added successfully!",
         })
-        setNewProduct({
+        setNewCollection({
           name: "",
           description: "",
           price: 0,
           currency: "ALGO",
           category: "",
           type: "nft",
-          image: ""
+          image: "",
+          nftCount: 1
         })
-        fetchProducts(selectedMarketplace.id)
+        fetchCollections(selectedMarketplace.id)
       } else {
-        throw new Error("Failed to add product")
+        throw new Error("Failed to add collection")
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add product",
+        description: error.message || "Failed to add collection",
         variant: "destructive",
       })
     } finally {
@@ -581,10 +594,10 @@ export default function MarketplaceManagement() {
     }
   }
 
-  const handleToggleProductEnabled = async (productId: string, enabled: boolean) => {
-    setActionLoading(productId)
+  const handleToggleCollectionEnabled = async (collectionId: string, enabled: boolean) => {
+    setActionLoading(collectionId)
     try {
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await fetch(`/api/collections/${collectionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isEnabled: enabled }),
@@ -593,18 +606,18 @@ export default function MarketplaceManagement() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: `Product ${enabled ? 'enabled' : 'disabled'} successfully!`,
+          description: `Collection ${enabled ? 'enabled' : 'disabled'} successfully!`,
         })
         if (selectedMarketplace) {
-          fetchProducts(selectedMarketplace.id)
+          fetchCollections(selectedMarketplace.id)
         }
       } else {
-        throw new Error("Failed to update product")
+        throw new Error("Failed to update collection")
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update product",
+        description: error.message || "Failed to update collection",
         variant: "destructive",
       })
     } finally {
@@ -612,10 +625,10 @@ export default function MarketplaceManagement() {
     }
   }
 
-  const handleToggleProductSwap = async (productId: string, allowSwap: boolean) => {
-    setActionLoading(productId)
+  const handleToggleCollectionSwap = async (collectionId: string, allowSwap: boolean) => {
+    setActionLoading(collectionId)
     try {
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await fetch(`/api/collections/${collectionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ allowSwap }),
@@ -624,18 +637,18 @@ export default function MarketplaceManagement() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: `Swap functionality ${allowSwap ? 'enabled' : 'disabled'} for product!`,
+          description: `Swap functionality ${allowSwap ? 'enabled' : 'disabled'} for collection!`,
         })
         if (selectedMarketplace) {
-          fetchProducts(selectedMarketplace.id)
+          fetchCollections(selectedMarketplace.id)
         }
       } else {
-        throw new Error("Failed to update product")
+        throw new Error("Failed to update collection")
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update product",
+        description: error.message || "Failed to update collection",
         variant: "destructive",
       })
     } finally {
@@ -742,7 +755,7 @@ export default function MarketplaceManagement() {
                 <Tabs defaultValue="marketplaces" className="space-y-6">
                   <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="marketplaces">Marketplaces</TabsTrigger>
-                    <TabsTrigger value="products" disabled={!selectedMarketplace}>Products</TabsTrigger>
+                    <TabsTrigger value="collections" disabled={!selectedMarketplace}>Collections</TabsTrigger>
                     <TabsTrigger value="analytics" disabled={!selectedMarketplace}>Analytics</TabsTrigger>
                     <TabsTrigger value="settings" disabled={!selectedMarketplace}>Settings</TabsTrigger>
                   </TabsList>
@@ -920,17 +933,17 @@ export default function MarketplaceManagement() {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="products" className="space-y-6">
+                  <TabsContent value="collections" className="space-y-6">
                     {selectedMarketplace && (
                       <div className="space-y-6">
-                        {/* Product Management Header */}
+                        {/* Collection Management Header */}
                         <div className="flex items-center justify-between">
                           <div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                              Products & NFTs
+                              Collections & NFTs
                             </h2>
                             <p className="text-gray-600 dark:text-gray-400">
-                              Manage products for {selectedMarketplace.businessName}
+                              Manage collections for {selectedMarketplace.businessName}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
@@ -954,30 +967,30 @@ export default function MarketplaceManagement() {
                               <DialogTrigger asChild>
                                 <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
                                   <Plus className="w-4 h-4 mr-2" />
-                                  Add Product
+                                  Add Collection
                                 </Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-2xl">
                                 <DialogHeader>
-                                  <DialogTitle>Add New Product</DialogTitle>
+                                  <DialogTitle>Add New Collection</DialogTitle>
                                   <DialogDescription>
-                                    Add a new product or NFT to your marketplace
+                                    Add a new collection with at least 1 NFT to your marketplace
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <Label htmlFor="productName">Product Name</Label>
+                                      <Label htmlFor="collectionName">Collection Name</Label>
                                       <Input
-                                        id="productName"
-                                        value={newProduct.name}
-                                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                        placeholder="Enter product name"
+                                        id="collectionName"
+                                        value={newCollection.name}
+                                        onChange={(e) => setNewCollection({ ...newCollection, name: e.target.value })}
+                                        placeholder="Enter collection name"
                                       />
                                     </div>
                                     <div>
-                                      <Label htmlFor="productType">Type</Label>
-                                      <Select value={newProduct.type} onValueChange={(value: "nft" | "event" | "merchandise") => setNewProduct({ ...newProduct, type: value })}>
+                                      <Label htmlFor="collectionType">Type</Label>
+                                      <Select value={newCollection.type} onValueChange={(value: "nft" | "event" | "merchandise") => setNewCollection({ ...newCollection, type: value })}>
                                         <SelectTrigger>
                                           <SelectValue />
                                         </SelectTrigger>
@@ -990,29 +1003,29 @@ export default function MarketplaceManagement() {
                                     </div>
                                   </div>
                                   <div>
-                                    <Label htmlFor="productDescription">Description</Label>
+                                    <Label htmlFor="collectionDescription">Description</Label>
                                     <Textarea
-                                      id="productDescription"
-                                      value={newProduct.description}
-                                      onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                                      placeholder="Describe your product"
+                                      id="collectionDescription"
+                                      value={newCollection.description}
+                                      onChange={(e) => setNewCollection({ ...newCollection, description: e.target.value })}
+                                      placeholder="Describe your collection"
                                       rows={3}
                                     />
                                   </div>
-                                  <div className="grid grid-cols-3 gap-4">
+                                  <div className="grid grid-cols-4 gap-4">
                                     <div>
-                                      <Label htmlFor="productPrice">Price</Label>
+                                      <Label htmlFor="collectionPrice">Price</Label>
                                       <Input
-                                        id="productPrice"
+                                        id="collectionPrice"
                                         type="number"
-                                        value={newProduct.price}
-                                        onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                                        value={newCollection.price}
+                                        onChange={(e) => setNewCollection({ ...newCollection, price: parseFloat(e.target.value) || 0 })}
                                         placeholder="0.00"
                                       />
                                     </div>
                                     <div>
-                                      <Label htmlFor="productCurrency">Currency</Label>
-                                      <Select value={newProduct.currency} onValueChange={(value) => setNewProduct({ ...newProduct, currency: value })}>
+                                      <Label htmlFor="collectionCurrency">Currency</Label>
+                                      <Select value={newCollection.currency} onValueChange={(value) => setNewCollection({ ...newCollection, currency: value })}>
                                         <SelectTrigger>
                                           <SelectValue />
                                         </SelectTrigger>
@@ -1024,43 +1037,55 @@ export default function MarketplaceManagement() {
                                       </Select>
                                     </div>
                                     <div>
-                                      <Label htmlFor="productCategory">Category</Label>
+                                      <Label htmlFor="collectionCategory">Category</Label>
                                       <Input
-                                        id="productCategory"
-                                        value={newProduct.category}
-                                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                                        id="collectionCategory"
+                                        value={newCollection.category}
+                                        onChange={(e) => setNewCollection({ ...newCollection, category: e.target.value })}
                                         placeholder="Category"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="nftCount">NFT Count (Min: 1)</Label>
+                                      <Input
+                                        id="nftCount"
+                                        type="number"
+                                        min="1"
+                                        value={newCollection.nftCount}
+                                        onChange={(e) => setNewCollection({ ...newCollection, nftCount: Math.max(1, parseInt(e.target.value) || 1) })}
+                                        placeholder="1"
                                       />
                                     </div>
                                   </div>
                                   <div>
-                                    <Label htmlFor="productImage">Image URL</Label>
+                                    <Label htmlFor="collectionImage">Image URL</Label>
                                     <Input
-                                      id="productImage"
-                                      value={newProduct.image}
-                                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                                      id="collectionImage"
+                                      value={newCollection.image}
+                                      onChange={(e) => setNewCollection({ ...newCollection, image: e.target.value })}
                                       placeholder="https://example.com/image.jpg"
                                     />
                                   </div>
                                   <div className="flex justify-end gap-2">
-                                    <Button variant="outline" onClick={() => setNewProduct({
+                                    <Button variant="outline" onClick={() => setNewCollection({
                                       name: "",
                                       description: "",
                                       price: 0,
                                       currency: "ALGO",
                                       category: "",
                                       type: "nft",
-                                      image: ""
+                                      image: "",
+                                      nftCount: 1
                                     })}>
                                       Cancel
                                     </Button>
-                                    <Button onClick={handleAddProduct} disabled={actionLoading === "add-product"}>
-                                      {actionLoading === "add-product" ? (
+                                    <Button onClick={handleAddCollection} disabled={actionLoading === "add-collection"}>
+                                      {actionLoading === "add-collection" ? (
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                       ) : (
                                         <Plus className="w-4 h-4 mr-2" />
                                       )}
-                                      Add Product
+                                      Add Collection
                                     </Button>
                                   </div>
                                 </div>
@@ -1069,13 +1094,13 @@ export default function MarketplaceManagement() {
                           </div>
                         </div>
 
-                        {/* Product Filters */}
+                        {/* Collection Filters */}
                         <div className="flex items-center gap-4">
                           <div className="flex-1">
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                               <Input
-                                placeholder="Search products..."
+                                placeholder="Search collections..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
@@ -1088,7 +1113,7 @@ export default function MarketplaceManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All Products</SelectItem>
+                              <SelectItem value="all">All Collections</SelectItem>
                               <SelectItem value="enabled">Enabled</SelectItem>
                               <SelectItem value="disabled">Disabled</SelectItem>
                               <SelectItem value="nft">NFTs</SelectItem>
@@ -1106,15 +1131,16 @@ export default function MarketplaceManagement() {
                               <SelectItem value="price">Price</SelectItem>
                               <SelectItem value="created">Created</SelectItem>
                               <SelectItem value="sales">Sales</SelectItem>
+                              <SelectItem value="nftCount">NFT Count</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
-                        {/* Products Grid */}
+                        {/* Collections Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {products.map((product) => (
+                          {collections.map((collection) => (
                             <motion.div
-                              key={product.id}
+                              key={collection.id}
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ duration: 0.2 }}
@@ -1122,10 +1148,10 @@ export default function MarketplaceManagement() {
                               <Card className="group hover:shadow-lg transition-all duration-200">
                                 <div className="relative">
                                   <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded-t-lg overflow-hidden">
-                                    {product.image ? (
+                                    {collection.image ? (
                                       <img
-                                        src={product.image}
-                                        alt={product.name}
+                                        src={collection.image}
+                                        alt={collection.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                       />
                                     ) : (
@@ -1135,38 +1161,41 @@ export default function MarketplaceManagement() {
                                     )}
                                   </div>
                                   <div className="absolute top-2 right-2 flex gap-1">
-                                    <Badge variant={product.isEnabled ? "default" : "secondary"} className="text-xs">
-                                      {product.isEnabled ? "Enabled" : "Disabled"}
+                                    <Badge variant={collection.isEnabled ? "default" : "secondary"} className="text-xs">
+                                      {collection.isEnabled ? "Enabled" : "Disabled"}
                                     </Badge>
-                                    {product.allowSwap && (
+                                    {collection.allowSwap && (
                                       <Badge variant="outline" className="text-xs">
                                         <ArrowRightLeft className="w-3 h-3 mr-1" />
                                         Swap
                                       </Badge>
                                     )}
+                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
+                                      {collection.nftCount} NFTs
+                                    </Badge>
                                   </div>
                                 </div>
                                 <CardContent className="p-4">
                                   <div className="space-y-3">
                                     <div>
-                                      <CardTitle className="text-lg line-clamp-1">{product.name}</CardTitle>
+                                      <CardTitle className="text-lg line-clamp-1">{collection.name}</CardTitle>
                                       <CardDescription className="line-clamp-2 mt-1">
-                                        {product.description}
+                                        {collection.description}
                                       </CardDescription>
                                     </div>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-lg font-semibold">{product.price} {product.currency}</span>
+                                        <span className="text-lg font-semibold">{collection.price} {collection.currency}</span>
                                         <Badge variant="outline" className="text-xs capitalize">
-                                          {product.type}
+                                          {collection.type}
                                         </Badge>
                                       </div>
                                       <div className="flex items-center gap-1">
-                                        {product.rating && (
+                                        {collection.rating && (
                                           <div className="flex items-center gap-1">
                                             <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                                             <span className="text-xs text-gray-600 dark:text-gray-400">
-                                              {product.rating.toFixed(1)}
+                                              {collection.rating.toFixed(1)}
                                             </span>
                                           </div>
                                         )}
@@ -1177,31 +1206,31 @@ export default function MarketplaceManagement() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Switch
-                                              checked={product.isEnabled}
-                                              onCheckedChange={(checked) => handleToggleProductEnabled(product.id, checked)}
-                                              disabled={actionLoading === product.id}
+                                              checked={collection.isEnabled}
+                                              onCheckedChange={(checked) => handleToggleCollectionEnabled(collection.id, checked)}
+                                              disabled={actionLoading === collection.id}
                                             />
                                           </TooltipTrigger>
                                           <TooltipContent>
-                                            <p>{product.isEnabled ? 'Disable' : 'Enable'} product</p>
+                                            <p>{collection.isEnabled ? 'Disable' : 'Enable'} collection</p>
                                           </TooltipContent>
                                         </Tooltip>
                                         <span className="text-xs text-gray-600 dark:text-gray-400">
-                                          {product.isEnabled ? 'Enabled' : 'Disabled'}
+                                          {collection.isEnabled ? 'Enabled' : 'Disabled'}
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        {product.type === "nft" && (
+                                        {collection.type === "nft" && (
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               <Switch
-                                                checked={product.allowSwap}
-                                                onCheckedChange={(checked) => handleToggleProductSwap(product.id, checked)}
-                                                disabled={actionLoading === product.id}
+                                                checked={collection.allowSwap}
+                                                onCheckedChange={(checked) => handleToggleCollectionSwap(collection.id, checked)}
+                                                disabled={actionLoading === collection.id}
                                               />
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                              <p>{product.allowSwap ? 'Disable' : 'Enable'} swap</p>
+                                              <p>{collection.allowSwap ? 'Disable' : 'Enable'} swap</p>
                                             </TooltipContent>
                                           </Tooltip>
                                         )}
@@ -1230,28 +1259,28 @@ export default function MarketplaceManagement() {
                                             </DropdownMenuItem>
                                             <DropdownMenuItem className="text-red-600">
                                               <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                                              Delete
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
                                       </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
                             </motion.div>
-              ))}
-            </div>
+                          ))}
+                        </div>
 
-                        {products.length === 0 && (
+                        {collections.length === 0 && (
                           <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600">
                             <CardContent className="flex flex-col items-center justify-center py-16">
                               <Package className="w-16 h-16 text-gray-400 mb-4" />
                               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                                No Products Yet
+                                No Collections Yet
                               </h3>
                               <p className="text-gray-600 dark:text-gray-400 text-center mb-6 max-w-md">
-                                Add your first product or NFT to start selling on your marketplace
+                                Add your first collection with at least 1 NFT to start selling on your marketplace
                               </p>
                             </CardContent>
                           </Card>
@@ -1347,33 +1376,33 @@ export default function MarketplaceManagement() {
                           </Card>
                         </div>
 
-                        {/* Top Products */}
+                        {/* Top Collections */}
                         <Card>
                           <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                               <Star className="w-5 h-5" />
-                              Top Performing Products
+                              Top Performing Collections
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-4">
-                              {products.slice(0, 5).map((product, index) => (
-                                <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                              {collections.slice(0, 5).map((collection, index) => (
+                                <div key={collection.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                                   <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
                                       {index + 1}
                                     </div>
                                     <div>
-                                      <p className="font-medium">{product.name}</p>
+                                      <p className="font-medium">{collection.name}</p>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        {product.sales || 0} sales • {product.views || 0} views
+                                        {collection.sales || 0} sales • {collection.views || 0} views • {collection.nftCount} NFTs
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold">{product.price} {product.currency}</p>
+                                    <p className="font-semibold">{collection.price} {collection.currency}</p>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                                      Rating: {product.rating?.toFixed(1) || 'N/A'}
+                                      Rating: {collection.rating?.toFixed(1) || 'N/A'}
                                     </p>
                                   </div>
                                 </div>

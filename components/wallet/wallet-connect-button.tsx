@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { 
   DropdownMenu, 
@@ -64,11 +64,52 @@ export function WalletConnectButton({
     clearError
   } = useWallet()
 
-  const { user , isAuthenticated, logout, disconnectWallet } = useAuth()
+  const { user , isAuthenticated, logout, disconnectWallet, connectWallet } = useAuth()
 
   const [copied, setCopied] = useState(false)
   const [showInstallDialog, setShowInstallDialog] = useState(false)
   const { toast } = useToast()
+
+  // Sync wallet and auth state
+  useEffect(() => {
+    if (isConnected && account?.address && !isAuthenticated) {
+      // Wallet is connected but auth is not, try to sync
+      connectWallet(account.address, "user").catch(error => {
+        console.log("Failed to sync wallet with auth:", error)
+      })
+    }
+  }, [isConnected, account?.address, isAuthenticated, connectWallet])
+
+  // Force refresh connection on mount
+  useEffect(() => {
+    const refreshConnection = async () => {
+      try {
+        await walletService.refreshConnection()
+      } catch (error) {
+        console.log("Failed to refresh wallet connection:", error)
+      }
+    }
+    
+    refreshConnection()
+  }, [])
+
+  // Listen for wallet connection events
+  useEffect(() => {
+    const handleWalletConnected = (event: CustomEvent) => {
+      const { address } = event.detail
+      if (address && !isAuthenticated) {
+        connectWallet(address, "user").catch(error => {
+          console.log("Failed to sync wallet with auth on event:", error)
+        })
+      }
+    }
+
+    window.addEventListener('wallet-connected', handleWalletConnected as EventListener)
+    
+    return () => {
+      window.removeEventListener('wallet-connected', handleWalletConnected as EventListener)
+    }
+  }, [isAuthenticated, connectWallet])
 
   const handleConnect = async () => {
     try {
@@ -77,7 +118,19 @@ export function WalletConnectButton({
         return
       }
 
-      await connect()
+      // Connect to wallet service
+      const walletAccount = await connect()
+      
+      // Also connect to auth service to sync user state
+      if (walletAccount?.address) {
+        try {
+          await connectWallet(walletAccount.address, "user")
+        } catch (authError) {
+          console.log("Auth connection failed, but wallet is connected:", authError)
+          // Don't throw error here as wallet is still connected
+        }
+      }
+      
       toast({
         title: "Wallet Connected",
         description: "Your wallet has been connected successfully!",
