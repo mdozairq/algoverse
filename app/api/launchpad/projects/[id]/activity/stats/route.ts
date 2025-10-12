@@ -47,7 +47,7 @@ export async function GET(
       averagePrice,
       uniqueBuyers,
       uniqueSellers,
-      currency: 'ETH' // Default currency, should be fetched from project
+      currency: 'ALGO' // Default currency, should be fetched from project
     }
 
     return NextResponse.json({

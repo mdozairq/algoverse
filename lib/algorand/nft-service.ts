@@ -4,10 +4,10 @@ import { adminDb } from '../firebase/admin'
 // Algorand configuration
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || ''
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://testnet-api.algonode.cloud'
-const ALGOD_PORT = parseInt(process.env.ALGOD_PORT || '443')
+const ALGOD_PORT = parseInt(process.env.ALGOD_PORT || '443') || 443
 const INDEXER_TOKEN = process.env.INDEXER_TOKEN || ''
 const INDEXER_SERVER = process.env.INDEXER_SERVER || 'https://testnet-idx.algonode.cloud'
-const INDEXER_PORT = parseInt(process.env.INDEXER_PORT || '443')
+const INDEXER_PORT = parseInt(process.env.INDEXER_PORT || '443') || 443
 
 // Initialize Algorand clients
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT)

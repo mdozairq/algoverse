@@ -136,8 +136,8 @@ export function TraitFilter({
               className="w-full"
             />
             <div className="flex justify-between text-xs text-gray-500">
-              <span>{priceRange[0]} ETH</span>
-              <span>{priceRange[1]} ETH</span>
+              <span>{priceRange[0]} ALGO</span>
+              <span>{priceRange[1]} ALGO</span>
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ export function TraitFilter({
               )}
               {(priceRange[0] > 0 || priceRange[1] < 1000) && (
                 <Badge variant="secondary" className="text-xs">
-                  Price: {priceRange[0]}-{priceRange[1]} ETH
+                  Price: {priceRange[0]}-{priceRange[1]} ALGO
                   <Button
                     variant="ghost"
                     size="sm"

@@ -312,10 +312,10 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
     const totalCollections = collections.length
     const totalVolume = collections.reduce((sum, collection) => sum + (collection.volume || 0), 0)
     const totalSales = collections.reduce((sum, collection) => sum + (collection.sales || 0), 0)
-    const averagePrice = collections.reduce((sum, collection) => sum + collection.price, 0) / totalCollections
-    const floorPrice = Math.min(...collections.map(c => c.floorPrice || c.price))
-    const topOffer = Math.max(...collections.map(c => c.topOffer || 0))
-    const listedPercentage = (collections.filter(c => c.listed && c.listed > 0).length / totalCollections) * 100
+    const averagePrice = totalCollections > 0 ? collections.reduce((sum, collection) => sum + collection.price, 0) / totalCollections : 0
+    const floorPrice = collections.length > 0 ? Math.min(...collections.map(c => c.floorPrice || c.price)) : 0
+    const topOffer = collections.length > 0 ? Math.max(...collections.map(c => c.topOffer || 0)) : 0
+    const listedPercentage = totalCollections > 0 ? (collections.filter(c => c.listed && c.listed > 0).length / totalCollections) * 100 : 0
     const uniqueHolders = Math.floor(Math.random() * 1000) + 500 // Mock data
     const priceChange24h = Math.random() * 20 - 10 // Mock data
     const volumeChange24h = Math.random() * 30 - 15 // Mock data
@@ -578,7 +578,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                          {analytics.totalVolume.toFixed(1)} ETH
+                          {analytics.totalVolume.toFixed(1)} ALGO
                         </div>
                         <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Volume</div>
                       </div>
@@ -590,13 +590,13 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                          {analytics.averagePrice.toFixed(2)} ETH
+                          {analytics.averagePrice.toFixed(2)} ALGO
                         </div>
                         <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Avg Price</div>
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                          {analytics.floorPrice.toFixed(2)} ETH
+                          {analytics.floorPrice.toFixed(2)} ALGO
                         </div>
                         <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Floor Price</div>
                       </div>
@@ -628,7 +628,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="ETH">ETH</SelectItem>
+                          <SelectItem value="ALGO">ALGO</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -696,12 +696,12 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                                    {collection.floorPrice || collection.price} ETH
+                                    {collection.floorPrice || collection.price} ALGO
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                                    {collection.topOffer ? `${collection.topOffer} ETH` : '--'}
+                                    {collection.topOffer ? `${collection.topOffer} ALGO` : '--'}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
@@ -720,7 +720,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                                    {collection.volume || 0} ETH
+                                    {collection.volume || 0} ALGO
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">

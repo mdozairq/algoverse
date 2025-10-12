@@ -160,14 +160,14 @@ export function CollectionStatsCard({
     <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${className}`}>
       <StatsCard
         title="Floor Price"
-        value={`${floorPrice} ETH`}
+        value={`${floorPrice} ALGO`}
         change={change}
         changeType={change && change > 0 ? "increase" : change && change < 0 ? "decrease" : "neutral"}
         icon={<DollarSign className="w-4 h-4" />}
       />
       <StatsCard
         title="Volume"
-        value={`${volume} ETH`}
+        value={`${volume} ALGO`}
         icon={<Activity className="w-4 h-4" />}
       />
       <StatsCard
@@ -213,12 +213,12 @@ export function ActivityStatsCard({
       />
       <StatsCard
         title="Total Volume"
-        value={`${totalVolume} ETH`}
+        value={`${totalVolume} ALGO`}
         icon={<TrendingUp className="w-4 h-4" />}
       />
       <StatsCard
         title="Average Price"
-        value={`${averagePrice} ETH`}
+        value={`${averagePrice} ALGO`}
         icon={<DollarSign className="w-4 h-4" />}
       />
       <StatsCard
@@ -262,7 +262,7 @@ export function ProjectStatsCard({
       />
       <StatsCard
         title="Price"
-        value={`${price} ETH`}
+        value={`${price} ALGO`}
         icon={<DollarSign className="w-4 h-4" />}
       />
       <StatsCard

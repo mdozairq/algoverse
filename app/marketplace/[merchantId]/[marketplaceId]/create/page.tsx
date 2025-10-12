@@ -404,12 +404,12 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     
     if (!formData.name.trim()) errors.push("Collection name is required")
     if (!formData.symbol.trim()) errors.push("Collection symbol is required")
-    if (formData.mintPrice && parseFloat(formData.mintPrice) < 0) errors.push("Mint price must be positive")
-    if (formData.royaltyFee && (parseFloat(formData.royaltyFee) < 0 || parseFloat(formData.royaltyFee) > 100)) {
+    if (formData.mintPrice && (parseFloat(formData.mintPrice) || 0) < 0) errors.push("Mint price must be positive")
+    if (formData.royaltyFee && ((parseFloat(formData.royaltyFee) || 0) < 0 || (parseFloat(formData.royaltyFee) || 0) > 100)) {
       errors.push("Royalty fee must be between 0 and 100")
     }
-    if (formData.maxSupply && parseInt(formData.maxSupply) < 1) errors.push("Max supply must be at least 1")
-    if (formData.mintLimit && parseInt(formData.mintLimit) < 1) errors.push("Mint limit must be at least 1")
+    if (formData.maxSupply && (parseInt(formData.maxSupply) || 0) < 1) errors.push("Max supply must be at least 1")
+    if (formData.mintLimit && (parseInt(formData.mintLimit) || 0) < 1) errors.push("Mint limit must be at least 1")
     
     return errors
   }
@@ -452,10 +452,10 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           userAddress: account.address,
           marketplaceId: params.marketplaceId,
           merchantId: params.merchantId,
-          mintPrice: parseFloat(formData.mintPrice || "0"),
-          royaltyFee: parseFloat(formData.royaltyFee || "0"),
-          maxSupply: parseInt(formData.maxSupply || "1000"),
-          mintLimit: parseInt(formData.mintLimit || "1"),
+          mintPrice: parseFloat(formData.mintPrice || "0") || 0,
+          royaltyFee: parseFloat(formData.royaltyFee || "0") || 0,
+          maxSupply: parseInt(formData.maxSupply || "1000") || 1000,
+          mintLimit: parseInt(formData.mintLimit || "1") || 1,
           nftImages: uploadedNFTImages,
           creatorAddress: account
         }),

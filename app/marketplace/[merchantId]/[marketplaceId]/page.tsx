@@ -1240,7 +1240,7 @@ export default function MarketplacePage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ALGO">ALGO</SelectItem>
-                            <SelectItem value="ETH">ETH</SelectItem>
+                            <SelectItem value="ALGO">ALGO</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

@@ -36,7 +36,7 @@ export async function GET(
       name: product.metadata?.name || `NFT #${product.assetId}`,
       description: product.metadata?.description || "Digital collectible",
       price: product.price || 0,
-      currency: "ETH", // Changed to ETH for consistency with Magic Eden style
+      currency: "ALGO", // Changed to ALGO for consistency with Magic Eden style
       image: product.metadata?.image || "/placeholder.jpg",
       category: product.metadata?.category || "nft",
       type: "nft" as const,
@@ -60,7 +60,7 @@ export async function GET(
       topOffer: Math.random() > 0.5 ? (product.price || 0) * (0.8 + Math.random() * 0.4) : undefined,
       lastSale: {
         price: (product.price || 0) * (0.9 + Math.random() * 0.2),
-        currency: "ETH",
+        currency: "ALGO",
         date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
       }
     }))
