@@ -27,6 +27,7 @@ import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 interface TicketTier {
   id: number
@@ -52,7 +53,7 @@ export default function CreateEventPage() {
   ])
   const [enableResale, setEnableResale] = useState(true)
   const [royaltyFee, setRoyaltyFee] = useState("5")
-
+  const router = useRouter()
   const categories = [
     "Concert",
     "Conference",
@@ -107,6 +108,7 @@ export default function CreateEventPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to create event")
       toast({ title: "Event created", description: "Your event has been created successfully." })
+      router.push(`/dashboard/merchant/event/${data.event.id}`)
     } catch (error: any) {
       toast({ title: "Creation failed", description: error.message, variant: "destructive" })
     }
