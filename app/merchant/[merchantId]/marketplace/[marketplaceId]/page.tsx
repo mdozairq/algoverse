@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Store, 
-  Mint, 
+  Coins, 
   ArrowRightLeft, 
   BarChart3, 
   Calendar,
@@ -141,7 +141,7 @@ export default function MarketplacePage({
   const renderPageContent = (page: MarketplacePage) => {
     switch (page.type) {
       case "mint":
-        return <MintPageContent page={page} marketplace={marketplace} />
+        return <CoinsPageContent page={page} marketplace={marketplace} />
       case "trade":
         return <TradePageContent page={page} marketplace={marketplace} />
       case "swap":
@@ -208,8 +208,8 @@ export default function MarketplacePage({
             <TabsTrigger value="overview">Overview</TabsTrigger>
             {getPageByType("mint") && (
               <TabsTrigger value="mint">
-                <Mint className="w-4 h-4 mr-2" />
-                Mint
+                <Coins className="w-4 h-4 mr-2" />
+                Coins
               </TabsTrigger>
             )}
             {getPageByType("trade") && (
@@ -258,10 +258,10 @@ export default function MarketplacePage({
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center space-x-2">
-                        <Mint className="w-5 h-5 text-blue-600" />
+                        <Coins className="w-5 h-5 text-blue-600" />
                         <div>
                           <p className="text-2xl font-bold">0</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">NFTs Minted</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">NFTs Coinsed</p>
                         </div>
                       </div>
                     </CardContent>
@@ -339,12 +339,12 @@ export default function MarketplacePage({
 }
 
 // Page Content Components
-function MintPageContent({ page, marketplace }: { page: MarketplacePage; marketplace: Marketplace }) {
+function CoinsPageContent({ page, marketplace }: { page: MarketplacePage; marketplace: Marketplace }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center">
-          <Mint className="w-5 h-5 mr-2" />
+          <Coins className="w-5 h-5 mr-2" />
           {page.title}
         </CardTitle>
         {page.description && (
@@ -353,9 +353,9 @@ function MintPageContent({ page, marketplace }: { page: MarketplacePage; marketp
       </CardHeader>
       <CardContent>
         <div className="text-center py-12">
-          <Mint className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <Coins className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Mint Page Coming Soon
+            Coins Page Coming Soon
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
             This page is being configured by the merchant.

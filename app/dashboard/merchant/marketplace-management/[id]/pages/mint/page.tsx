@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Mint, 
+  Coins, 
   Settings, 
   Eye, 
   Save, 
@@ -31,7 +31,7 @@ import AuthGuard from "@/components/auth-guard"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
 
-interface MintPageContent {
+interface CoinsPageContent {
   title: string
   description: string
   featuredImage?: string
@@ -48,10 +48,10 @@ interface MintPageContent {
     options?: string[]
   }>
   mintingSettings: {
-    allowBatchMint: boolean
+    allowBatchCoins: boolean
     maxBatchSize: number
     requireApproval: boolean
-    showMintProgress: boolean
+    showCoinsProgress: boolean
   }
   styling: {
     primaryColor: string
@@ -61,15 +61,15 @@ interface MintPageContent {
   }
 }
 
-export default function MintPageManagement({
+export default function CoinsPageManagement({
   params
 }: {
   params: { id: string }
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [pageContent, setPageContent] = useState<MintPageContent>({
-    title: "Mint NFTs",
+  const [pageContent, setPageContent] = useState<CoinsPageContent>({
+    title: "Coins NFTs",
     description: "Create and mint your own NFTs",
     layout: 'grid',
     showFeatured: true,
@@ -78,10 +78,10 @@ export default function MintPageManagement({
     itemsPerPage: 12,
     customFields: [],
     mintingSettings: {
-      allowBatchMint: true,
+      allowBatchCoins: true,
       maxBatchSize: 10,
       requireApproval: false,
-      showMintProgress: true
+      showCoinsProgress: true
     },
     styling: {
       primaryColor: '#3B82F6',
@@ -95,10 +95,10 @@ export default function MintPageManagement({
   const { user } = useAuth()
 
   useEffect(() => {
-    fetchMintPage()
+    fetchCoinsPage()
   }, [params.id])
 
-  const fetchMintPage = async () => {
+  const fetchCoinsPage = async () => {
     try {
       const response = await fetch(`/api/marketplaces/${params.id}/pages?type=mint`)
       if (response.ok) {
@@ -119,7 +119,7 @@ export default function MintPageManagement({
     }
   }
 
-  const handleSaveMintPage = async () => {
+  const handleSaveCoinsPage = async () => {
     setSaving(true)
     try {
       const response = await fetch(`/api/marketplaces/${params.id}/pages`, {
@@ -139,7 +139,7 @@ export default function MintPageManagement({
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Mint page configuration saved successfully!",
+          description: "Coins page configuration saved successfully!",
         })
       } else {
         const error = await response.json()
@@ -207,7 +207,7 @@ export default function MintPageManagement({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mint Page Management</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Coins Page Management</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Configure your NFT minting page
               </p>
@@ -216,13 +216,13 @@ export default function MintPageManagement({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchMintPage}
+                onClick={fetchCoinsPage}
                 disabled={loading}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button onClick={handleSaveMintPage} disabled={saving}>
+              <Button onClick={handleSaveCoinsPage} disabled={saving}>
                 {saving ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -248,8 +248,8 @@ export default function MintPageManagement({
                 Custom Fields
               </TabsTrigger>
               <TabsTrigger value="minting">
-                <Mint className="w-4 h-4 mr-2" />
-                Minting
+                <Coins className="w-4 h-4 mr-2" />
+                Coinsing
               </TabsTrigger>
               <TabsTrigger value="styling">
                 <Palette className="w-4 h-4 mr-2" />
@@ -275,7 +275,7 @@ export default function MintPageManagement({
                           id="page-title"
                           value={pageContent.title}
                           onChange={(e) => setPageContent(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Mint NFTs"
+                          placeholder="Coins NFTs"
                         />
                       </div>
                       
@@ -504,11 +504,11 @@ export default function MintPageManagement({
               </Card>
             </TabsContent>
 
-            {/* Minting Settings */}
+            {/* Coinsing Settings */}
             <TabsContent value="minting">
               <Card>
                 <CardHeader>
-                  <CardTitle>Minting Settings</CardTitle>
+                  <CardTitle>Coinsing Settings</CardTitle>
                   <CardDescription>
                     Configure minting behavior and user experience
                   </CardDescription>
@@ -517,14 +517,14 @@ export default function MintPageManagement({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="allow-batch-mint">Allow Batch Minting</Label>
+                        <Label htmlFor="allow-batch-mint">Allow Batch Coinsing</Label>
                         <Switch
                           id="allow-batch-mint"
-                          checked={pageContent.mintingSettings.allowBatchMint}
+                          checked={pageContent.mintingSettings.allowBatchCoins}
                           onCheckedChange={(checked) => 
                             setPageContent(prev => ({
                               ...prev,
-                              mintingSettings: { ...prev.mintingSettings, allowBatchMint: checked }
+                              mintingSettings: { ...prev.mintingSettings, allowBatchCoins: checked }
                             }))
                           }
                         />
@@ -545,14 +545,14 @@ export default function MintPageManagement({
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="show-mint-progress">Show Mint Progress</Label>
+                        <Label htmlFor="show-mint-progress">Show Coins Progress</Label>
                         <Switch
                           id="show-mint-progress"
-                          checked={pageContent.mintingSettings.showMintProgress}
+                          checked={pageContent.mintingSettings.showCoinsProgress}
                           onCheckedChange={(checked) => 
                             setPageContent(prev => ({
                               ...prev,
-                              mintingSettings: { ...prev.mintingSettings, showMintProgress: checked }
+                              mintingSettings: { ...prev.mintingSettings, showCoinsProgress: checked }
                             }))
                           }
                         />

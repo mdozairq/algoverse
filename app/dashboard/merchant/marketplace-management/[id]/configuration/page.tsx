@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { 
   Settings, 
-  Mint, 
+  Coins, 
   TrendingUp, 
   ArrowRightLeft, 
   Shield, 
@@ -220,8 +220,8 @@ export default function MarketplaceConfigurationPage({
           <Tabs defaultValue="minting" className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="minting">
-                <Mint className="w-4 h-4 mr-2" />
-                Minting
+                <Coins className="w-4 h-4 mr-2" />
+                Coinsing
               </TabsTrigger>
               <TabsTrigger value="trading">
                 <TrendingUp className="w-4 h-4 mr-2" />
@@ -241,13 +241,13 @@ export default function MarketplaceConfigurationPage({
               </TabsTrigger>
             </TabsList>
 
-            {/* Minting Configuration */}
+            {/* Coinsing Configuration */}
             <TabsContent value="minting">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Mint className="w-5 h-5 mr-2" />
-                    Minting Configuration
+                    <Coins className="w-5 h-5 mr-2" />
+                    Coinsing Configuration
                   </CardTitle>
                   <CardDescription>
                     Configure how NFTs are minted in your marketplace
@@ -257,7 +257,7 @@ export default function MarketplaceConfigurationPage({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="minting-enabled">Enable Minting</Label>
+                        <Label htmlFor="minting-enabled">Enable Coinsing</Label>
                         <Switch
                           id="minting-enabled"
                           checked={configuration.mintingConfig.enabled}
@@ -268,7 +268,7 @@ export default function MarketplaceConfigurationPage({
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="auto-approve">Auto Approve Mints</Label>
+                        <Label htmlFor="auto-approve">Auto Approve Coinss</Label>
                         <Switch
                           id="auto-approve"
                           checked={configuration.mintingConfig.autoApprove}
