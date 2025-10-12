@@ -39,8 +39,10 @@ export const POST = requireRole(["admin"])(async (request: NextRequest) => {
     // Resolve the correct document ID. merchantId may be a doc ID or a UID from older data.
     let target = await FirebaseService.getUserById(merchantId)
     if (!target) {
+      console.log("Merchant not found by ID", merchantId, target);
+      
       // Fallback: try by UID
-      const byUid = await FirebaseService.getMerchantByUid(merchantId)
+      const byUid = await FirebaseService.getMerchantById(merchantId)
       if (byUid) {
         target = byUid
       }
