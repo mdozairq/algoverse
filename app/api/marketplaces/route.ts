@@ -104,6 +104,8 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
       status: marketplaceData.status || "pending", // Allow draft creation
       isEnabled: true, // Default to enabled
       allowSwap: true, // Default to allowing swaps
+      allowMint: false, // Default to disabled
+      allowTrading: false, // Default to disabled
       // Apply template's default colors if not provided
       primaryColor: marketplaceData.primaryColor || template.configuration.theme.primaryColor,
       secondaryColor: marketplaceData.secondaryColor || template.configuration.theme.secondaryColor,
