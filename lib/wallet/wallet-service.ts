@@ -138,10 +138,13 @@ export class WalletService {
 
   public async disconnect(): Promise<void> {
     try {
+      // Disconnect from Pera Wallet
       await disconnectPeraWallet()
       
+      // Clear wallet state
       this.setState({
         isConnected: false,
+        isConnecting: false,
         account: null,
         balance: 0,
         transactions: [],
@@ -152,12 +155,37 @@ export class WalletService {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('wallet-connected')
         localStorage.removeItem('wallet-address')
+        localStorage.removeItem('pera-wallet-connect')
+        // Clear any other wallet-related storage
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('pera') || key.includes('wallet')) {
+            localStorage.removeItem(key)
+          }
+        })
       }
+      
+      console.log('Wallet disconnected successfully')
     } catch (error: any) {
+      console.error('Wallet disconnect error:', error)
+      
+      // Force clear state even if disconnect fails
       this.setState({
-        error: error.message || 'Failed to disconnect wallet'
+        isConnected: false,
+        isConnecting: false,
+        account: null,
+        balance: 0,
+        transactions: [],
+        error: null
       })
-      throw error
+
+      // Force clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('wallet-connected')
+        localStorage.removeItem('wallet-address')
+        localStorage.removeItem('pera-wallet-connect')
+      }
+      
+      console.log('Wallet force-disconnected due to error')
     }
   }
 
@@ -340,6 +368,33 @@ export class WalletService {
 
   public clearError(): void {
     this.setState({ error: null })
+  }
+
+  public forceDisconnect(): void {
+    // Force clear all wallet state without calling Pera Wallet disconnect
+    this.setState({
+      isConnected: false,
+      isConnecting: false,
+      account: null,
+      balance: 0,
+      transactions: [],
+      error: null
+    })
+
+    // Force clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('wallet-connected')
+      localStorage.removeItem('wallet-address')
+      localStorage.removeItem('pera-wallet-connect')
+      // Clear any other wallet-related storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('pera') || key.includes('wallet')) {
+          localStorage.removeItem(key)
+        }
+      })
+    }
+    
+    console.log('Wallet force-disconnected')
   }
 
   public isWalletInstalled(): boolean {

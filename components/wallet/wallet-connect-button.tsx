@@ -32,6 +32,7 @@ import {
 import { useWallet } from '@/hooks/use-wallet'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/lib/auth/auth-context'
+import { walletService } from '@/lib/wallet/wallet-service'
 
 interface WalletConnectButtonProps {
   variant?: 'default' | 'outline' | 'ghost'
@@ -92,17 +93,35 @@ export function WalletConnectButton({
 
   const handleDisconnect = async () => {
     try {
+      // First disconnect from wallet service
+      await disconnect()
+      
+      // Then disconnect from auth context (clears user state)
       await disconnectWallet()
+      
       toast({
         title: "Wallet Disconnected",
         description: "Your wallet has been disconnected.",
       })
     } catch (error: any) {
-      toast({
-        title: "Disconnect Failed",
-        description: error.message || "Failed to disconnect wallet",
-        variant: "destructive",
-      })
+      console.error("Disconnect error:", error)
+      
+      // Try force disconnect as fallback
+      try {
+        walletService.forceDisconnect()
+        await disconnectWallet()
+        toast({
+          title: "Wallet Disconnected",
+          description: "Your wallet has been force-disconnected.",
+        })
+      } catch (forceError: any) {
+        console.error("Force disconnect error:", forceError)
+        toast({
+          title: "Disconnect Failed",
+          description: "Failed to disconnect wallet. Please refresh the page.",
+          variant: "destructive",
+        })
+      }
     }
   }
 

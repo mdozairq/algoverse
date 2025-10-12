@@ -190,21 +190,6 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                   </Link>
                 </Button>
               )}
-              <Button 
-                variant="outline" 
-                size="sm"
-                style={getButtonStyle('outline')}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-              <Button 
-                size="sm"
-                style={getButtonStyle('primary')}
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Cart
-              </Button>
               {/* Wallet Connect Button */}
               <WalletConnectButton 
                 variant="outline" 

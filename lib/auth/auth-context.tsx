@@ -126,9 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const disconnectWallet = async () => {
     try {
+      // Disconnect from wallet service
       await walletService.disconnect()
+      
+      // Clear user state immediately
+      setUser(null)
+      
+      console.log("Wallet disconnected and user state cleared")
     } catch (error) {
       console.error("Wallet disconnect failed:", error)
+      // Even if wallet disconnect fails, clear user state
+      setUser(null)
     }
   }
 

@@ -13,13 +13,20 @@ declare global {
 export const peraWallet = new PeraWalletConnect()
 
 // Common wallet disconnect function
-export const disconnectPeraWallet = () => {
+export const disconnectPeraWallet = async () => {
   try {
+    // Disconnect from Pera Wallet Connect
+    await peraWallet.disconnect()
+    
+    // Also try to disconnect from global window object if available
     if (typeof window !== 'undefined' && window.peraWallet) {
       window.peraWallet.disconnect()
     }
+    
+    console.log("Pera Wallet disconnected successfully")
   } catch (walletError) {
-    console.log("Wallet disconnect error:", walletError)
+    console.error("Pera Wallet disconnect error:", walletError)
+    // Don't throw error, just log it as disconnect might still work
   }
 }
 
