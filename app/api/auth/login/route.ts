@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const jwtPayload = {
       userId: userData.id || email,
       email: userData.email || email,
-      role: userData.role || role || "user",
+      role: role || userData.role || "user", // Prioritize requested role over stored role
       walletAddress: userData.walletAddress,
       isVerified: userData.isVerified || userData.isApproved || userData.role === "admin",
       uid: userData.uid,

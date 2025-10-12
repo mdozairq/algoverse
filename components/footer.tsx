@@ -53,8 +53,8 @@ export default function Footer({
             <h3 className="font-bold mb-4 text-sm tracking-wide text-gray-900 dark:text-white">FOR MERCHANTS</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
               <li>
-                <Link href="/auth/merchant/signup" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-                  Become a Merchant
+                <Link href="/auth/merchant/signin" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                  Merchant Dashboard
                 </Link>
               </li>
               <li>

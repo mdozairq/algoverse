@@ -1733,6 +1733,22 @@ export class FirebaseService {
     }
   }
 
+  static async updateCollection(collectionId: string, updateData: any): Promise<void> {
+    try {
+      if (!collectionId || collectionId.trim() === "") {
+        throw new Error("Collection ID is required")
+      }
+
+      await adminDb.collection('collections').doc(collectionId).update({
+        ...updateData,
+        updatedAt: new Date()
+      })
+    } catch (error) {
+      console.error('Error updating collection:', error)
+      throw error
+    }
+  }
+
   // Additional NFT methods for collections
   static async getNFTsByCollection(collectionId: string): Promise<any[]> {
     try {

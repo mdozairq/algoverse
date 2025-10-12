@@ -102,7 +102,7 @@ export default function MerchantLoginPage() {
 
       // Redirect to merchant dashboard
       setTimeout(() => {
-        router.replace(`/dashboard/${authenticatedUser.role}`)
+        router.replace('/dashboard/merchant')
       }, 1500)
     } catch (error: any) {
       console.error("Pera wallet connection failed:", error)

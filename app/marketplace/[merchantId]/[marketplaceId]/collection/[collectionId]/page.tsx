@@ -276,12 +276,32 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
       const nftsData = await nftsRes.json()
       
       if (nftsRes.ok) {
+        console.log("NFTs fetched:", nftsData.nfts)
         setNfts(nftsData.nfts || [])
+      } else {
+        console.error("Failed to fetch NFTs:", nftsData.error)
+        setNfts([])
       }
     } catch (error) {
       console.error("Failed to fetch collection data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchNFTs = async () => {
+    try {
+      const nftsRes = await fetch(`/api/collections/${params.collectionId}/nfts`)
+      const nftsData = await nftsRes.json()
+      
+      if (nftsRes.ok) {
+        console.log("NFTs refreshed:", nftsData.nfts)
+        setNfts(nftsData.nfts || [])
+      } else {
+        console.error("Failed to refresh NFTs:", nftsData.error)
+      }
+    } catch (error) {
+      console.error("Failed to refresh NFTs:", error)
     }
   }
 
@@ -374,6 +394,51 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
         return new Date(b.mintedAt).getTime() - new Date(a.mintedAt).getTime()
     }
   })
+
+  // NFT Operations
+  const handleBuyNFT = async (nft: NFT) => {
+    if (!isConnected || !account) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to buy NFTs",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Implement NFT purchase logic
+      toast({
+        title: "Purchase Initiated",
+        description: `Buying ${nft.name} for ${nft.price} ALGO`,
+      })
+    } catch (error) {
+      toast({
+        title: "Purchase Failed",
+        description: "Failed to purchase NFT",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleViewNFT = (nft: NFT) => {
+    // Navigate to NFT detail page or open modal
+    console.log("Viewing NFT:", nft)
+  }
+
+  const handleLikeNFT = (nft: NFT) => {
+    // Implement like functionality
+    console.log("Liking NFT:", nft)
+  }
+
+  const handleShareNFT = (nft: NFT) => {
+    // Implement share functionality
+    navigator.clipboard.writeText(`${window.location.origin}/nft/${nft.id}`)
+    toast({
+      title: "Link Copied",
+      description: "NFT link copied to clipboard",
+    })
+  }
 
   if (loading) {
     return (
@@ -585,12 +650,22 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={fetchCollectionData}
+                        onClick={fetchNFTs}
                         className="flex items-center gap-2"
                       >
                         <RefreshCw className="w-4 h-4" />
                         Refresh
                       </Button>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                      >
+                        <option value="recent">Most Recent</option>
+                        <option value="name">Name A-Z</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                      </select>
                       <Button
                         variant={viewMode === 'grid' ? 'default' : 'outline'}
                         size="sm"
@@ -666,11 +741,61 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                           </CardHeader>
                           
                           <CardContent className="p-4 pt-0">
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                              <span>Minted {new Date(nft.mintedAt).toLocaleDateString()}</span>
-                              <div className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                <span>1.2k</span>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-sm text-gray-500">
+                                <span>Minted {new Date(nft.mintedAt).toLocaleDateString()}</span>
+                                <div className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  <span>1.2k</span>
+                                </div>
+                              </div>
+                              
+                              {nft.forSale && nft.price && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-green-600">
+                                    {nft.price} ALGO
+                                  </span>
+                                  <Button 
+                                    size="sm" 
+                                    className="text-xs"
+                                    onClick={() => handleBuyNFT(nft)}
+                                  >
+                                    <ShoppingCart className="w-3 h-3 mr-1" />
+                                    Buy
+                                  </Button>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">
+                                  Token #{nft.tokenId}
+                                </span>
+                                <div className="flex gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs"
+                                    onClick={() => handleViewNFT(nft)}
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs"
+                                    onClick={() => handleLikeNFT(nft)}
+                                  >
+                                    <Heart className="w-3 h-3" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-xs"
+                                    onClick={() => handleShareNFT(nft)}
+                                  >
+                                    <Share2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardContent>

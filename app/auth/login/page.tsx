@@ -55,7 +55,14 @@ export default function LoginPage() {
         description: "Welcome back!",
       })
 
-      router.replace(`/dashboard/${user.role}`)
+      // Redirect based on user role
+      if (user.role === "merchant") {
+        router.replace('/dashboard/merchant')
+      } else if (user.role === "admin") {
+        router.replace('/dashboard/admin')
+      } else {
+        router.replace('/dashboard/user')
+      }
     } catch (error: any) {
       let errorMessage = "Invalid email or password"
       

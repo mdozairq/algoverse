@@ -127,6 +127,10 @@ export default function MarketplaceManagement() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showWalletDialog, setShowWalletDialog] = useState(false)
   const [editingMarketplace, setEditingMarketplace] = useState<Marketplace | null>(null)
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [showEditCollectionDialog, setShowEditCollectionDialog] = useState(false)
+  const [showNFTManagementDialog, setShowNFTManagementDialog] = useState(false)
+  const [selectedCollectionForNFTs, setSelectedCollectionForNFTs] = useState<Collection | null>(null)
   const [newCollection, setNewCollection] = useState({
     name: "",
     description: "",
@@ -137,6 +141,29 @@ export default function MarketplaceManagement() {
     image: "",
     nftCount: 1 // Minimum 1 NFT required
   })
+  const [editCollectionData, setEditCollectionData] = useState({
+    name: "",
+    description: "",
+    price: 0,
+    currency: "ALGO",
+    category: "",
+    type: "nft" as "nft" | "event" | "merchandise",
+    image: "",
+    nftCount: 1
+  })
+  const [newNFT, setNewNFT] = useState({
+    name: "",
+    description: "",
+    image: "",
+    price: 0,
+    rarity: "common",
+    traits: [] as { trait_type: string; value: string; rarity: number }[],
+    mintPrice: 0,
+    maxSupply: 1,
+    royaltyFee: 0
+  })
+  const [nftTraits, setNftTraits] = useState<{ trait_type: string; value: string; rarity: number }[]>([])
+  const [showNFTForm, setShowNFTForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("name")
   const [filterBy, setFilterBy] = useState("all")
@@ -202,7 +229,9 @@ export default function MarketplaceManagement() {
       const response = await fetch(`/api/marketplaces/${marketplaceId}/collections`)
       if (response.ok) {
         const data = await response.json()
-        setCollections(data.collections || [])
+        // Filter out deleted collections (soft delete)
+        const activeCollections = (data.collections || []).filter((collection: any) => !collection.isDeleted)
+        setCollections(activeCollections)
       }
     } catch (error) {
       console.error("Error fetching collections:", error)
@@ -541,6 +570,15 @@ export default function MarketplaceManagement() {
   const handleAddCollection = async () => {
     if (!selectedMarketplace) return
 
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      })
+      return
+    }
+
     // Validate that collection has at least 1 NFT
     if (newCollection.nftCount < 1) {
       toast({
@@ -559,6 +597,8 @@ export default function MarketplaceManagement() {
         body: JSON.stringify({
           ...newCollection,
           marketplaceId: selectedMarketplace.id,
+          merchantId: user.userId,
+          userAddress: user.walletAddress || user.address,
           isEnabled: true,
           allowSwap: selectedMarketplace.allowSwap
         }),
@@ -654,6 +694,183 @@ export default function MarketplaceManagement() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const handleEditCollection = (collection: Collection) => {
+    setEditingCollection(collection)
+    setEditCollectionData({
+      name: collection.name,
+      description: collection.description,
+      price: collection.price,
+      currency: collection.currency,
+      category: collection.category,
+      type: collection.type,
+      image: collection.image,
+      nftCount: collection.nftCount
+    })
+    setShowEditCollectionDialog(true)
+  }
+
+  const handleUpdateCollection = async () => {
+    if (!editingCollection || !user) return
+
+    // Validate that collection has at least 1 NFT
+    if (editCollectionData.nftCount < 1) {
+      toast({
+        title: "Error",
+        description: "Collection must have at least 1 NFT",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setActionLoading("update-collection")
+    try {
+      const response = await fetch(`/api/collections/${editingCollection.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editCollectionData),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Collection updated successfully!",
+        })
+        setShowEditCollectionDialog(false)
+        setEditingCollection(null)
+        if (selectedMarketplace) {
+          fetchCollections(selectedMarketplace.id)
+        }
+      } else {
+        throw new Error("Failed to update collection")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update collection",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDeleteCollection = async (collectionId: string) => {
+    if (!user) return
+
+    setActionLoading(collectionId)
+    try {
+      const response = await fetch(`/api/collections/${collectionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          isDeleted: true,
+          deletedAt: new Date().toISOString()
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Collection deleted successfully!",
+        })
+        if (selectedMarketplace) {
+          fetchCollections(selectedMarketplace.id)
+        }
+      } else {
+        throw new Error("Failed to delete collection")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete collection",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleManageNFTs = (collection: Collection) => {
+    setSelectedCollectionForNFTs(collection)
+    setShowNFTManagementDialog(true)
+  }
+
+  const handleCreateNFT = async () => {
+    if (!selectedCollectionForNFTs || !user) return
+
+    if (!newNFT.name || !newNFT.description) {
+      toast({
+        title: "Error",
+        description: "NFT name and description are required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setActionLoading("create-nft")
+    try {
+      const response = await fetch(`/api/nfts/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newNFT,
+          collectionId: selectedCollectionForNFTs.id,
+          marketplaceId: selectedMarketplace?.id,
+          merchantId: user.userId,
+          userAddress: user.walletAddress || user.address,
+          traits: nftTraits
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "NFT created successfully!",
+        })
+        setShowNFTForm(false)
+        setNewNFT({
+          name: "",
+          description: "",
+          image: "",
+          price: 0,
+          rarity: "common",
+          traits: [],
+          mintPrice: 0,
+          maxSupply: 1,
+          royaltyFee: 0
+        })
+        setNftTraits([])
+        if (selectedMarketplace) {
+          fetchCollections(selectedMarketplace.id)
+        }
+      } else {
+        throw new Error("Failed to create NFT")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create NFT",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const addTrait = () => {
+    setNftTraits([...nftTraits, { trait_type: "", value: "", rarity: 1 }])
+  }
+
+  const removeTrait = (index: number) => {
+    setNftTraits(nftTraits.filter((_, i) => i !== index))
+  }
+
+  const updateTrait = (index: number, field: string, value: string | number) => {
+    const updatedTraits = [...nftTraits]
+    updatedTraits[index] = { ...updatedTraits[index], [field]: value }
+    setNftTraits(updatedTraits)
   }
 
   const handleUpdateWalletAddress = async () => {
@@ -1094,6 +1311,331 @@ export default function MarketplaceManagement() {
                           </div>
                         </div>
 
+                        {/* Edit Collection Dialog */}
+                        <Dialog open={showEditCollectionDialog} onOpenChange={setShowEditCollectionDialog}>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Edit Collection</DialogTitle>
+                              <DialogDescription>
+                                Update collection details and NFT count
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="editCollectionName">Collection Name</Label>
+                                  <Input
+                                    id="editCollectionName"
+                                    value={editCollectionData.name}
+                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, name: e.target.value })}
+                                    placeholder="Enter collection name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editCollectionType">Type</Label>
+                                  <Select value={editCollectionData.type} onValueChange={(value: "nft" | "event" | "merchandise") => setEditCollectionData({ ...editCollectionData, type: value })}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="nft">NFT</SelectItem>
+                                      <SelectItem value="event">Event</SelectItem>
+                                      <SelectItem value="merchandise">Merchandise</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="editCollectionDescription">Description</Label>
+                                <Textarea
+                                  id="editCollectionDescription"
+                                  value={editCollectionData.description}
+                                  onChange={(e) => setEditCollectionData({ ...editCollectionData, description: e.target.value })}
+                                  placeholder="Describe your collection"
+                                  rows={3}
+                                />
+                              </div>
+                              <div className="grid grid-cols-4 gap-4">
+                                <div>
+                                  <Label htmlFor="editCollectionPrice">Price</Label>
+                                  <Input
+                                    id="editCollectionPrice"
+                                    type="number"
+                                    value={editCollectionData.price}
+                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, price: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editCollectionCurrency">Currency</Label>
+                                  <Select value={editCollectionData.currency} onValueChange={(value) => setEditCollectionData({ ...editCollectionData, currency: value })}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="ALGO">ALGO</SelectItem>
+                                      <SelectItem value="USDC">USDC</SelectItem>
+                                      <SelectItem value="USD">USD</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editCollectionCategory">Category</Label>
+                                  <Input
+                                    id="editCollectionCategory"
+                                    value={editCollectionData.category}
+                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, category: e.target.value })}
+                                    placeholder="Category"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editNftCount">NFT Count (Min: 1)</Label>
+                                  <Input
+                                    id="editNftCount"
+                                    type="number"
+                                    min="1"
+                                    value={editCollectionData.nftCount}
+                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, nftCount: Math.max(1, parseInt(e.target.value) || 1) })}
+                                    placeholder="1"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="editCollectionImage">Image URL</Label>
+                                <Input
+                                  id="editCollectionImage"
+                                  value={editCollectionData.image}
+                                  onChange={(e) => setEditCollectionData({ ...editCollectionData, image: e.target.value })}
+                                  placeholder="https://example.com/image.jpg"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setShowEditCollectionDialog(false)}>
+                                  Cancel
+                                </Button>
+                                <Button onClick={handleUpdateCollection} disabled={actionLoading === "update-collection"}>
+                                  {actionLoading === "update-collection" ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Edit className="w-4 h-4 mr-2" />
+                                  )}
+                                  Update Collection
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
+                        {/* NFT Management Dialog */}
+                        <Dialog open={showNFTManagementDialog} onOpenChange={setShowNFTManagementDialog}>
+                          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Manage NFTs - {selectedCollectionForNFTs?.name}</DialogTitle>
+                              <DialogDescription>
+                                Add, edit, and manage NFTs in this collection
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-6">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Collection has {selectedCollectionForNFTs?.nftCount || 0} NFTs
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={() => setShowNFTForm(!showNFTForm)}
+                                  >
+                                    {showNFTForm ? "Hide Form" : "Show Form"}
+                                  </Button>
+                                  <Button onClick={() => {
+                                    if (selectedCollectionForNFTs && user) {
+                                      router.push(`/marketplace/${user.userId}/${selectedMarketplace?.id}/collection/${selectedCollectionForNFTs.id}`)
+                                    }
+                                  }}>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Collection
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* NFT Creation Form */}
+                              {showNFTForm && (
+                                <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+                                  <h3 className="text-lg font-semibold mb-4">Create New NFT</h3>
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label htmlFor="nftName">NFT Name</Label>
+                                        <Input
+                                          id="nftName"
+                                          value={newNFT.name}
+                                          onChange={(e) => setNewNFT({ ...newNFT, name: e.target.value })}
+                                          placeholder="Enter NFT name"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="nftRarity">Rarity</Label>
+                                        <Select value={newNFT.rarity} onValueChange={(value) => setNewNFT({ ...newNFT, rarity: value })}>
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="common">Common</SelectItem>
+                                            <SelectItem value="uncommon">Uncommon</SelectItem>
+                                            <SelectItem value="rare">Rare</SelectItem>
+                                            <SelectItem value="epic">Epic</SelectItem>
+                                            <SelectItem value="legendary">Legendary</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <Label htmlFor="nftDescription">Description</Label>
+                                      <Textarea
+                                        id="nftDescription"
+                                        value={newNFT.description}
+                                        onChange={(e) => setNewNFT({ ...newNFT, description: e.target.value })}
+                                        placeholder="Describe your NFT"
+                                        rows={3}
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <Label htmlFor="nftImage">Image URL</Label>
+                                      <Input
+                                        id="nftImage"
+                                        value={newNFT.image}
+                                        onChange={(e) => setNewNFT({ ...newNFT, image: e.target.value })}
+                                        placeholder="https://example.com/nft-image.jpg"
+                                      />
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-4">
+                                      <div>
+                                        <Label htmlFor="nftPrice">Price (ALGO)</Label>
+                                        <Input
+                                          id="nftPrice"
+                                          type="number"
+                                          value={newNFT.price}
+                                          onChange={(e) => setNewNFT({ ...newNFT, price: parseFloat(e.target.value) || 0 })}
+                                          placeholder="0.00"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="nftMintPrice">Mint Price (ALGO)</Label>
+                                        <Input
+                                          id="nftMintPrice"
+                                          type="number"
+                                          value={newNFT.mintPrice}
+                                          onChange={(e) => setNewNFT({ ...newNFT, mintPrice: parseFloat(e.target.value) || 0 })}
+                                          placeholder="0.00"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="nftMaxSupply">Max Supply</Label>
+                                        <Input
+                                          id="nftMaxSupply"
+                                          type="number"
+                                          min="1"
+                                          value={newNFT.maxSupply}
+                                          onChange={(e) => setNewNFT({ ...newNFT, maxSupply: parseInt(e.target.value) || 1 })}
+                                          placeholder="1"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <Label htmlFor="nftRoyaltyFee">Royalty Fee (%)</Label>
+                                      <Input
+                                        id="nftRoyaltyFee"
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={newNFT.royaltyFee}
+                                        onChange={(e) => setNewNFT({ ...newNFT, royaltyFee: parseFloat(e.target.value) || 0 })}
+                                        placeholder="0"
+                                      />
+                                    </div>
+
+                                    {/* Traits Section */}
+                                    <div>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <Label>Traits</Label>
+                                        <Button type="button" variant="outline" size="sm" onClick={addTrait}>
+                                          <Plus className="w-4 h-4 mr-1" />
+                                          Add Trait
+                                        </Button>
+                                      </div>
+                                      {nftTraits.map((trait, index) => (
+                                        <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+                                          <Input
+                                            placeholder="Trait Type"
+                                            value={trait.trait_type}
+                                            onChange={(e) => updateTrait(index, "trait_type", e.target.value)}
+                                          />
+                                          <Input
+                                            placeholder="Value"
+                                            value={trait.value}
+                                            onChange={(e) => updateTrait(index, "value", e.target.value)}
+                                          />
+                                          <Input
+                                            type="number"
+                                            placeholder="Rarity"
+                                            value={trait.rarity}
+                                            onChange={(e) => updateTrait(index, "rarity", parseInt(e.target.value) || 1)}
+                                          />
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => removeTrait(index)}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <div className="flex justify-end gap-2">
+                                      <Button variant="outline" onClick={() => setShowNFTForm(false)}>
+                                        Cancel
+                                      </Button>
+                                      <Button onClick={handleCreateNFT} disabled={actionLoading === "create-nft"}>
+                                        {actionLoading === "create-nft" ? (
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <Plus className="w-4 h-4 mr-2" />
+                                        )}
+                                        Create NFT
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                                <h4 className="font-medium mb-2">NFT Management Features:</h4>
+                                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                  <li>• Create new NFTs for this collection</li>
+                                  <li>• Edit existing NFT properties</li>
+                                  <li>• Set NFT rarity and traits</li>
+                                  <li>• Manage NFT pricing and availability</li>
+                                  <li>• View NFT analytics and performance</li>
+                                </ul>
+                              </div>
+
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setShowNFTManagementDialog(false)}>
+                                  Close
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
                         {/* Collection Filters */}
                         <div className="flex items-center gap-4">
                           <div className="flex-1">
@@ -1245,9 +1787,13 @@ export default function MarketplaceManagement() {
                                               <Eye className="w-4 h-4 mr-2" />
                                               Preview
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleEditCollection(collection)}>
                                               <Edit className="w-4 h-4 mr-2" />
-                                              Edit
+                                              Edit Collection
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleManageNFTs(collection)}>
+                                              <Package className="w-4 h-4 mr-2" />
+                                              Manage NFTs
                                             </DropdownMenuItem>
                                             <DropdownMenuItem>
                                               <BarChart3 className="w-4 h-4 mr-2" />
@@ -1257,7 +1803,10 @@ export default function MarketplaceManagement() {
                                               <Copy className="w-4 h-4 mr-2" />
                                               Duplicate
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-red-600">
+                                            <DropdownMenuItem 
+                                              className="text-red-600"
+                                              onClick={() => handleDeleteCollection(collection.id)}
+                                            >
                                               <Trash2 className="w-4 h-4 mr-2" />
                                               Delete
                                             </DropdownMenuItem>
