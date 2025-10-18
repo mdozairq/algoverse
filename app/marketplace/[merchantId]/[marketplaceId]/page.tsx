@@ -951,26 +951,46 @@ export default function MarketplacePage() {
                   }}
                 >
                   <CardHeader>
-                    <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
+                    <CardTitle 
+                      className="text-lg sm:text-xl"
+                      style={{ 
+                        color: isDarkMode 
+                          ? (template?.configuration.theme.textColor || '#f9fafb') 
+                          : (template?.configuration.theme.textColor || '#000000') 
+                      }}
+                    >
                       Featured Collections
                     </CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
+                    <CardDescription 
+                      style={{ 
+                        color: isDarkMode 
+                          ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                          : `${template?.configuration.theme.textColor || '#000000'}80` 
+                      }}
+                    >
                       Top collections from this marketplace
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {collections.length === 0 ? (
-                      <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                      <div 
+                        className="text-center py-8"
+                        style={{ 
+                          color: isDarkMode 
+                            ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                            : `${template?.configuration.theme.textColor || '#000000'}80` 
+                        }}
+                      >
                         <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                         <p>No collections available yet</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                         {collections.slice(0, 4).map((collection, index) => (
-          <motion.div
+            <motion.div
                             key={collection.id}
-                            initial={{ y: 30, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
                             whileHover={{ y: -5 }}
                             className="group"
@@ -999,7 +1019,7 @@ export default function MarketplacePage() {
                                   ) : (
                                     <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200">
                                       <Package className="w-16 h-16 text-gray-400" />
-                                    </div>
+                    </div>
                                   )}
                                   <div className="absolute top-3 left-3">
                             <Badge 
@@ -1016,40 +1036,52 @@ export default function MarketplacePage() {
                                 <CardContent className="p-3 sm:p-4">
                                   <h3 
                                     className="font-semibold mb-1 text-sm sm:text-base"
-                                    style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? (template?.configuration.theme.textColor || '#f9fafb') 
+                                        : (template?.configuration.theme.textColor || '#000000') 
+                                    }}
                                   >
                                     {collection.name}
                                   </h3>
                                   <p 
                                     className="text-xs sm:text-sm mb-2 line-clamp-2"
-                                    style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                        : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                    }}
                                   >
                                     {collection.description}
                                   </p>
                                   <div className="flex items-center justify-between">
                                     <span 
                                       className="text-sm sm:text-lg font-bold"
-                                      style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                                      style={{ 
+                                        color: isDarkMode 
+                                          ? (template?.configuration.theme.textColor || '#f9fafb') 
+                                          : (template?.configuration.theme.textColor || '#000000') 
+                                      }}
                                     >
-                                      {collection.mintPrice || 0} ALGO
+                                      {collection.floorPrice || collection.price || 0} ALGO
                                     </span>
-                            <Button
-                              size="sm"
+                        <Button
+                          size="sm"
                                       className="h-8 w-8 p-0" 
                                       style={{ backgroundColor: marketplace.primaryColor }}
-                            >
+                        >
                                       <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                            </Button>
-                          </div>
+                        </Button>
+                      </div>
                                 </CardContent>
                               </Card>
-                        </div>
+                    </div>
                           </motion.div>
                         ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                  )}
+                </CardContent>
+              </Card>
 
                 {/* Analytics Section */}
                 <Card 
@@ -1092,16 +1124,24 @@ export default function MarketplacePage() {
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {collections.length}
-                            </div>
+              </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                          }}
                         >
                           Total Collections
-                        </div>
+            </div>
                       </div>
                       <div 
                         className="text-center p-3 sm:p-4 rounded-lg"
@@ -1112,13 +1152,21 @@ export default function MarketplacePage() {
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {collections.length}
                           </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                      style={{
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                          }}
                         >
                           Collections
                             </div>
@@ -1127,21 +1175,29 @@ export default function MarketplacePage() {
                         className="text-center p-3 sm:p-4 rounded-lg"
                         style={{
                           backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
+                        borderColor: `${marketplace.primaryColor}20`
+                      }}
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {Math.floor(Math.random() * 1000 + 100)}
                           </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
-                        >
+                              style={{ 
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                              }}
+                            >
                           Total Sales
-                            </div>
+                        </div>
                       </div>
                       <div 
                         className="text-center p-3 sm:p-4 rounded-lg"
@@ -1152,17 +1208,25 @@ export default function MarketplacePage() {
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {Math.floor(Math.random() * 100 + 1)}%
                         </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                          }}
                         >
                           Listed
+                          </div>
                         </div>
-                      </div>
                       <div 
                         className="text-center p-3 sm:p-4 rounded-lg"
                         style={{
@@ -1172,38 +1236,54 @@ export default function MarketplacePage() {
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {Math.floor(Math.random() * 1000 + 500)}
-                            </div>
+                      </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                          }}
                         >
                           Holders
-                          </div>
+                            </div>
                       </div>
                       <div 
                         className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
+                              style={{ 
                           backgroundColor: `${marketplace.primaryColor}10`,
                           borderColor: `${marketplace.primaryColor}20`
                         }}
                       >
                         <div 
                           className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{ color: template?.configuration.theme.textColor || '#000000' }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? (template?.configuration.theme.textColor || '#f9fafb') 
+                              : (template?.configuration.theme.textColor || '#000000') 
+                          }}
                         >
                           {Math.floor(Math.random() * 20 + 1)}%
-                        </div>
+                          </div>
                         <div 
                           className="text-xs sm:text-sm"
-                          style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                          style={{ 
+                            color: isDarkMode 
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                              : `${template?.configuration.theme.textColor || '#000000'}80` 
+                          }}
                         >
                           Floor Change
-                        </div>
-                      </div>
-                    </div>
+                            </div>
+                            </div>
+                          </div>
                   </CardContent>
                     </Card>
 
@@ -1238,7 +1318,7 @@ export default function MarketplacePage() {
                         >
                           Browse all collections in this marketplace
                         </CardDescription>
-                      </div>
+                            </div>
                       <div className="flex items-center gap-2">
                         <Select value="ALGO" onValueChange={() => {}}>
                           <SelectTrigger className="w-20 h-8 sm:h-10">
@@ -1256,7 +1336,11 @@ export default function MarketplacePage() {
                     {sortedCollections.length === 0 ? (
                       <div 
                         className="text-center py-8"
-                        style={{ color: `${template?.configuration.theme.textColor || '#000000'}80` }}
+                        style={{ 
+                          color: isDarkMode 
+                            ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                            : `${template?.configuration.theme.textColor || '#000000'}80` 
+                        }}
                       >
                         <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                         <p>No collections available yet</p>
@@ -1270,82 +1354,91 @@ export default function MarketplacePage() {
                               style={{ borderColor: `${marketplace.primaryColor}20` }}
                             >
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 #
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Collection
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Floor
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Top Offer
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Floor 1d %
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden sm:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Volume
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Sales
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden lg:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Listed
                               </th>
                               <th 
-                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden xl:table-cell text-gray-600 dark:text-gray-400"
-                                style={{ color: isDarkMode 
-                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                  : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm hidden xl:table-cell"
+                                style={{ 
+                                  color: isDarkMode 
+                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
                                 }}
                               >
                                 Last 1d
@@ -1368,10 +1461,11 @@ export default function MarketplacePage() {
                                 }}
                               >
                                 <td 
-                                  className="py-2 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                  style={{ color: isDarkMode 
-                                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                    : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                  className="py-2 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm"
+                                  style={{ 
+                                    color: isDarkMode 
+                                      ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                      : `${template?.configuration.theme.textColor || '#000000'}80` 
                                   }}
                                 >
                                   {index + 1}
@@ -1399,19 +1493,21 @@ export default function MarketplacePage() {
                             </div>
                                     <div>
                                       <div 
-                                        className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100"
-                                        style={{ color: isDarkMode 
-                                          ? (template?.configuration.theme.textColor || '#f9fafb') 
-                                          : (template?.configuration.theme.textColor || '#000000') 
+                                        className="font-medium text-xs sm:text-sm"
+                                        style={{ 
+                                          color: isDarkMode 
+                                            ? (template?.configuration.theme.textColor || '#f9fafb') 
+                                            : (template?.configuration.theme.textColor || '#000000') 
                                         }}
                                       >
                                         {collection.name}
                           </div>
                                       <div 
-                                        className="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                        style={{ color: isDarkMode 
-                                          ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                          : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                        className="text-xs sm:text-sm"
+                                        style={{ 
+                                          color: isDarkMode 
+                                            ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                            : `${template?.configuration.theme.textColor || '#000000'}80` 
                                         }}
                                       >
                                         {collection.nftCount} NFTs
@@ -1421,10 +1517,11 @@ export default function MarketplacePage() {
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div 
-                                    className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100"
-                                    style={{ color: isDarkMode 
-                                      ? (template?.configuration.theme.textColor || '#f9fafb') 
-                                      : (template?.configuration.theme.textColor || '#000000') 
+                                    className="font-medium text-xs sm:text-sm"
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? (template?.configuration.theme.textColor || '#f9fafb') 
+                                        : (template?.configuration.theme.textColor || '#000000') 
                                     }}
                                   >
                                     {collection.floorPrice || collection.price} ALGO
@@ -1432,10 +1529,11 @@ export default function MarketplacePage() {
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div 
-                                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                    style={{ color: isDarkMode 
-                                      ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                      : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                    className="text-xs sm:text-sm"
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                        : `${template?.configuration.theme.textColor || '#000000'}80` 
                                     }}
                                   >
                                     {collection.topOffer ? `${collection.topOffer} ALGO` : '--'}
@@ -1451,10 +1549,11 @@ export default function MarketplacePage() {
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden sm:table-cell">
                                   <div 
-                                    className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100"
-                                    style={{ color: isDarkMode 
-                                      ? (template?.configuration.theme.textColor || '#f9fafb') 
-                                      : (template?.configuration.theme.textColor || '#000000') 
+                                    className="font-medium text-xs sm:text-sm"
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? (template?.configuration.theme.textColor || '#f9fafb') 
+                                        : (template?.configuration.theme.textColor || '#000000') 
                                     }}
                                   >
                                     {Math.floor(Math.random() * 1000 + 100)} ALGO
@@ -1462,10 +1561,11 @@ export default function MarketplacePage() {
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div 
-                                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                    style={{ color: isDarkMode 
-                                      ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                      : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                    className="text-xs sm:text-sm"
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                        : `${template?.configuration.theme.textColor || '#000000'}80` 
                                     }}
                                   >
                                     {Math.floor(Math.random() * 100 + 1)}
@@ -1473,10 +1573,11 @@ export default function MarketplacePage() {
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                                   <div 
-                                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                                    style={{ color: isDarkMode 
-                                      ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
-                                      : `${template?.configuration.theme.textColor || '#000000'}80` 
+                                    className="text-xs sm:text-sm"
+                                    style={{ 
+                                      color: isDarkMode 
+                                        ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
+                                        : `${template?.configuration.theme.textColor || '#000000'}80` 
                                     }}
                                   >
                                     {Math.floor(Math.random() * 20 + 1)}%
