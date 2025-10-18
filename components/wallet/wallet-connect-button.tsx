@@ -93,7 +93,7 @@ export function WalletConnectButton({
     refreshConnection()
   }, [])
 
-  // Listen for wallet connection events
+  // Listen for wallet connection and disconnect events
   useEffect(() => {
     const handleWalletConnected = (event: CustomEvent) => {
       const { address } = event.detail
@@ -104,10 +104,18 @@ export function WalletConnectButton({
       }
     }
 
+    const handleWalletDisconnected = () => {
+      console.log("Wallet disconnect event received in button")
+      // The wallet service will handle clearing the state
+      // This just ensures the UI updates properly
+    }
+
     window.addEventListener('wallet-connected', handleWalletConnected as EventListener)
+    window.addEventListener('wallet-disconnected', handleWalletDisconnected as EventListener)
     
     return () => {
       window.removeEventListener('wallet-connected', handleWalletConnected as EventListener)
+      window.removeEventListener('wallet-disconnected', handleWalletDisconnected as EventListener)
     }
   }, [isAuthenticated, connectWallet])
 
@@ -146,7 +154,7 @@ export function WalletConnectButton({
 
   const handleDisconnect = async () => {
     try {
-      // First disconnect from wallet service
+      // Disconnect from wallet service (this will call Pera Connect disconnect)
       await disconnect()
       
       // Then disconnect from auth context (clears user state)
@@ -162,6 +170,7 @@ export function WalletConnectButton({
       // Try force disconnect as fallback
       try {
         walletService.forceDisconnect()
+        walletService.clearAllStorage() // Clear all storage completely
         await disconnectWallet()
         toast({
           title: "Wallet Disconnected",
@@ -169,6 +178,8 @@ export function WalletConnectButton({
         })
       } catch (forceError: any) {
         console.error("Force disconnect error:", forceError)
+        // Even if everything fails, clear all storage
+        walletService.clearAllStorage()
         toast({
           title: "Disconnect Failed",
           description: "Failed to disconnect wallet. Please refresh the page.",
