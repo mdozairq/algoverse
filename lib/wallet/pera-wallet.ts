@@ -1,27 +1,15 @@
 import { PeraWalletConnect } from "@perawallet/connect"
 
-// Global type declaration for Pera wallet
-declare global {
-  interface Window {
-    peraWallet?: {
-      disconnect: () => void
-    }
-  }
-}
+// Create the PeraWalletConnect instance with proper configuration
+export const peraWallet = new PeraWalletConnect({
+  shouldShowSignTxnToast: true
+})
 
-// Create the PeraWalletConnect instance
-export const peraWallet = new PeraWalletConnect()
-
-// Common wallet disconnect function
+// Common wallet disconnect function following Pera Connect documentation
 export const disconnectPeraWallet = async () => {
   try {
-    // Disconnect from Pera Wallet Connect
-    await peraWallet.disconnect()
-    
-    // Also try to disconnect from global window object if available
-    if (typeof window !== 'undefined' && window.peraWallet) {
-      window.peraWallet.disconnect()
-    }
+    // Disconnect from Pera Wallet Connect using the official method
+    peraWallet.disconnect()
     
     console.log("Pera Wallet disconnected successfully")
   } catch (walletError) {
@@ -32,7 +20,7 @@ export const disconnectPeraWallet = async () => {
 
 // Check if Pera wallet is available
 export const isPeraWalletAvailable = (): boolean => {
-  return typeof window !== 'undefined' && !!window.peraWallet
+  return typeof window !== 'undefined' && !!(window as any).peraWallet
 }
 
 // Get the global peraWallet instance

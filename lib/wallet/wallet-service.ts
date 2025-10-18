@@ -108,13 +108,18 @@ export class WalletService {
         throw new Error('Pera Wallet not installed. Please install Pera Wallet from the App Store or Google Play Store.')
       }
 
-      // Connect to Pera Wallet
+      // Connect to Pera Wallet using the official method
       const peraAccount = await peraWallet.connect()
       const address = Array.isArray(peraAccount) ? peraAccount[0] : peraAccount
 
       if (!address) {
         throw new Error('Failed to get wallet address')
       }
+
+      // Setup disconnect event listener as per Pera Connect docs
+      peraWallet.connector?.on("disconnect", () => {
+        this.handleDisconnectEvent()
+      })
 
       // Get account balance
       const balance = await this.getBalance(address)
@@ -154,54 +159,87 @@ export class WalletService {
     }
   }
 
+  private handleDisconnectEvent() {
+    console.log('Pera Wallet disconnect event received')
+    this.clearWalletState()
+  }
+
+  private clearWalletState() {
+    // Clear wallet state
+    this.setState({
+      isConnected: false,
+      isConnecting: false,
+      account: null,
+      balance: 0,
+      transactions: [],
+      error: null
+    })
+
+    // Clear localStorage completely
+    if (typeof window !== 'undefined') {
+      // Remove all wallet-related localStorage items
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (
+          key.includes('wallet') || 
+          key.includes('pera') || 
+          key.includes('connect') ||
+          key.includes('address') ||
+          key.includes('account')
+        )) {
+          keysToRemove.push(key)
+        }
+      }
+      
+      // Remove all identified keys
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key)
+      })
+      
+      // Also clear sessionStorage
+      const sessionKeysToRemove = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && (
+          key.includes('wallet') || 
+          key.includes('pera') || 
+          key.includes('connect') ||
+          key.includes('address') ||
+          key.includes('account')
+        )) {
+          sessionKeysToRemove.push(key)
+        }
+      }
+      
+      sessionKeysToRemove.forEach(key => {
+        sessionStorage.removeItem(key)
+      })
+      
+      console.log('Cleared wallet localStorage and sessionStorage')
+      
+      // Dispatch disconnect event to notify other components
+      window.dispatchEvent(new CustomEvent('wallet-disconnected'))
+    }
+  }
+
   public async disconnect(): Promise<void> {
     try {
-      // Disconnect from Pera Wallet
-      await disconnectPeraWallet()
+      // Disconnect from Pera Wallet using the official method
+      const peraWallet = getPeraWalletInstance()
+      if (peraWallet) {
+        peraWallet.disconnect()
+      }
       
       // Clear wallet state
-      this.setState({
-        isConnected: false,
-        isConnecting: false,
-        account: null,
-        balance: 0,
-        transactions: [],
-        error: null
-      })
-
-      // Clear localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('wallet-connected')
-        localStorage.removeItem('wallet-address')
-        localStorage.removeItem('pera-wallet-connect')
-        // Clear any other wallet-related storage
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('pera') || key.includes('wallet')) {
-            localStorage.removeItem(key)
-          }
-        })
-      }
+      this.clearWalletState()
       
       console.log('Wallet disconnected successfully')
     } catch (error: any) {
       console.error('Wallet disconnect error:', error)
       
       // Force clear state even if disconnect fails
-      this.setState({
-        isConnected: false,
-        isConnecting: false,
-        account: null,
-        balance: 0,
-        transactions: [],
-        error: null
-      })
-
-      // Force clear localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('wallet-connected')
-        localStorage.removeItem('wallet-address')
-        localStorage.removeItem('pera-wallet-connect')
-      }
+      this.clearWalletState()
       
       console.log('Wallet force-disconnected due to error')
     }
@@ -211,30 +249,45 @@ export class WalletService {
     try {
       if (typeof window === 'undefined') return false
 
-      const isConnected = localStorage.getItem('wallet-connected') === 'true'
-      const address = localStorage.getItem('wallet-address')
+      const peraWallet = getPeraWalletInstance()
+      if (!peraWallet) return false
 
-      if (isConnected && address) {
-        const balance = await this.getBalance(address)
+      // Use Pera Connect's reconnectSession method as per documentation
+      try {
+        const accounts = await peraWallet.reconnectSession()
         
-        this.setState({
-          isConnected: true,
-          account: {
-            address,
+        if (peraWallet.isConnected && accounts.length > 0) {
+          const address = accounts[0]
+          const balance = await this.getBalance(address)
+          
+          // Setup disconnect event listener
+          peraWallet.connector?.on("disconnect", () => {
+            this.handleDisconnectEvent()
+          })
+          
+          this.setState({
             isConnected: true,
+            account: {
+              address,
+              isConnected: true,
+              balance
+            },
             balance
-          },
-          balance
-        })
-        
-        // Dispatch custom event to notify other components
-        if (typeof window !== 'undefined') {
+          })
+          
+          // Store connection in localStorage
+          localStorage.setItem('wallet-connected', 'true')
+          localStorage.setItem('wallet-address', address)
+          
+          // Dispatch custom event to notify other components
           window.dispatchEvent(new CustomEvent('wallet-connected', { 
             detail: { address, balance } 
           }))
+          
+          return true
         }
-        
-        return true
+      } catch (reconnectError) {
+        console.log('No active session found:', reconnectError)
       }
 
       return false
@@ -407,18 +460,8 @@ export class WalletService {
       error: null
     })
 
-    // Force clear localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('wallet-connected')
-      localStorage.removeItem('wallet-address')
-      localStorage.removeItem('pera-wallet-connect')
-      // Clear any other wallet-related storage
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('pera') || key.includes('wallet')) {
-          localStorage.removeItem(key)
-        }
-      })
-    }
+    // Use the same comprehensive clearing method
+    this.clearWalletState()
     
     console.log('Wallet force-disconnected')
   }
@@ -426,6 +469,35 @@ export class WalletService {
   public async refreshConnection(): Promise<boolean> {
     // Force refresh the connection state
     return await this.checkConnection()
+  }
+
+  public clearAllStorage(): void {
+    // Completely clear all storage
+    if (typeof window !== 'undefined') {
+      localStorage.clear()
+      sessionStorage.clear()
+      console.log('Cleared all storage completely')
+    }
+  }
+
+  public debugStorage(): void {
+    // Debug method to see what's in storage
+    if (typeof window !== 'undefined') {
+      console.log('localStorage contents:')
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key) {
+          console.log(`${key}: ${localStorage.getItem(key)}`)
+        }
+      }
+      console.log('sessionStorage contents:')
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key) {
+          console.log(`${key}: ${sessionStorage.getItem(key)}`)
+        }
+      }
+    }
   }
 
   public isWalletInstalled(): boolean {
