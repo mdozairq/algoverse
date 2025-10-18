@@ -126,17 +126,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const disconnectWallet = async () => {
     try {
-      // Disconnect from wallet service
+      // Disconnect from wallet service (this will call Pera Connect disconnect)
       await walletService.disconnect()
       
       // Clear user state immediately
       setUser(null)
+      
+      // Also clear any auth-related localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-token')
+        localStorage.removeItem('user-data')
+        localStorage.removeItem('auth-session')
+        // Clear any other auth-related storage
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (
+            key.includes('auth') || 
+            key.includes('user') || 
+            key.includes('session') ||
+            key.includes('token')
+          )) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      }
       
       console.log("Wallet disconnected and user state cleared")
     } catch (error) {
       console.error("Wallet disconnect failed:", error)
       // Even if wallet disconnect fails, clear user state
       setUser(null)
+      
+      // Force clear auth localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-token')
+        localStorage.removeItem('user-data')
+        localStorage.removeItem('auth-session')
+      }
     }
   }
 
@@ -150,6 +178,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setLoading(false) // Stop loading state
       
+      // Clear all localStorage completely
+      if (typeof window !== 'undefined') {
+        // Clear all localStorage items
+        localStorage.clear()
+        // Also clear sessionStorage
+        sessionStorage.clear()
+        console.log("Cleared all localStorage and sessionStorage")
+      }
+      
       // Then call logout API to clear server-side session
       await fetch("/api/auth/logout", { method: "POST" })
     } catch (error) {
@@ -157,11 +194,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if logout fails, clear user state for security
       setUser(null)
       setLoading(false)
+      
+      // Force clear all storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+      }
     }
   }
 
   useEffect(() => {
     checkAuth()
+    
+    // Listen for wallet disconnect events
+    const handleWalletDisconnected = () => {
+      console.log("Wallet disconnect event received in auth context")
+      setUser(null)
+    }
+
+    window.addEventListener('wallet-disconnected', handleWalletDisconnected as EventListener)
+    
+    return () => {
+      window.removeEventListener('wallet-disconnected', handleWalletDisconnected as EventListener)
+    }
   }, [])
 
   const value: AuthContextType = {
