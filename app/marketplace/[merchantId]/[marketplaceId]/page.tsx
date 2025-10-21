@@ -1321,7 +1321,7 @@ export default function MarketplacePage() {
                             </div>
                       <div className="flex items-center gap-2">
                         <Select value="ALGO" onValueChange={() => {}}>
-                          <SelectTrigger className="w-20 h-8 sm:h-10">
+                          <SelectTrigger className="select-theme-currency">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

@@ -623,7 +623,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                     </div>
                     <div className="flex items-center gap-2">
                       <Select value={currency} onValueChange={setCurrency}>
-                        <SelectTrigger className="w-20 h-8 sm:h-10">
+                        <SelectTrigger className="select-theme-currency">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

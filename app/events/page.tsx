@@ -131,7 +131,7 @@ export default function EventsPage() {
                   </div>
                   <div className="flex gap-4">
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[180px] bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white">
+                      <SelectTrigger className="w-[180px] select-theme">
                         <SelectValue placeholder="Category" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -147,7 +147,7 @@ export default function EventsPage() {
                       </SelectContent>
                     </Select>
                     <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                      <SelectTrigger className="w-[180px] bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white">
+                      <SelectTrigger className="w-[180px] select-theme">
                         <SelectValue placeholder="Location" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

@@ -237,7 +237,7 @@ export default function MerchantAuthPage() {
                             value={formData.category}
                             onValueChange={(value) => setFormData({ ...formData, category: value })}
                           >
-                            <SelectTrigger className="h-12 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-full text-gray-900 dark:text-white">
+                            <SelectTrigger className="select-theme-rounded">
                               <SelectValue placeholder="Select your business category" />
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">

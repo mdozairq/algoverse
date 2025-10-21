@@ -24,7 +24,7 @@ const Switch = React.forwardRef<
       className={cn(
         "pointer-events-none block h-5 w-5 rounded-full shadow-lg ring-0 transition-transform",
         // Use explicit colors that work in both themes
-        "bg-gray dark:bg-white",
+        "bg-black dark:bg-gray",
         "data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
       )}
     />

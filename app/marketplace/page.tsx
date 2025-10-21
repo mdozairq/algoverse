@@ -86,7 +86,7 @@ export default function MarketplacePage() {
               </div>
 
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                <SelectTrigger className="select-theme">
                   <Filter className="h-4 w-4 mr-2 text-gray-500" />
                   <SelectValue placeholder="Filter by Category" />
                 </SelectTrigger>
@@ -101,7 +101,7 @@ export default function MarketplacePage() {
               </Select>
 
               <Select value={templateFilter} onValueChange={setTemplateFilter}>
-                <SelectTrigger className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                <SelectTrigger className="select-theme">
                   <Store className="h-4 w-4 mr-2 text-gray-500" />
                   <SelectValue placeholder="Filter by Template" />
                 </SelectTrigger>

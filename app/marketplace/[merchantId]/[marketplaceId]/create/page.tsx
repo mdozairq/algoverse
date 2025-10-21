@@ -620,7 +620,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                       </div>
                     </div>
                     <Select value={filterBy} onValueChange={setFilterBy}>
-                      <SelectTrigger className="w-40">
+                      <SelectTrigger className="select-theme-filter">
                         <Filter className="w-4 h-4 mr-2" />
                         <SelectValue />
                       </SelectTrigger>
@@ -632,7 +632,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                       </SelectContent>
                     </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-40">
+                      <SelectTrigger className="select-theme-sort">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -792,7 +792,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                     <div className="space-y-2">
                       <Label htmlFor="chain" className="text-sm font-medium">Algorand Chain</Label>
                       <Select defaultValue="algorand">
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="select-theme-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

@@ -201,7 +201,7 @@ export default function CreateEventPage() {
                       Category *
                     </Label>
                     <Select value={eventCategory} onValueChange={setEventCategory}>
-                      <SelectTrigger className="h-12 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-full text-gray-900 dark:text-white">
+                      <SelectTrigger className="select-theme-rounded">
                         <SelectValue placeholder="Select event category" />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">

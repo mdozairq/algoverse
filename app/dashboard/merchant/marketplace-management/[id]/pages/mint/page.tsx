@@ -190,7 +190,7 @@ export default function CoinsPageManagement({
 
   if (loading) {
     return (
-      <AuthGuard allowedRoles={["merchant"]}>
+      <AuthGuard requiredRole="merchant">
         <DashboardLayout role="merchant">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
@@ -201,7 +201,7 @@ export default function CoinsPageManagement({
   }
 
   return (
-    <AuthGuard allowedRoles={["merchant"]}>
+    <AuthGuard requiredRole="merchant">
       <DashboardLayout role="merchant">
         <div className="space-y-6">
           {/* Header */}

@@ -2,14 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Switch Colors */
-[data-state="checked"] {
-  background-color: #099525 !important; /* green-500 */
-}
-
-[data-state="unchecked"] {
-  background-color: #000 !important; /* red-500 */
-}
 
 @layer base {
   :root {
@@ -203,6 +195,31 @@
   .min-touch-target {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  /* Theme-aware select utilities */
+  .select-theme {
+    @apply border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20 focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .select-theme-filter {
+    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+  }
+
+  .select-theme-sort {
+    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+  }
+
+  .select-theme-currency {
+    @apply w-20 h-8 sm:h-10 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+  }
+
+  .select-theme-full {
+    @apply w-full border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+  }
+
+  .select-theme-rounded {
+    @apply h-12 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20 rounded-full;
   }
 }
 

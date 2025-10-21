@@ -1650,7 +1650,7 @@ export default function MarketplaceManagement() {
                             </div>
                           </div>
                           <Select value={filterBy} onValueChange={setFilterBy}>
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="select-theme-filter">
                               <Filter className="w-4 h-4 mr-2" />
                               <SelectValue />
                             </SelectTrigger>
@@ -1664,7 +1664,7 @@ export default function MarketplaceManagement() {
                             </SelectContent>
                           </Select>
                           <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="select-theme-sort">
                               <SortAsc className="w-4 h-4 mr-2" />
                               <SelectValue />
                             </SelectTrigger>
