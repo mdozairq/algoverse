@@ -345,47 +345,8 @@ export default function MarketplacePage() {
         if (collectionsRes.ok) {
           setCollections(collectionsData.collections || [])
         } else {
-          // Fallback to mock data if API fails
-          setCollections([
-            {
-              id: "1",
-              name: "Premium Event Collection",
-              description: "VIP access to exclusive event",
-              price: 150,
-              currency: "ALGO",
-              image: "/placeholder.jpg",
-              category: "event",
-              inStock: true,
-              rating: 4.8,
-              reviews: 24,
-              type: "event" as const,
-              isEnabled: true,
-              allowSwap: false,
-              nftCount: 1,
-              mintPrice: 150,
-              floorPrice: 140,
-              topOffer: 160
-            },
-            {
-              id: "2",
-              name: "Limited Edition NFT Collection",
-              description: "Rare digital collectible",
-              price: 500,
-              currency: "ALGO",
-              image: "/placeholder.jpg",
-              category: "nft",
-              inStock: true,
-              rating: 4.9,
-              reviews: 12,
-              type: "nft" as const,
-              isEnabled: true,
-              allowSwap: true,
-              nftCount: 5,
-              mintPrice: 500,
-              floorPrice: 480,
-              topOffer: 520
-            }
-          ])
+          console.error("Failed to fetch collections:", collectionsData.error)
+          setCollections([])
         }
       }
     } catch (error) {
@@ -894,27 +855,27 @@ export default function MarketplacePage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        {collections.length}+
+                        {collections.length}
                       </div>
                       <div className="text-sm text-white/70">Collections</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        4.9
+                        {collections.length > 0 ? (collections.reduce((sum, c) => sum + c.rating, 0) / collections.length).toFixed(1) : '0.0'}
                       </div>
-                      <div className="text-sm text-white/70">Rating</div>
+                      <div className="text-sm text-white/70">Avg Rating</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        24/7
+                        {collections.reduce((sum, collection) => sum + (collection.nftCount || 0), 0)}
                       </div>
-                      <div className="text-sm text-white/70">Support</div>
+                      <div className="text-sm text-white/70">Total NFTs</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl md:text-3xl font-bold text-white mb-1">
-                        100%
+                        {collections.filter(c => c.inStock).length}
                       </div>
-                      <div className="text-sm text-white/70">Secure</div>
+                      <div className="text-sm text-white/70">Available</div>
                     </div>
                   </div>
                 </motion.div>
@@ -1186,17 +1147,17 @@ export default function MarketplacePage() {
                               : (template?.configuration.theme.textColor || '#000000') 
                           }}
                         >
-                          {Math.floor(Math.random() * 1000 + 100)}
+                          {collections.reduce((sum, collection) => sum + (collection.nftCount || 0), 0)}
                           </div>
                         <div 
                           className="text-xs sm:text-sm"
-                              style={{ 
+                          style={{ 
                             color: isDarkMode 
                               ? `${template?.configuration.theme.textColor || '#f9fafb'}80` 
                               : `${template?.configuration.theme.textColor || '#000000'}80` 
-                              }}
-                            >
-                          Total Sales
+                          }}
+                        >
+                          Total NFTs
                         </div>
                       </div>
                       <div 
@@ -1214,8 +1175,8 @@ export default function MarketplacePage() {
                               : (template?.configuration.theme.textColor || '#000000') 
                           }}
                         >
-                          {Math.floor(Math.random() * 100 + 1)}%
-                        </div>
+                          {collections.filter(c => c.inStock).length}
+                          </div>
                         <div 
                           className="text-xs sm:text-sm"
                           style={{ 
@@ -1224,7 +1185,7 @@ export default function MarketplacePage() {
                               : `${template?.configuration.theme.textColor || '#000000'}80` 
                           }}
                         >
-                          Listed
+                          Available
                           </div>
                         </div>
                       <div 
@@ -1242,7 +1203,7 @@ export default function MarketplacePage() {
                               : (template?.configuration.theme.textColor || '#000000') 
                           }}
                         >
-                          {Math.floor(Math.random() * 1000 + 500)}
+                          {collections.filter(c => c.allowSwap).length}
                       </div>
                         <div 
                           className="text-xs sm:text-sm"
@@ -1252,7 +1213,7 @@ export default function MarketplacePage() {
                               : `${template?.configuration.theme.textColor || '#000000'}80` 
                           }}
                         >
-                          Holders
+                          Swappable
                             </div>
                       </div>
                       <div 
@@ -1270,7 +1231,7 @@ export default function MarketplacePage() {
                               : (template?.configuration.theme.textColor || '#000000') 
                           }}
                         >
-                          {Math.floor(Math.random() * 20 + 1)}%
+                          {collections.filter(c => c.type === 'nft').length}
                           </div>
                         <div 
                           className="text-xs sm:text-sm"
@@ -1280,7 +1241,7 @@ export default function MarketplacePage() {
                               : `${template?.configuration.theme.textColor || '#000000'}80` 
                           }}
                         >
-                          Floor Change
+                          NFT Collections
                             </div>
                             </div>
                           </div>
@@ -1543,7 +1504,10 @@ export default function MarketplacePage() {
                                   <div className="flex items-center gap-1 text-xs sm:text-sm text-green-600">
                                     <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                                     <span className="font-medium">
-                                      {Math.abs(Math.random() * 20 - 10).toFixed(1)}%
+                                      {collection.floorPrice && collection.topOffer ? 
+                                        (((collection.topOffer - collection.floorPrice) / collection.floorPrice) * 100).toFixed(1) : 
+                                        '0.0'
+                                      }%
                                     </span>
                                   </div>
                                 </td>
@@ -1556,7 +1520,7 @@ export default function MarketplacePage() {
                                         : (template?.configuration.theme.textColor || '#000000') 
                                     }}
                                   >
-                                    {Math.floor(Math.random() * 1000 + 100)} ALGO
+                                    {collection.floorPrice || collection.price} ALGO
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
@@ -1568,7 +1532,7 @@ export default function MarketplacePage() {
                                         : `${template?.configuration.theme.textColor || '#000000'}80` 
                                     }}
                                   >
-                                    {Math.floor(Math.random() * 100 + 1)}
+                                    {collection.reviews || 0}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
@@ -1580,7 +1544,7 @@ export default function MarketplacePage() {
                                         : `${template?.configuration.theme.textColor || '#000000'}80` 
                                     }}
                                   >
-                                    {Math.floor(Math.random() * 20 + 1)}%
+                                    {collection.inStock ? 'Yes' : 'No'}
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden xl:table-cell">
