@@ -1702,11 +1702,27 @@ export class FirebaseService {
       const doc = await adminDb.collection('collections').doc(id).get()
       if (!doc.exists) return null
       
+      const collectionData = doc.data()
+      
+      // Fetch NFTs for this collection
+      const nftsSnapshot = await adminDb.collection('nfts')
+        .where('collectionId', '==', id)
+        .get()
+      
+      const nfts = nftsSnapshot.docs.map((nftDoc: any) => ({
+        id: nftDoc.id,
+        ...nftDoc.data(),
+        createdAt: nftDoc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: nftDoc.data()?.updatedAt?.toDate()
+      }))
+      
       return {
         id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
-        updatedAt: doc.data()?.updatedAt?.toDate()
+        ...collectionData,
+        createdAt: collectionData?.createdAt?.toDate() || new Date(),
+        updatedAt: collectionData?.updatedAt?.toDate(),
+        nfts,
+        nftCount: nfts.length
       }
     } catch (error) {
       console.error('Error fetching collection:', error)
@@ -1721,12 +1737,35 @@ export class FirebaseService {
         .orderBy('createdAt', 'desc')
         .get()
       
-      return snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
-        updatedAt: doc.data()?.updatedAt?.toDate()
-      }))
+      const collections = await Promise.all(
+        snapshot.docs.map(async (doc: any) => {
+          const collectionData = doc.data()
+          const collectionId = doc.id
+          
+          // Fetch NFTs for this collection
+          const nftsSnapshot = await adminDb.collection('nfts')
+            .where('collectionId', '==', collectionId)
+            .get()
+          
+          const nfts = nftsSnapshot.docs.map((nftDoc: any) => ({
+            id: nftDoc.id,
+            ...nftDoc.data(),
+            createdAt: nftDoc.data()?.createdAt?.toDate() || new Date(),
+            updatedAt: nftDoc.data()?.updatedAt?.toDate()
+          }))
+          
+          return {
+            id: collectionId,
+            ...collectionData,
+            createdAt: collectionData?.createdAt?.toDate() || new Date(),
+            updatedAt: collectionData?.updatedAt?.toDate(),
+            nfts,
+            nftCount: nfts.length
+          }
+        })
+      )
+      
+      return collections
     } catch (error) {
       console.error('Error fetching collections:', error)
       return []
