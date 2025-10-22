@@ -56,7 +56,15 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
       })
     )
 
-    return NextResponse.json({ events: eventsWithMerchants })
+    // Convert date fields to strings
+    const eventsWithStringDates = eventsWithMerchants.map(event => ({
+      ...event,
+      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
+      updatedAt: event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt,
+      nftCreatedAt: event.nftCreatedAt instanceof Date ? event.nftCreatedAt.toISOString() : event.nftCreatedAt
+    }))
+
+    return NextResponse.json({ events: eventsWithStringDates })
   } catch (error: any) {
     console.error("Error fetching events:", error)
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })

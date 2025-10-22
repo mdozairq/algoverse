@@ -40,7 +40,7 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
     const mintStartDate = new Date(collection.mintStartDate)
     if (now < mintStartDate) {
       return NextResponse.json({ 
-        error: `Minting starts on ${mintStartDate.toLocaleDateString()}` 
+        error: `Minting starts on ${mintStartDate}` 
       }, { status: 400 })
     }
 
@@ -48,10 +48,7 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
     const mintedNFTs = []
     for (let i = 0; i < quantity; i++) {
       const nftId = await FirebaseService.createNFT({
-        collectionId,
-        name: `${collection.name} #${userMints.length + i + 1}`,
-        description: collection.description,
-        image: collection.image,
+        eventId: collectionId,
         metadata: {
           name: `${collection.name} #${userMints.length + i + 1}`,
           description: collection.description,
@@ -61,11 +58,11 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
             { trait_type: "Token ID", value: userMints.length + i + 1 }
           ]
         },
-        ownerAddress: userAddress,
-        tokenId: userMints.length + i + 1,
+        ownerId: userAddress,
+        tokenId: (userMints.length + i + 1).toString(),
         assetId: 0, // Will be set when minted on blockchain
-        mintedAt: new Date(),
-        forSale: false
+        isEnabled: true,
+        allowSwap: false
       })
       
       mintedNFTs.push(nftId)

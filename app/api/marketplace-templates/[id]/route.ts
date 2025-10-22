@@ -19,8 +19,15 @@ export async function GET(
       return NextResponse.json({ error: "Template not found" }, { status: 404 })
     }
 
+    // Convert date fields to strings
+    const templateWithStringDates = {
+      ...template,
+      createdAt: template.createdAt instanceof Date ? template.createdAt.toISOString() : template.createdAt,
+      updatedAt: template.updatedAt instanceof Date ? template.updatedAt.toISOString() : template.updatedAt
+    }
+
     return NextResponse.json({
-      template
+      template: templateWithStringDates
     })
   } catch (error: any) {
     console.error("Error fetching marketplace template:", error)

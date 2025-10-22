@@ -458,7 +458,7 @@ export default function MerchantEventDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Created</span>
                   <span className="text-sm font-medium">
-                    {new Date(event.createdAt).toLocaleDateString()}
+                    {event.createdAt}
                   </span>
                 </div>
                 <div className="flex justify-between">

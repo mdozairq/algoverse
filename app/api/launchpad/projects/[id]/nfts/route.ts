@@ -23,9 +23,21 @@ export async function GET(
     // Apply pagination
     const paginatedNfts = nfts.slice(offset, offset + limit)
 
+    // Convert date fields to strings
+    const nftsWithStringDates = paginatedNfts.map(nft => ({
+      ...nft,
+      mintedAt: nft.mintedAt instanceof Date ? nft.mintedAt.toISOString() : nft.mintedAt,
+      createdAt: nft.createdAt instanceof Date ? nft.createdAt.toISOString() : nft.createdAt,
+      updatedAt: nft.updatedAt instanceof Date ? nft.updatedAt.toISOString() : nft.updatedAt,
+      lastSale: nft.lastSale ? {
+        ...nft.lastSale,
+        date: nft.lastSale.date instanceof Date ? nft.lastSale.date.toISOString() : nft.lastSale.date
+      } : nft.lastSale
+    }))
+
     return NextResponse.json({
       success: true,
-      nfts: paginatedNfts,
+      nfts: nftsWithStringDates,
       total: nfts.length,
       limit,
       offset

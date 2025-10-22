@@ -57,7 +57,14 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    return NextResponse.json({ marketplaces: marketplacesWithMerchants })
+    // Convert date fields to strings
+    const marketplacesWithStringDates = marketplacesWithMerchants.map(marketplace => ({
+      ...marketplace,
+      createdAt: marketplace.createdAt instanceof Date ? marketplace.createdAt.toISOString() : marketplace.createdAt,
+      updatedAt: marketplace.updatedAt instanceof Date ? marketplace.updatedAt.toISOString() : marketplace.updatedAt
+    }))
+
+    return NextResponse.json({ marketplaces: marketplacesWithStringDates })
   } catch (error: any) {
     console.error("Error fetching marketplaces:", error)
     return NextResponse.json({ error: "Failed to fetch marketplaces" }, { status: 500 })

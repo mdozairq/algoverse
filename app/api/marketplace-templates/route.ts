@@ -6,8 +6,15 @@ export async function GET(request: NextRequest) {
   try {
     const templates = await FirebaseService.getAllMarketplaceTemplates()
     
+    // Convert date fields to strings
+    const templatesWithStringDates = templates.map(template => ({
+      ...template,
+      createdAt: template.createdAt instanceof Date ? template.createdAt.toISOString() : template.createdAt,
+      updatedAt: template.updatedAt instanceof Date ? template.updatedAt.toISOString() : template.updatedAt
+    }))
+
     return NextResponse.json({ 
-      templates,
+      templates: templatesWithStringDates,
       count: templates.length 
     })
   } catch (error: any) {

@@ -11,7 +11,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ project })
+    // Convert date fields to strings
+    const projectWithStringDates = {
+      ...project,
+      createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
+      updatedAt: project.updatedAt instanceof Date ? project.updatedAt.toISOString() : project.updatedAt
+    }
+
+    return NextResponse.json({ project: projectWithStringDates })
   } catch (error: any) {
     console.error(`Error fetching launchpad project ${params.id}:`, error)
     return NextResponse.json({ error: "Failed to fetch project" }, { status: 500 })

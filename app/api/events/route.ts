@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
       events = await FirebaseService.getAllEvents()
     }
 
-    return NextResponse.json({ events })
+    // Convert date fields to strings
+    const eventsWithStringDates = events.map(event => ({
+      ...event,
+      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
+      updatedAt: event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt,
+      nftCreatedAt: event.nftCreatedAt instanceof Date ? event.nftCreatedAt.toISOString() : event.nftCreatedAt
+    }))
+
+    return NextResponse.json({ events: eventsWithStringDates })
   } catch (error: any) {
     console.error("Error fetching events:", error)
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })

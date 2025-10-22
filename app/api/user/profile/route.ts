@@ -9,7 +9,14 @@ export const GET = withAuth(async (req: AuthenticatedRequest): Promise<NextRespo
     if (!user) {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404 }) as unknown as NextResponse
     }
-    return new Response(JSON.stringify({ user }), { status: 200 }) as unknown as NextResponse
+    // Convert date fields to strings
+    const userWithStringDates = {
+      ...user,
+      createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
+      updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : user.updatedAt
+    }
+
+    return new Response(JSON.stringify({ user: userWithStringDates }), { status: 200 }) as unknown as NextResponse
   } catch (error) {
     console.error("Profile fetch error:", error)
     return new Response(JSON.stringify({ error: "Failed to fetch profile" }), { status: 500 }) as unknown as NextResponse

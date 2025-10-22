@@ -348,7 +348,7 @@ export default function MerchantEventsPage() {
                           <div className="text-sm">
                             <div>{event.location}</div>
                             <div className="text-xs text-gray-500">
-                              {new Date(event.date).toLocaleDateString()}
+                              {event.date}
                             </div>
                           </div>
                         </TableCell>

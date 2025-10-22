@@ -35,7 +35,7 @@ interface Event {
   availableSupply: number
   nftAssetId?: number
   nftCreated?: boolean
-  nftCreatedAt?: Date
+  nftCreatedAt?: string
   nftUnitName?: string
   nftAssetName?: string
   nftUrl?: string
@@ -221,7 +221,7 @@ export default function NFTManagementPage() {
                     <div>
                       <CardTitle className="text-lg">{event.title}</CardTitle>
                       <CardDescription>
-                        {event.category} • {new Date(event.date).toLocaleDateString()}
+                        {event.category} • {event.date}
                       </CardDescription>
                     </div>
                     {getStatusBadge(event)}
@@ -275,7 +275,7 @@ export default function NFTManagementPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Created:</span>
-                            <span>{event.nftCreatedAt ? new Date(event.nftCreatedAt).toLocaleDateString() : 'N/A'}</span>
+                            <span>{event.nftCreatedAt || 'N/A'}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Royalty:</span>

@@ -29,9 +29,17 @@ export async function GET(
     // Apply pagination
     const paginatedActivities = activities.slice(offset, offset + limit)
 
+    // Convert date fields to strings
+    const activitiesWithStringDates = paginatedActivities.map(activity => ({
+      ...activity,
+      timestamp: activity.timestamp instanceof Date ? activity.timestamp.toISOString() : activity.timestamp,
+      createdAt: activity.createdAt instanceof Date ? activity.createdAt.toISOString() : activity.createdAt,
+      updatedAt: activity.updatedAt instanceof Date ? activity.updatedAt.toISOString() : activity.updatedAt
+    }))
+
     return NextResponse.json({
       success: true,
-      activities: paginatedActivities,
+      activities: activitiesWithStringDates,
       total: activities.length,
       limit,
       offset

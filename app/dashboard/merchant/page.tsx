@@ -458,7 +458,7 @@ export default function MerchantDashboard() {
                                 <div className="text-sm text-gray-500 dark:text-gray-400">{event.category}</div>
                               </TableCell>
                               <TableCell className="text-gray-900 dark:text-gray-300">
-                                {new Date(event.date).toLocaleDateString()}
+                                {event.date}
                               </TableCell>
                               <TableCell>{getStatusBadge(status)}</TableCell>
                               <TableCell className="text-gray-900 dark:text-gray-300">

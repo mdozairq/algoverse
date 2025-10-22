@@ -24,7 +24,14 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
       merchants = await FirebaseService.getMerchants()
     }
 
-    return NextResponse.json({ merchants })
+    // Convert date fields to strings
+    const merchantsWithStringDates = merchants.map(merchant => ({
+      ...merchant,
+      createdAt: merchant.createdAt instanceof Date ? merchant.createdAt.toISOString() : merchant.createdAt,
+      updatedAt: merchant.updatedAt instanceof Date ? merchant.updatedAt.toISOString() : merchant.updatedAt
+    }))
+
+    return NextResponse.json({ merchants: merchantsWithStringDates })
   } catch (error: any) {
     console.error("Error fetching merchants:", error)
     return NextResponse.json({ error: "Failed to fetch merchants" }, { status: 500 })

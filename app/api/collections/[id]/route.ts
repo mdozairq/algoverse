@@ -21,9 +21,16 @@ export async function GET(
       return NextResponse.json({ error: "Collection not found" }, { status: 404 })
     }
 
+    // Convert date fields to strings
+    const collectionWithStringDates = {
+      ...collection,
+      createdAt: collection.createdAt instanceof Date ? collection.createdAt.toISOString() : collection.createdAt,
+      updatedAt: collection.updatedAt instanceof Date ? collection.updatedAt.toISOString() : collection.updatedAt
+    }
+
     return NextResponse.json({
       success: true,
-      collection
+      collection: collectionWithStringDates
     })
   } catch (error: any) {
     console.error("Error fetching collection:", error)

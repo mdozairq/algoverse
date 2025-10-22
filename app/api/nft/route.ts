@@ -27,7 +27,14 @@ export async function GET(request: NextRequest) {
       nfts = await FirebaseService.getAllNFTs()
     }
 
-    return NextResponse.json({ nfts })
+    // Convert date fields to strings
+    const nftsWithStringDates = nfts.map(nft => ({
+      ...nft,
+      createdAt: nft.createdAt instanceof Date ? nft.createdAt.toISOString() : nft.createdAt,
+      updatedAt: nft.updatedAt instanceof Date ? nft.updatedAt.toISOString() : nft.updatedAt
+    }))
+
+    return NextResponse.json({ nfts: nftsWithStringDates })
   } catch (error: any) {
     console.error("Error fetching NFTs:", error)
     return NextResponse.json({ error: "Failed to fetch NFTs" }, { status: 500 })

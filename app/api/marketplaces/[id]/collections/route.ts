@@ -17,9 +17,16 @@ export async function GET(
     // Fetch collections for this marketplace
     const collections = await FirebaseService.getCollectionsByMarketplace(marketplaceId)
 
+    // Convert date fields to strings
+    const collectionsWithStringDates = collections.map(collection => ({
+      ...collection,
+      createdAt: collection.createdAt instanceof Date ? collection.createdAt.toISOString() : collection.createdAt,
+      updatedAt: collection.updatedAt instanceof Date ? collection.updatedAt.toISOString() : collection.updatedAt
+    }))
+
     return NextResponse.json({
       success: true,
-      collections,
+      collections: collectionsWithStringDates,
       count: collections.length
     })
   } catch (error: any) {

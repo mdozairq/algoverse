@@ -26,25 +26,34 @@ export async function GET(
     // Get template details
     const template = await FirebaseService.getMarketplaceTemplateById(marketplace.template)
 
+    // Convert date fields to strings
+    const marketplaceWithStringDates = {
+      ...marketplace,
+      createdAt: marketplace.createdAt instanceof Date ? marketplace.createdAt.toISOString() : marketplace.createdAt,
+      updatedAt: marketplace.updatedAt instanceof Date ? marketplace.updatedAt.toISOString() : marketplace.updatedAt,
+      merchant: merchant ? {
+        id: merchant.id,
+        businessName: merchant.businessName,
+        email: merchant.email,
+        category: merchant.category,
+        description: merchant.description,
+        isApproved: merchant.isApproved,
+        isVerified: merchant.isVerified,
+        createdAt: merchant.createdAt instanceof Date ? merchant.createdAt.toISOString() : merchant.createdAt,
+        updatedAt: merchant.updatedAt instanceof Date ? merchant.updatedAt.toISOString() : merchant.updatedAt
+      } : null,
+      template: template ? {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        configuration: template.configuration,
+        createdAt: template.createdAt instanceof Date ? template.createdAt.toISOString() : template.createdAt,
+        updatedAt: template.updatedAt instanceof Date ? template.updatedAt.toISOString() : template.updatedAt
+      } : null
+    }
+
     return NextResponse.json({
-      marketplace: {
-        ...marketplace,
-        merchant: merchant ? {
-          id: merchant.id,
-          businessName: merchant.businessName,
-          email: merchant.email,
-          category: merchant.category,
-          description: merchant.description,
-          isApproved: merchant.isApproved,
-          isVerified: merchant.isVerified
-        } : null,
-        template: template ? {
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          configuration: template.configuration
-        } : null
-      }
+      marketplace: marketplaceWithStringDates
     })
   } catch (error: any) {
     console.error("Error fetching marketplace:", error)
