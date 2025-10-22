@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
+import ImageUpload from "@/components/ui/image-upload"
 import { 
   Plus, 
   Edit, 
@@ -139,6 +140,7 @@ export default function MarketplaceManagement() {
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
+    ipfsHash: "",
     nftCount: 1 // Minimum 1 NFT required
   })
   const [editCollectionData, setEditCollectionData] = useState({
@@ -149,12 +151,14 @@ export default function MarketplaceManagement() {
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
+    ipfsHash: "",
     nftCount: 1
   })
   const [newNFT, setNewNFT] = useState({
     name: "",
     description: "",
     image: "",
+    ipfsHash: "",
     price: 0,
     rarity: "common",
     traits: [] as { trait_type: string; value: string; rarity: number }[],
@@ -617,6 +621,7 @@ export default function MarketplaceManagement() {
           category: "",
           type: "nft",
           image: "",
+          ipfsHash: "",
           nftCount: 1
         })
         fetchCollections(selectedMarketplace.id)
@@ -706,6 +711,7 @@ export default function MarketplaceManagement() {
       category: collection.category,
       type: collection.type,
       image: collection.image,
+      ipfsHash: (collection as any).ipfsHash || "",
       nftCount: collection.nftCount
     })
     setShowEditCollectionDialog(true)
@@ -834,6 +840,7 @@ export default function MarketplaceManagement() {
           name: "",
           description: "",
           image: "",
+          ipfsHash: "",
           price: 0,
           rarity: "common",
           traits: [],
@@ -1275,12 +1282,18 @@ export default function MarketplaceManagement() {
                                     </div>
                                   </div>
                                   <div>
-                                    <Label htmlFor="collectionImage">Image URL</Label>
-                                    <Input
-                                      id="collectionImage"
-                                      value={newCollection.image}
-                                      onChange={(e) => setNewCollection({ ...newCollection, image: e.target.value })}
-                                      placeholder="https://example.com/image.jpg"
+                                    <Label htmlFor="collectionImage">Collection Image</Label>
+                                    <ImageUpload
+                                      onImageUpload={(ipfsHash, imageUrl) => {
+                                        setNewCollection({ ...newCollection, image: imageUrl, ipfsHash })
+                                      }}
+                                      onImageRemove={() => {
+                                        setNewCollection({ ...newCollection, image: "", ipfsHash: "" })
+                                      }}
+                                      currentImage={newCollection.image}
+                                      maxSize={10}
+                                      acceptedTypes={["image/jpeg", "image/png", "image/gif", "image/webp"]}
+                                      className="mt-2"
                                     />
                                   </div>
                                   <div className="flex justify-end gap-2">
@@ -1292,6 +1305,7 @@ export default function MarketplaceManagement() {
                                       category: "",
                                       type: "nft",
                                       image: "",
+                                      ipfsHash: "",
                                       nftCount: 1
                                     })}>
                                       Cancel
@@ -1401,12 +1415,18 @@ export default function MarketplaceManagement() {
                                 </div>
                               </div>
                               <div>
-                                <Label htmlFor="editCollectionImage">Image URL</Label>
-                                <Input
-                                  id="editCollectionImage"
-                                  value={editCollectionData.image}
-                                  onChange={(e) => setEditCollectionData({ ...editCollectionData, image: e.target.value })}
-                                  placeholder="https://example.com/image.jpg"
+                                <Label htmlFor="editCollectionImage">Collection Image</Label>
+                                <ImageUpload
+                                  onImageUpload={(ipfsHash, imageUrl) => {
+                                    setEditCollectionData({ ...editCollectionData, image: imageUrl, ipfsHash })
+                                  }}
+                                  onImageRemove={() => {
+                                    setEditCollectionData({ ...editCollectionData, image: "", ipfsHash: "" })
+                                  }}
+                                  currentImage={editCollectionData.image}
+                                  maxSize={10}
+                                  acceptedTypes={["image/jpeg", "image/png", "image/gif", "image/webp"]}
+                                  className="mt-2"
                                 />
                               </div>
                               <div className="flex justify-end gap-2">
@@ -1504,12 +1524,18 @@ export default function MarketplaceManagement() {
                                     </div>
 
                                     <div>
-                                      <Label htmlFor="nftImage">Image URL</Label>
-                                      <Input
-                                        id="nftImage"
-                                        value={newNFT.image}
-                                        onChange={(e) => setNewNFT({ ...newNFT, image: e.target.value })}
-                                        placeholder="https://example.com/nft-image.jpg"
+                                      <Label htmlFor="nftImage">NFT Image</Label>
+                                      <ImageUpload
+                                        onImageUpload={(ipfsHash, imageUrl) => {
+                                          setNewNFT({ ...newNFT, image: imageUrl, ipfsHash })
+                                        }}
+                                        onImageRemove={() => {
+                                          setNewNFT({ ...newNFT, image: "", ipfsHash: "" })
+                                        }}
+                                        currentImage={newNFT.image}
+                                        maxSize={10}
+                                        acceptedTypes={["image/jpeg", "image/png", "image/gif", "image/webp"]}
+                                        className="mt-2"
                                       />
                                     </div>
 
