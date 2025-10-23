@@ -22,26 +22,30 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
 
     // Create NFT in database
     const nftId = await FirebaseService.createNFT({
-      name: nftData.name,
-      description: nftData.description || "",
-      image: nftData.image,
-      ownerAddress: nftData.userAddress,
-      collectionId: nftData.collectionId || null,
+      eventId: nftData.collectionId || "",
+      ownerId: nftData.userAddress,
+      tokenId: `nft_${Date.now()}`,
       assetId: 0, // Will be set when minted on blockchain
       price: nftData.price || 0,
-      currency: nftData.currency || "ALGO",
-      rarity: nftData.rarity || "common",
-      category: nftData.category || "",
-      properties: nftData.properties || {},
-      status: "draft",
-      createdAt: new Date(),
-      updatedAt: new Date()
+      metadata: {
+        name: nftData.name,
+        description: nftData.description || "",
+        image: nftData.image,
+        rarity: nftData.rarity || "common",
+        category: nftData.category || "",
+        traits: nftData.traits || [],
+        royaltyFee: nftData.royaltyFee || 0,
+        properties: nftData.properties || {}
+      },
+      isEnabled: true,
+      allowSwap: false
     })
 
     return NextResponse.json({
       success: true,
       nftId,
-      message: "NFT created successfully",
+      message: "NFT created successfully. Use the mint endpoint to mint on blockchain.",
+      mintEndpoint: `/api/nfts/mint`
     })
   } catch (error: any) {
     console.error("Error creating NFT:", error)
