@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
 import ImageUpload from "@/components/ui/image-upload"
+import { NFTCreationForm } from "@/components/nft/nft-creation-form"
 import { 
   Plus, 
   Edit, 
@@ -1467,7 +1468,7 @@ export default function MarketplaceManagement() {
                                     variant="outline" 
                                     onClick={() => setShowNFTForm(!showNFTForm)}
                                   >
-                                    {showNFTForm ? "Hide Form" : "Show Form"}
+                                    {showNFTForm ? "Abort" : "Create NFT"}
                                   </Button>
                                   <Button onClick={() => {
                                     if (selectedCollectionForNFTs && user) {
@@ -1482,164 +1483,15 @@ export default function MarketplaceManagement() {
 
                               {/* NFT Creation Form */}
                               {showNFTForm && (
-                                <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-                                  <h3 className="text-lg font-semibold mb-4">Create New NFT</h3>
-                                  <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <Label htmlFor="nftName">NFT Name</Label>
-                                        <Input
-                                          id="nftName"
-                                          value={newNFT.name}
-                                          onChange={(e) => setNewNFT({ ...newNFT, name: e.target.value })}
-                                          placeholder="Enter NFT name"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="nftRarity">Rarity</Label>
-                                        <Select value={newNFT.rarity} onValueChange={(value) => setNewNFT({ ...newNFT, rarity: value })}>
-                                          <SelectTrigger>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="common">Common</SelectItem>
-                                            <SelectItem value="uncommon">Uncommon</SelectItem>
-                                            <SelectItem value="rare">Rare</SelectItem>
-                                            <SelectItem value="epic">Epic</SelectItem>
-                                            <SelectItem value="legendary">Legendary</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="nftDescription">Description</Label>
-                                      <Textarea
-                                        id="nftDescription"
-                                        value={newNFT.description}
-                                        onChange={(e) => setNewNFT({ ...newNFT, description: e.target.value })}
-                                        placeholder="Describe your NFT"
-                                        rows={3}
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="nftImage">NFT Image</Label>
-                                      <ImageUpload
-                                        onImageUpload={(ipfsHash, imageUrl) => {
-                                          setNewNFT({ ...newNFT, image: imageUrl, ipfsHash })
-                                        }}
-                                        onImageRemove={() => {
-                                          setNewNFT({ ...newNFT, image: "", ipfsHash: "" })
-                                        }}
-                                        currentImage={newNFT.image}
-                                        maxSize={10}
-                                        acceptedTypes={["image/jpeg", "image/png", "image/gif", "image/webp"]}
-                                        className="mt-2"
-                                      />
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                      <div>
-                                        <Label htmlFor="nftPrice">Price (ALGO)</Label>
-                                        <Input
-                                          id="nftPrice"
-                                          type="number"
-                                          value={newNFT.price}
-                                          onChange={(e) => setNewNFT({ ...newNFT, price: parseFloat(e.target.value) || 0 })}
-                                          placeholder="0.00"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="nftMintPrice">Mint Price (ALGO)</Label>
-                                        <Input
-                                          id="nftMintPrice"
-                                          type="number"
-                                          value={newNFT.mintPrice}
-                                          onChange={(e) => setNewNFT({ ...newNFT, mintPrice: parseFloat(e.target.value) || 0 })}
-                                          placeholder="0.00"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="nftMaxSupply">Max Supply</Label>
-                                        <Input
-                                          id="nftMaxSupply"
-                                          type="number"
-                                          min="1"
-                                          value={newNFT.maxSupply}
-                                          onChange={(e) => setNewNFT({ ...newNFT, maxSupply: parseInt(e.target.value) || 1 })}
-                                          placeholder="1"
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <Label htmlFor="nftRoyaltyFee">Royalty Fee (%)</Label>
-                                      <Input
-                                        id="nftRoyaltyFee"
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={newNFT.royaltyFee}
-                                        onChange={(e) => setNewNFT({ ...newNFT, royaltyFee: parseFloat(e.target.value) || 0 })}
-                                        placeholder="0"
-                                      />
-                                    </div>
-
-                                    {/* Traits Section */}
-                                    <div>
-                                      <div className="flex items-center justify-between mb-2">
-                                        <Label>Traits</Label>
-                                        <Button type="button" variant="outline" size="sm" onClick={addTrait}>
-                                          <Plus className="w-4 h-4 mr-1" />
-                                          Add Trait
-                                        </Button>
-                                      </div>
-                                      {nftTraits.map((trait, index) => (
-                                        <div key={index} className="grid grid-cols-4 gap-2 mb-2">
-                                          <Input
-                                            placeholder="Trait Type"
-                                            value={trait.trait_type}
-                                            onChange={(e) => updateTrait(index, "trait_type", e.target.value)}
-                                          />
-                                          <Input
-                                            placeholder="Value"
-                                            value={trait.value}
-                                            onChange={(e) => updateTrait(index, "value", e.target.value)}
-                                          />
-                                          <Input
-                                            type="number"
-                                            placeholder="Rarity"
-                                            value={trait.rarity}
-                                            onChange={(e) => updateTrait(index, "rarity", parseInt(e.target.value) || 1)}
-                                          />
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => removeTrait(index)}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      ))}
-                                    </div>
-
-                                    <div className="flex justify-end gap-2">
-                                      <Button variant="outline" onClick={() => setShowNFTForm(false)}>
-                                        Cancel
-                                      </Button>
-                                      <Button onClick={handleCreateNFT} disabled={actionLoading === "create-nft"}>
-                                        {actionLoading === "create-nft" ? (
-                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        ) : (
-                                          <Plus className="w-4 h-4 mr-2" />
-                                        )}
-                                        Create NFT
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
+                                <NFTCreationForm
+                                  newNFT={newNFT}
+                                  setNewNFT={setNewNFT}
+                                  nftTraits={nftTraits}
+                                  setNftTraits={setNftTraits}
+                                  onCancel={() => setShowNFTForm(false)}
+                                  onCreate={handleCreateNFT}
+                                  isLoading={actionLoading === "create-nft"}
+                                />
                               )}
 
                               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
