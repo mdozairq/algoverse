@@ -17,6 +17,7 @@ export interface UseWalletReturn {
   disconnect: () => Promise<void>
   sendTransaction: (to: string, amount: number, currency?: string) => Promise<WalletTransaction>
   signMessage: (message: string) => Promise<string>
+  signTransactions: (transactions: string[]) => Promise<string[]>
   switchAccount: () => Promise<WalletAccount>
   refreshBalance: () => Promise<number>
   clearError: () => void
@@ -60,6 +61,10 @@ export function useWallet(): UseWalletReturn {
 
   const signMessage = useCallback(async (message: string): Promise<string> => {
     return walletService.signMessage(message)
+  }, [])
+
+  const signTransactions = useCallback(async (transactions: string[]): Promise<string[]> => {
+    return walletService.signTransactions(transactions)
   }, [])
 
   const switchAccount = useCallback(async (): Promise<WalletAccount> => {
@@ -114,6 +119,7 @@ export function useWallet(): UseWalletReturn {
     disconnect,
     sendTransaction,
     signMessage,
+    signTransactions,
     switchAccount,
     refreshBalance,
     clearError,
