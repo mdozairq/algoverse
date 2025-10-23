@@ -60,6 +60,26 @@ import { useAuth } from "@/lib/auth/auth-context"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
+import { useWallet } from "@/hooks/use-wallet"
+
+// Extend Window interface for TypeScript
+declare global {
+  interface Window {
+    algorand?: {
+      connect: () => Promise<string[]>
+      signTransaction: (txn: Uint8Array) => Promise<Uint8Array>
+      isPeraWallet: boolean
+    }
+    myAlgo?: {
+      connect: (options: any) => Promise<Array<{ address: string }>>
+      signTransaction: (txn: Uint8Array) => Promise<{ blob: Uint8Array }>
+    }
+    AlgoSigner?: {
+      sign: (txn: Uint8Array) => Promise<{ blob: Uint8Array }>
+    }
+  }
+}
 
 interface Marketplace {
   id: string
@@ -167,6 +187,7 @@ export default function MarketplaceManagement() {
     maxSupply: 1,
     royaltyFee: 0
   })
+  const [createdNFTId, setCreatedNFTId] = useState<string | null>(null)
   const [nftTraits, setNftTraits] = useState<{ trait_type: string; value: string; rarity: number }[]>([])
   const [showNFTForm, setShowNFTForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -186,6 +207,12 @@ export default function MarketplaceManagement() {
   const { toast } = useToast()
   const { user } = useAuth()
   const router = useRouter()
+  const useWalletHook = useWallet()
+
+  // Set up the useWallet hook for the transaction signer
+  useEffect(() => {
+    transactionSigner.setUseWalletHook(useWalletHook)
+  }, [useWalletHook])
 
   const fetchMarketplaces = async (isRefresh = false) => {
     if (!user) return
@@ -832,11 +859,13 @@ export default function MarketplaceManagement() {
       })
 
       if (response.ok) {
+        const result = await response.json()
+        setCreatedNFTId(result.nftId) // Capture the NFT ID
         toast({
           title: "Success",
-          description: "NFT created successfully!",
+          description: "NFT created successfully! You can now mint it on the blockchain.",
         })
-        setShowNFTForm(false)
+        // setShowNFTForm(false)
         setNewNFT({
           name: "",
           description: "",
@@ -860,6 +889,75 @@ export default function MarketplaceManagement() {
       toast({
         title: "Error",
         description: error.message || "Failed to create NFT",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleMintNFT = async (nftId: string, userAddress: string) => {
+    if (!user) return
+
+    setActionLoading("mint-nft")
+    try {
+      // Step 1: Create mint transaction
+      const createResponse = await fetch(`/api/nfts/mint-wallet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nftId,
+          userAddress
+        }),
+      })
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json()
+        throw new Error(error.error || "Failed to create mint transaction")
+      }
+
+      const { transaction } = await createResponse.json()
+
+      // Step 2: Sign transaction with wallet using the transaction signer
+      let signedTransaction
+      
+      try {
+        // Use the transaction signer service
+        signedTransaction = await transactionSigner.signTransaction(transaction.txn, userAddress)
+        
+        console.log('Transaction signed successfully with Pera Wallet')
+      } catch (error: any) {
+        console.error('Wallet signing failed:', error)
+        throw new Error(`Failed to sign transaction: ${error.message || 'Unknown error'}`)
+      }
+
+      // Step 3: Submit signed transaction
+      const submitResponse = await fetch(`/api/nfts/mint-wallet`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nftId,
+          signedTransaction // already base64
+        }),
+      })
+
+      if (submitResponse.ok) {
+        const result = await submitResponse.json()
+        toast({
+          title: "Success",
+          description: `NFT minted successfully! Asset ID: ${result.assetId}`,
+        })
+        if (selectedMarketplace) {
+          fetchCollections(selectedMarketplace.id)
+        }
+      } else {
+        const error = await submitResponse.json()
+        throw new Error(error.error || "Failed to submit mint transaction")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mint NFT",
         variant: "destructive",
       })
     } finally {
@@ -1490,7 +1588,10 @@ export default function MarketplaceManagement() {
                                   setNftTraits={setNftTraits}
                                   onCancel={() => setShowNFTForm(false)}
                                   onCreate={handleCreateNFT}
+                                  onMint={handleMintNFT}
                                   isLoading={actionLoading === "create-nft"}
+                                  createdNFTId={createdNFTId}
+                                  showMintOption={true}
                                 />
                               )}
 
