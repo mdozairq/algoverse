@@ -1,4 +1,6 @@
 import { getPeraWalletInstance, disconnectPeraWallet } from './pera-wallet'
+import { Buffer } from 'buffer'
+import algosdk from 'algosdk'
 
 export interface WalletAccount {
   address: string
@@ -7,7 +9,16 @@ export interface WalletAccount {
   isConnected: boolean
 }
 
+// ARC-0001/ARC-0025 compliant WalletTransaction interface for signing
 export interface WalletTransaction {
+  txn: string // base64-encoded unsigned transaction
+  signers?: string[] // optional array of signer addresses
+  authAddr?: string // optional auth address
+  message?: string // optional message
+}
+
+// Internal transaction interface for wallet state management
+export interface WalletTransactionRecord {
   id: string
   type: 'send' | 'receive' | 'swap' | 'mint' | 'burn'
   amount: number
@@ -23,7 +34,7 @@ export interface WalletState {
   isConnected: boolean
   isConnecting: boolean
   account: WalletAccount | null
-  transactions: WalletTransaction[]
+  transactions: WalletTransactionRecord[]
   balance: number
   error: string | null
 }
@@ -315,12 +326,12 @@ export class WalletService {
     to: string,
     amount: number,
     currency: string = 'ALGO'
-  ): Promise<WalletTransaction> {
+  ): Promise<WalletTransactionRecord> {
     if (!this.state.isConnected || !this.state.account) {
       throw new Error('Wallet not connected')
     }
 
-    const transaction: WalletTransaction = {
+    const transaction: WalletTransactionRecord = {
       id: Date.now().toString(),
       type: 'send',
       amount,
@@ -382,6 +393,75 @@ export class WalletService {
     }
   }
 
+  public async signTransactions(transactions: string[]): Promise<string[]> {
+    if (!this.state.isConnected || !this.state.account) {
+      throw new Error('Wallet not connected')
+    }
+
+    try {
+      const peraWallet = getPeraWalletInstance()
+      const signedTransactions: string[] = []
+      
+      // Sign each transaction individually
+      for (const transaction of transactions) {
+        try {
+          // Create ARC-compliant WalletTransaction objects
+          const walletTransactions: WalletTransaction[] = [{ txn: transaction }]
+          
+          console.log('Signing transaction with Pera Wallet Connect:', {
+            transactionLength: transaction.length,
+            walletTransactions
+          })
+          
+          // Use signTransaction method (Pera Wallet Connect API)
+          console.log('Pera Wallet instance:', peraWallet)
+          console.log('Available methods:', Object.getOwnPropertyNames(peraWallet))
+          console.log('signTransaction method:', typeof peraWallet.signTransaction)
+          
+          if (typeof peraWallet.signTransaction === 'function') {
+            console.log('Using signTransaction method (Pera Wallet Connect)')
+            
+            // Decode the base64 transaction back to algosdk.Transaction
+            const txnBytes = Buffer.from(transaction, 'base64')
+            const decodedTxn = algosdk.decodeUnsignedTransaction(txnBytes)
+            
+            // Create the transaction group format that Pera Wallet expects
+            const transactionGroup = [{
+              txn: decodedTxn,
+              signers: [this.state.account?.address].filter(Boolean)
+            }]
+            
+            console.log('Transaction group:', transactionGroup)
+            
+            // Pera Wallet expects an array of transaction groups
+            const signedTxns = await peraWallet.signTransaction([transactionGroup] as any)
+            console.log('signTransaction result:', signedTxns)
+            
+            if (Array.isArray(signedTxns) && signedTxns.length > 0) {
+              // Convert Uint8Array to base64 string
+              const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64')
+              signedTransactions.push(signedTxnBase64)
+            } else {
+              throw new Error('No signed transactions returned from signTransaction')
+            }
+          } else {
+            // If signTransaction is not available, throw an error with helpful message
+            console.error('Pera Wallet methods available:', Object.getOwnPropertyNames(peraWallet))
+            throw new Error('Pera Wallet signTransaction method not available. Please ensure you are using a compatible version of Pera Wallet.')
+          }
+        } catch (txnError: any) {
+          console.error('Error signing individual transaction:', txnError)
+          throw new Error(`Failed to sign transaction: ${txnError.message}`)
+        }
+      }
+      
+      return signedTransactions
+    } catch (error: any) {
+      this.setState({ error: error.message || 'Failed to sign transactions' })
+      throw error
+    }
+  }
+
   public async switchAccount(): Promise<WalletAccount> {
     if (!this.state.isConnected) {
       throw new Error('Wallet not connected')
@@ -435,11 +515,11 @@ export class WalletService {
     return navigator.clipboard.writeText(text)
   }
 
-  public getTransactionsByType(type: WalletTransaction['type']): WalletTransaction[] {
+  public getTransactionsByType(type: WalletTransactionRecord['type']): WalletTransactionRecord[] {
     return this.state.transactions.filter(t => t.type === type)
   }
 
-  public getRecentTransactions(limit: number = 10): WalletTransaction[] {
+  public getRecentTransactions(limit: number = 10): WalletTransactionRecord[] {
     return this.state.transactions
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit)
