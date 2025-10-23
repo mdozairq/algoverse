@@ -64,6 +64,8 @@ export interface NFT {
   marketplaceId?: string
   isEnabled: boolean
   allowSwap: boolean
+  transactionId?: string
+  status?: string
 }
 
 export interface Merchant {
