@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -168,6 +169,7 @@ import { useWallet } from "@/hooks/use-wallet"
 import { useAuth } from "@/lib/auth/auth-context"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import { MarketplaceLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 
 interface Marketplace {
   id: string
@@ -279,6 +281,7 @@ interface Collection {
 }
 
 export default function MarketplacePage() {
+  const router = useRouter()
   const params = useParams()
   const merchantId = params.merchantId as string
   const marketplaceId = params.marketplaceId as string
@@ -343,7 +346,7 @@ export default function MarketplacePage() {
         const collectionsData = await collectionsRes.json()
         
         if (collectionsRes.ok) {
-          setCollections(collectionsData.collections || [])
+          setCollections(collectionsData.collections.filter((collection: any) => collection.isEnabled) || [])
         } else {
           console.error("Failed to fetch collections:", collectionsData.error)
           setCollections([])
@@ -573,7 +576,7 @@ export default function MarketplacePage() {
         body: JSON.stringify({
           quantity: 1,
           paymentMethod: "algorand",
-          transactionId: transaction.id,
+          transactionId: transaction.txn,
           buyerAddress: account.address
         })
       })
@@ -581,7 +584,7 @@ export default function MarketplacePage() {
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Purchase successful! Transaction ID: ${transaction.id}`)
+        alert(`Purchase successful! Transaction ID: ${transaction.txn}`)
         // Refresh collections to update availability
         fetchMarketplaceData()
       } else {
@@ -695,25 +698,12 @@ export default function MarketplacePage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading marketplace...</p>
-        </div>
-      </div>
-    )
+    return <MarketplaceLoadingTemplate />
   }
 
   if (!marketplace) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Marketplace Not Found</h1>
-          <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
-        </div>
-      </div>
+      <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
     )
   }
 
@@ -959,7 +949,7 @@ export default function MarketplacePage() {
                             <div 
                               className="block cursor-pointer"
                               onClick={() => {
-                                window.location.href = `/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`
+                                router.push(`/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`)
                               }}
                   >
                     <Card 
@@ -1418,8 +1408,8 @@ export default function MarketplacePage() {
                                   borderColor: `${marketplace.primaryColor}10`
                                 }}
                 onClick={() => {
-                                  window.location.href = `/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`
-                                }}
+                  router.push(`/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`)
+                }}
                               >
                                 <td 
                                   className="py-2 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm"
