@@ -27,6 +27,10 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       tokenId: `nft_${Date.now()}`,
       assetId: 0, // Will be set when minted on blockchain
       price: nftData.price || 0,
+      collectionId: nftData.collectionId || "",
+      creatorId: nftData.merchantId || "",
+      marketplaceId: nftData.marketplaceId || "",
+      status: "draft",
       metadata: {
         name: nftData.name,
         description: nftData.description || "",

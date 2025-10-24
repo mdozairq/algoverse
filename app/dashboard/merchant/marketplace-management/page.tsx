@@ -997,6 +997,8 @@ export default function MarketplaceManagement() {
         const error = await submitResponse.json()
         throw new Error(error.error || "Failed to submit mint transaction")
       }
+      setShowNFTManagementDialog(false)
+      setShowNFTForm(false)
     } catch (error: any) {
       toast({
         title: "Error",

@@ -192,6 +192,7 @@ interface Collection {
   status: "draft" | "published" | "archived"
   createdAt: Date
   updatedAt: Date
+  allowMint: boolean
 }
 
 interface NFT {
@@ -206,7 +207,13 @@ interface NFT {
   assetId: number
   mintedAt: Date
   price?: number
-  forSale: boolean
+  forSale: boolean,
+  status: "draft" | "minted",
+  transactionId?: string
+  isEnabled: boolean
+  allowSwap: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 export default function CollectionPage({ params }: { params: { merchantId: string; marketplaceId: string; collectionId: string } }) {
@@ -372,8 +379,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   }
 
   const filteredNfts = nfts.filter(nft => {
-    const matchesSearch = nft.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nft.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = nft.metadata.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      nft.metadata.description.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
@@ -406,7 +413,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
       // Implement NFT purchase logic
       toast({
         title: "Purchase Initiated",
-        description: `Buying ${nft.name} for ${nft.price} ALGO`,
+        description: `Buying ${nft.metadata.name} for ${nft.price} ALGO`,
       })
     } catch (error) {
       toast({
@@ -515,8 +522,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             className="w-full h-full"
                           >
                             <Image
-                              src={nfts[selectedNFTIndex]?.image || collection.image}
-                              alt={nfts[selectedNFTIndex]?.name || collection.name}
+                              src={nfts[selectedNFTIndex]?.metadata.image || collection.image}
+                              alt={nfts[selectedNFTIndex]?.metadata.name || collection.name}
                               fill
                               className="object-cover"
                             />
@@ -572,8 +579,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             }`}
                         >
                           <Image
-                            src={nft.image}
-                            alt={nft.name}
+                            src={nft.metadata.image}
+                            alt={nft.metadata.name}
                             fill
                             className="object-cover"
                           />
@@ -615,7 +622,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-4">
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  {nfts[selectedNFTIndex]?.name || 'NFT #' + (selectedNFTIndex + 1)}
+                                  {nfts[selectedNFTIndex]?.metadata.name || 'NFT #' + (selectedNFTIndex + 1)}
                                 </h2>
                                 <Badge
                                   className="text-sm px-3 py-1 font-medium"
@@ -629,7 +636,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                               </div>
 
                               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                {nfts[selectedNFTIndex]?.description || 'No description available'}
+                                {nfts[selectedNFTIndex].metadata?.description || 'No description available'}
                               </p>
 
                               {/* NFT Stats */}
@@ -696,7 +703,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                     ) : (
                                       <>
                                         <Zap className="w-5 h-5 mr-2" />
-                                        {!isConnected ? 'Connect to Mint' : 'Mint This NFT'}
+                                        {!isConnected ? 'Connect to Mint' : nfts[selectedNFTIndex]?.status === 'draft' && collection?.allowMint ? 'Mint This NFT' : 'Buy This NFT'}
                                       </>
                                     )}
                                   </Button>
@@ -849,8 +856,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                       <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700">
                         <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
                           <Image
-                            src={nft.image}
-                            alt={nft.name}
+                            src={nft.metadata.image}
+                            alt={nft.metadata.name}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"
                           />
@@ -874,12 +881,12 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
 
                         <div className="p-3">
                           <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-1 mb-1">
-                            {nft.name}
+                            {nft.metadata.name}
                           </h3>
 
                           {viewMode === 'list' && (
                             <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
-                              {nft.description}
+                              {nft.metadata.description}
                             </p>
                           )}
 
@@ -1078,7 +1085,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
               </DialogTitle>
               <DialogDescription className="text-gray-600 dark:text-gray-400">
                 {nfts.length > 0 ?
-                  `Minting: ${nfts[selectedNFTIndex]?.name || 'NFT #' + (selectedNFTIndex + 1)}` :
+                  `Minting: ${nfts[selectedNFTIndex].metadata?.name || 'NFT #' + (selectedNFTIndex + 1)}` :
                   'Create a new NFT from this collection'
                 }
               </DialogDescription>
@@ -1089,15 +1096,15 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden">
                     <Image
-                      src={nfts[selectedNFTIndex]?.image || collection.image}
-                      alt={nfts[selectedNFTIndex]?.name || collection.name}
+                      src={nfts[selectedNFTIndex].metadata?.image || collection.image}
+                      alt={nfts[selectedNFTIndex].metadata?.name || collection.name}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {nfts[selectedNFTIndex]?.name || 'NFT #' + (selectedNFTIndex + 1)}
+                      {nfts[selectedNFTIndex].metadata?.name || 'NFT #' + (selectedNFTIndex + 1)}
                     </h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Token ID: {nfts[selectedNFTIndex]?.tokenId || selectedNFTIndex + 1}
