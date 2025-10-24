@@ -37,6 +37,8 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
       merchantId: collectionData.merchantId,
       nftImages: collectionData.nftImages || [],
       status: "draft",
+      source: collectionData.source || "merchant",
+      isEnabled: collectionData.isEnabled || true,
       createdAt: new Date(),
       updatedAt: new Date()
     })
