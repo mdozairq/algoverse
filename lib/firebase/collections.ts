@@ -52,6 +52,7 @@ export interface Event {
 export interface NFT {
   id: string
   eventId: string
+  collectionId: string
   ownerId: string
   tokenId: string
   assetId?: number
