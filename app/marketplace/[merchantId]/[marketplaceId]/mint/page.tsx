@@ -16,131 +16,13 @@ import {
   Zap,
   Search,
   Filter,
-  Clock,
   CheckCircle2,
-  XCircle,
-  AlertCircle,
   Wallet,
-  Package,
-  TrendingUp,
-  Users,
-  DollarSign,
   Eye,
-  Heart,
-  Share2,
-  Star,
-  Activity,
-  BarChart3,
-  LineChart,
-  PieChart,
-  Target,
-  Award,
-  ShoppingCart,
-  Grid3X3,
-  List,
-  ChevronRight,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Settings,
-  Bell,
-  User,
-  LogOut,
-  Home,
-  HelpCircle,
-  Info,
-  Unlock,
-  Wifi,
-  WifiOff,
-  Battery,
-  BatteryLow,
-  Sun,
-  Moon,
-  Palette,
-  Layout,
-  Layers,
-  Box,
-  Tag,
-  Percent,
-  CreditCard,
-  Banknote,
-  Coins,
-  MousePointer,
-  Hand,
-  ThumbsUp,
-  ThumbsDown,
-  Flag,
-  Edit,
-  Trash2,
-  Save,
-  Upload,
-  Send,
-  Paperclip,
-  Image as ImageIcon,
-  Video,
-  FileText,
-  File,
-  Folder,
-  Archive,
-  Database,
-  Server,
-  Cloud,
-  CloudOff,
-  Wrench,
-  Hammer,
-  Cog,
-  Sliders,
-  ToggleLeft,
-  ToggleRight,
-  Power,
-  PowerOff,
-  PlayCircle,
-  PauseCircle,
-  StopCircle,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Volume1,
-  Mic,
-  MicOff,
-  Camera,
-  CameraOff,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Laptop,
-  Headphones,
-  Speaker,
-  Radio,
-  Tv,
-  Gamepad2,
-  Joystick,
-  Keyboard,
-  Mouse,
-  Printer,
-  PhoneCall,
-  PhoneIncoming,
-  PhoneOutgoing,
-  PhoneMissed,
-  Voicemail,
-  MessageSquare,
-  MessageSquareText,
-  MessageSquareReply,
-  MessageSquareMore,
-  MessageSquareX,
-  MessageSquareWarning,
-  MessageSquarePlus,
-  MessageSquareShare,
-  MessageSquareHeart,
-  MessageSquareLock
-} from "lucide-react"
+  } from "lucide-react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
-import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
-import Header from "@/components/header"
-import Footer from "@/components/footer"
+import { motion } from "framer-motion"
+import { PageTransition, FadeIn, } from "@/components/animations/page-transition"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
 import Image from "next/image"
@@ -170,7 +52,7 @@ interface Marketplace {
   updatedAt?: Date
 }
 
-interface MintTemplate {
+interface MintableCollection {
   id: string
   name: string
   description: string
@@ -178,37 +60,64 @@ interface MintTemplate {
   price: number
   currency: string
   totalSupply: number
+  mintedCount: number
   availableSupply: number
-  traits: {
-    trait_type: string
-    value: string
-    rarity: number
-  }[]
+  mintPrice: number
+  mintingProgress: number
+  draftNFTs: number
+  isActive: boolean
   mintingConfig: {
     startDate: Date
     endDate: Date
     maxPerWallet: number
     whitelistRequired: boolean
   }
+  allowMint: boolean
+  createdAt: Date
 }
 
 interface MintSession {
   id: string
-  templateId: string
+  marketplaceId: string
+  collectionId: string
   userAddress: string
+  nftIds: string[]
   quantity: number
   status: "pending" | "processing" | "completed" | "failed"
   transactionHash?: string
-  nftIds?: string[]
+  totalCost: number
+  currency: string
+  createdAt: Date
+  completedAt?: Date
+}
+
+interface DraftNFT {
+  id: string
+  collectionId: string
+  name: string
+  image: string
+  mintPrice: number
+  currency: string
+  rarityScore: number
+  traits: {
+    trait_type: string
+    value: string
+    rarity: number
+  }[]
+  isMintable: boolean
+  mintingStatus: "ready" | "minting" | "minted"
+  status: "draft"
   createdAt: Date
 }
 
 export default function MintPage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
-  const [mintTemplates, setMintTemplates] = useState<MintTemplate[]>([])
+  const [mintableCollections, setMintableCollections] = useState<MintableCollection[]>([])
+  const [draftNFTs, setDraftNFTs] = useState<DraftNFT[]>([])
   const [userMintSessions, setUserMintSessions] = useState<MintSession[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState<MintTemplate | null>(null)
+  const [selectedCollection, setSelectedCollection] = useState<MintableCollection | null>(null)
+  const [selectedNFTs, setSelectedNFTs] = useState<DraftNFT[]>([])
   const [mintQuantity, setMintQuantity] = useState(1)
   const [showMintDialog, setShowMintDialog] = useState(false)
   const [minting, setMinting] = useState(false)
@@ -216,6 +125,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBy, setFilterBy] = useState("all")
   const [sortBy, setSortBy] = useState("price")
+  const [activeTab, setActiveTab] = useState("collections")
 
   const { isConnected, account, connect, disconnect, sendTransaction } = useWallet()
 
@@ -235,16 +145,40 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     }
   }
 
-  const fetchMintTemplates = async () => {
+  const fetchMintableCollections = async () => {
     try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint-templates`)
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/collections`)
       const data = await response.json()
       
       if (response.ok) {
-        setMintTemplates(data.templates || [])
+        setMintableCollections(data.collections || [])
+      } else {
+        console.error("Failed to fetch mintable collections")
+        setMintableCollections([])
       }
     } catch (error) {
-      console.error("Failed to fetch mint templates:", error)
+      console.error("Error fetching mintable collections:", error)
+      setMintableCollections([])
+    }
+  }
+
+  const fetchDraftNFTs = async (collectionId?: string) => {
+    try {
+      const url = collectionId 
+        ? `/api/marketplaces/${params.marketplaceId}/mint/nfts?collectionId=${collectionId}`
+        : `/api/marketplaces/${params.marketplaceId}/mint/nfts`
+      
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setDraftNFTs(data.nfts || [])
+      } else {
+        console.error("Failed to fetch draft NFTs")
+        setDraftNFTs([])
+      }
+    } catch (error) {
+      console.error("Error fetching draft NFTs:", error)
+      setDraftNFTs([])
     }
   }
 
@@ -252,20 +186,25 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     if (!isConnected || !account) return
     
     try {
-      const response = await fetch(`/api/user/mint-sessions?address=${account}`)
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/sessions?userAddress=${account}`)
       const data = await response.json()
       
       if (response.ok) {
         setUserMintSessions(data.sessions || [])
+      } else {
+        console.error("Failed to fetch mint sessions")
+        setUserMintSessions([])
       }
     } catch (error) {
-      console.error("Failed to fetch mint sessions:", error)
+      console.error("Error fetching mint sessions:", error)
+      setUserMintSessions([])
     }
   }
 
   useEffect(() => {
     fetchMarketplaceData()
-    fetchMintTemplates()
+    fetchMintableCollections()
+    fetchDraftNFTs()
   }, [params.marketplaceId])
 
   useEffect(() => {
@@ -274,8 +213,25 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     }
   }, [isConnected, account])
 
+  const handleCollectionSelect = (collection: MintableCollection) => {
+    setSelectedCollection(collection)
+    fetchDraftNFTs(collection.id)
+    setActiveTab("nfts")
+  }
+
+  const handleNFTSelect = (nft: DraftNFT) => {
+    setSelectedNFTs(prev => {
+      const isSelected = prev.some(selected => selected.id === nft.id)
+      if (isSelected) {
+        return prev.filter(selected => selected.id !== nft.id)
+      } else {
+        return [...prev, nft]
+      }
+    })
+  }
+
   const handleMint = async () => {
-    if (!selectedTemplate || !isConnected || !account) return
+    if (!selectedCollection || !selectedNFTs.length || !isConnected || !account) return
 
     setMinting(true)
     setMintProgress(0)
@@ -292,14 +248,19 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         })
       }, 200)
 
-      const response = await fetch("/api/mint", {
+      const nftIds = selectedNFTs.map(nft => nft.id)
+      const totalCost = selectedNFTs.reduce((sum, nft) => sum + nft.mintPrice, 0)
+
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          templateId: selectedTemplate.id,
+          collectionId: selectedCollection.id,
+          nftIds,
           userAddress: account,
-          quantity: mintQuantity,
-          marketplaceId: params.marketplaceId
+          quantity: selectedNFTs.length,
+          totalCost,
+          currency: "ALGO"
         }),
       })
 
@@ -308,19 +269,20 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         
         // Simulate transaction
         if (sendTransaction) {
-          await sendTransaction({
-            to: marketplace?.walletAddress || "",
-            amount: selectedTemplate.price * mintQuantity,
-            note: `Mint ${mintQuantity} ${selectedTemplate.name}`
-          })
+          await sendTransaction(
+            marketplace?.walletAddress || "",
+            totalCost,
+            `Mint ${selectedNFTs.length} NFT(s) from ${selectedCollection.name}`
+          )
         }
 
         setMintProgress(100)
         setShowMintDialog(false)
-        setSelectedTemplate(null)
-        setMintQuantity(1)
+        setSelectedCollection(null)
+        setSelectedNFTs([])
         fetchUserMintSessions()
-        fetchMintTemplates()
+        fetchMintableCollections()
+        fetchDraftNFTs()
       }
     } catch (error) {
       console.error("Failed to mint NFT:", error)
@@ -330,9 +292,14 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     }
   }
 
-  const filteredTemplates = mintTemplates.filter(template => {
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCollections = mintableCollections.filter(collection => {
+    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         collection.description.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
+
+  const filteredNFTs = draftNFTs.filter(nft => {
+    const matchesSearch = nft.name.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
@@ -398,21 +365,21 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                     Create and mint unique NFTs in {marketplace.businessName}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                {/* <div className="flex items-center gap-3">
                   <WalletConnectButton />
-                </div>
+                </div> */}
               </div>
             </div>
           </FadeIn>
 
-          <Tabs defaultValue="templates" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="templates">Mint Templates</TabsTrigger>
+              <TabsTrigger value="collections">Mintable Collections</TabsTrigger>
+              <TabsTrigger value="nfts">Draft NFTs</TabsTrigger>
               <TabsTrigger value="my-mints">My Mints</TabsTrigger>
-              <TabsTrigger value="create">Create Template</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="templates" className="space-y-6">
+            <TabsContent value="collections" className="space-y-6">
               {/* Search and Filters */}
               <Card>
                 <CardContent className="p-4 sm:p-6">
@@ -421,7 +388,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <Input
-                          placeholder="Search mint templates..."
+                          placeholder="Search mintable collections..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10"
@@ -434,10 +401,10 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Templates</SelectItem>
+                        <SelectItem value="all">All Collections</SelectItem>
                         <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="upcoming">Upcoming</SelectItem>
-                        <SelectItem value="ended">Ended</SelectItem>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="sold-out">Sold Out</SelectItem>
                       </SelectContent>
                     </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
@@ -455,26 +422,27 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                 </CardContent>
               </Card>
 
-              {/* Template Grid */}
+              {/* Collections Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {filteredTemplates.map((template, index) => (
+                {filteredCollections.map((collection, index) => (
                   <motion.div
-                    key={template.id}
+                    key={collection.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
-                    <Card className="group hover:shadow-lg transition-all duration-200">
+                    <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                          onClick={() => handleCollectionSelect(collection)}>
                       <div className="relative aspect-square overflow-hidden rounded-t-lg">
                         <Image
-                          src={template.image}
-                          alt={template.name}
+                          src={collection.image}
+                          alt={collection.name}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-200"
                         />
                         <div className="absolute top-2 right-2">
-                          <Badge className="bg-blue-100 text-blue-800 text-xs">
-                            {template.availableSupply}/{template.totalSupply} left
+                          <Badge className="bg-green-100 text-green-800 text-xs">
+                            {collection.availableSupply}/{collection.totalSupply} available
                           </Badge>
                         </div>
                       </div>
@@ -482,39 +450,133 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                         <div className="space-y-3">
                           <div>
                             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
-                              {template.name}
+                              {collection.name}
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                              {template.description}
+                              {collection.description}
                             </p>
                           </div>
                           
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600 dark:text-gray-400">Price</span>
-                              <span className="font-semibold">{template.price} {template.currency}</span>
+                              <span className="text-gray-600 dark:text-gray-400">Mint Price</span>
+                              <span className="font-semibold">{collection.mintPrice} {collection.currency}</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600 dark:text-gray-400">Supply</span>
-                              <span className="font-semibold">{template.totalSupply}</span>
+                              <span className="text-gray-600 dark:text-gray-400">Draft NFTs</span>
+                              <span className="font-semibold">{collection.draftNFTs}</span>
                             </div>
                             <Progress 
-                              value={(template.totalSupply - template.availableSupply) / template.totalSupply * 100} 
+                              value={collection.mintingProgress} 
                               className="h-2"
                             />
                           </div>
                           
                           <Button
-                            onClick={() => {
-                              setSelectedTemplate(template)
-                              setShowMintDialog(true)
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCollectionSelect(collection)
                             }}
-                            disabled={!isConnected || template.availableSupply === 0}
-                            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                            disabled={!isConnected || collection.availableSupply === 0}
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                           >
                             <Zap className="w-4 h-4 mr-2" />
-                            {template.availableSupply === 0 ? 'Sold Out' : 'Mint Now'}
+                            {collection.availableSupply === 0 ? 'Sold Out' : 'Browse NFTs'}
                           </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="nfts" className="space-y-6">
+              {/* Search and Filters */}
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          placeholder="Search draft NFTs..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedNFTs.length} selected
+                      </span>
+                      {selectedNFTs.length > 0 && (
+                        <Button
+                          onClick={() => {
+                            setSelectedCollection(null)
+                            setShowMintDialog(true)
+                          }}
+                          disabled={!isConnected}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          Mint Selected
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* NFTs Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {filteredNFTs.map((nft, index) => (
+                  <motion.div
+                    key={nft.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <Card className={`group hover:shadow-lg transition-all duration-200 cursor-pointer ${
+                      selectedNFTs.some(selected => selected.id === nft.id) 
+                        ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                        : ''
+                    }`}
+                          onClick={() => handleNFTSelect(nft)}>
+                      <div className="relative aspect-square overflow-hidden rounded-t-lg">
+                        <Image
+                          src={nft.image}
+                          alt={nft.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        {nft.rarityScore && (
+                          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                            #{nft.rarityScore}
+                          </div>
+                        )}
+                        {selectedNFTs.some(selected => selected.id === nft.id) && (
+                          <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                              <CheckCircle2 className="w-5 h-5 text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-3">
+                        <div className="space-y-2">
+                          <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                            {nft.name}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <span className="text-blue-500 font-semibold text-sm">
+                              {nft.mintPrice} {nft.currency}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              Draft
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -660,50 +722,46 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
         {/* Mint Dialog */}
         <Dialog open={showMintDialog} onOpenChange={setShowMintDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Mint NFT</DialogTitle>
+              <DialogTitle>Mint Selected NFTs</DialogTitle>
               <DialogDescription>
-                {selectedTemplate?.name}
+                {selectedCollection ? `Minting from ${selectedCollection.name}` : 'Minting selected NFTs'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {selectedTemplate && (
+              {selectedNFTs.length > 0 && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                      <Image
-                        src={selectedTemplate.image}
-                        alt={selectedTemplate.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">{selectedTemplate.name}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {selectedTemplate.price} {selectedTemplate.currency} each
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="mintQuantity">Quantity</Label>
-                    <Input
-                      id="mintQuantity"
-                      type="number"
-                      min="1"
-                      max={selectedTemplate.availableSupply}
-                      value={mintQuantity}
-                      onChange={(e) => setMintQuantity(parseInt(e.target.value) || 1)}
-                    />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                    {selectedNFTs.map((nft) => (
+                      <div key={nft.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                          <Image
+                            src={nft.image}
+                            alt={nft.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{nft.name}</h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {nft.mintPrice} {nft.currency}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Selected NFTs:</span>
+                      <span className="font-semibold">{selectedNFTs.length}</span>
+                    </div>
                     <div className="flex justify-between text-sm">
                       <span>Total Cost:</span>
                       <span className="font-semibold">
-                        {(selectedTemplate.price * mintQuantity).toFixed(2)} {selectedTemplate.currency}
+                        {selectedNFTs.reduce((sum, nft) => sum + nft.mintPrice, 0).toFixed(2)} ALGO
                       </span>
                     </div>
                   </div>
@@ -725,7 +783,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                     <Button 
                       onClick={handleMint}
                       disabled={minting || !isConnected}
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       {minting ? (
                         <>
@@ -735,7 +793,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                       ) : (
                         <>
                           <Zap className="w-4 h-4 mr-2" />
-                          Mint {mintQuantity} NFT{mintQuantity > 1 ? 's' : ''}
+                          Mint {selectedNFTs.length} NFT{selectedNFTs.length > 1 ? 's' : ''}
                         </>
                       )}
                     </Button>
