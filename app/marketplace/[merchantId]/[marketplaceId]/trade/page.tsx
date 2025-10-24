@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
   ArrowLeft, 
   TrendingUp,
@@ -131,7 +131,26 @@ import {
   MessageSquarePlus,
   MessageSquareShare,
   MessageSquareHeart,
-  MessageSquareLock
+  MessageSquareLock,
+  ArrowUp,
+  ArrowDown,
+  ChevronUp,
+  ChevronDown,
+  MoreHorizontal,
+  ExternalLink,
+  Copy,
+  RefreshCw,
+  Zap,
+  Crown,
+  Shield,
+  Verified,
+  TrendingDown,
+  Minus,
+  Plus,
+  X,
+  Check,
+  AlertTriangle,
+  Info as InfoIcon
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -167,53 +186,73 @@ interface Marketplace {
   updatedAt?: Date
 }
 
-interface TradeOrder {
-  id: string
-  type: "buy" | "sell"
-  nftId: string
-  nft: {
+interface Collection {
     id: string
     name: string
+  description: string
     image: string
-    price: number
-    currency: string
-  }
-  userAddress: string
-  price: number
-  currency: string
-  quantity: number
-  status: "active" | "filled" | "cancelled" | "expired"
+  floorPrice: number
+  totalVolume: number
+  marketCap: number
+  topOffer: number
+  floorChange1d: number
+  volume1d: number
+  volumeChange1d: number
+  sales1d: number
+  listed: number
+  listedPercentage: number
+  owners: number
+  ownersPercentage: number
+  verified: boolean
+  chain: string
+  category: string
   createdAt: Date
-  filledAt?: Date
+  allowMint?: boolean
 }
 
-interface TradeHistory {
+interface NFT {
   id: string
-  orderId: string
-  buyerAddress: string
-  sellerAddress: string
-  nftId: string
+  collectionId: string
+  name: string
+  image: string
   price: number
   currency: string
-  quantity: number
-  transactionHash: string
-  createdAt: Date
+  floorPrice: number
+  topOffer: number
+  rarityScore?: number
+  traits: {
+    trait_type: string
+    value: string
+    rarity: number
+  }[]
+  owner: string
+  listed: boolean
+  lastSale?: {
+    price: number
+    currency: string
+    date: Date
+  }
+  status: "minted" | "draft"
 }
 
 export default function TradePage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
-  const [activeOrders, setActiveOrders] = useState<TradeOrder[]>([])
-  const [userOrders, setUserOrders] = useState<TradeOrder[]>([])
-  const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([])
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [nfts, setNfts] = useState<NFT[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedOrder, setSelectedOrder] = useState<TradeOrder | null>(null)
-  const [showCreateOrderDialog, setShowCreateOrderDialog] = useState(false)
-  const [orderType, setOrderType] = useState<"buy" | "sell">("buy")
-  const [orderPrice, setOrderPrice] = useState("")
-  const [orderQuantity, setOrderQuantity] = useState("1")
+  const [activeTab, setActiveTab] = useState("top")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterBy, setFilterBy] = useState("all")
-  const [sortBy, setSortBy] = useState("price")
+  const [timeWindow, setTimeWindow] = useState("1d")
+  const [sortBy, setSortBy] = useState("volume")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [showUSD, setShowUSD] = useState(false)
+  const [showBadged, setShowBadged] = useState(true)
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [tradingOrders, setTradingOrders] = useState<any[]>([])
+  const [showCreateOrder, setShowCreateOrder] = useState(false)
+  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null)
 
   const { isConnected, account, connect, disconnect, sendTransaction } = useWallet()
 
@@ -233,129 +272,176 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
     }
   }
 
-  const fetchActiveOrders = async () => {
+  const fetchCollections = async () => {
     try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trade/orders`)
-      const data = await response.json()
-      
+      setLoading(true)
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/collections`)
       if (response.ok) {
-        setActiveOrders(data.orders || [])
+        const data = await response.json()
+        setCollections(data.collections || [])
+      } else {
+        console.error("Failed to fetch trading collections")
+        setCollections([])
       }
     } catch (error) {
-      console.error("Failed to fetch active orders:", error)
+      console.error("Error fetching trading collections:", error)
+      setCollections([])
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchUserOrders = async () => {
-    if (!isConnected || !account) return
-    
+  const fetchNFTs = async (collectionId?: string) => {
     try {
-      const response = await fetch(`/api/user/trade-orders?address=${account}`)
-      const data = await response.json()
+      setLoading(true)
+      const url = collectionId 
+        ? `/api/marketplaces/${params.marketplaceId}/trading/nfts?collectionId=${collectionId}`
+        : `/api/marketplaces/${params.marketplaceId}/trading/nfts`
       
+      const response = await fetch(url)
       if (response.ok) {
-        setUserOrders(data.orders || [])
+        const data = await response.json()
+        setNfts(data.nfts || [])
+      } else {
+        console.error("Failed to fetch trading NFTs")
+        setNfts([])
       }
     } catch (error) {
-      console.error("Failed to fetch user orders:", error)
+      console.error("Error fetching trading NFTs:", error)
+      setNfts([])
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchTradeHistory = async () => {
+  // Fetch trading orders
+  const fetchTradingOrders = async () => {
     try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trade/history`)
-      const data = await response.json()
-      
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/orders`)
       if (response.ok) {
-        setTradeHistory(data.history || [])
+        const data = await response.json()
+        setTradingOrders(data.orders || [])
+      } else {
+        console.error("Failed to fetch trading orders")
+        setTradingOrders([])
       }
     } catch (error) {
-      console.error("Failed to fetch trade history:", error)
+      console.error("Error fetching trading orders:", error)
+      setTradingOrders([])
+    }
+  }
+
+  // Create a trading order
+  const createTradingOrder = async (nftId: string, type: "buy" | "sell", price: number) => {
+    try {
+      if (!account) {
+        alert("Please connect your wallet first")
+        return
+      }
+
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nftId,
+          type,
+          price,
+          currency: "ALGO",
+          userAddress: account,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Trading order created:", data)
+        // Refresh orders
+        fetchTradingOrders()
+        setShowCreateOrder(false)
+        setSelectedNFT(null)
+      } else {
+        const error = await response.json()
+        alert(`Failed to create order: ${error.error}`)
+      }
+    } catch (error) {
+      console.error("Error creating trading order:", error)
+      alert("Failed to create trading order")
     }
   }
 
   useEffect(() => {
     fetchMarketplaceData()
-    fetchActiveOrders()
-    fetchTradeHistory()
+    fetchCollections()
+    fetchNFTs()
+    fetchTradingOrders()
   }, [params.marketplaceId])
 
-  useEffect(() => {
-    if (isConnected && account) {
-      fetchUserOrders()
-    }
-  }, [isConnected, account])
+  const handleCollectionSelect = (collection: Collection) => {
+    setSelectedCollection(collection)
+    fetchNFTs(collection.id)
+  }
 
-  const handleCreateOrder = async () => {
-    if (!isConnected || !account || !selectedOrder) return
-
-    try {
-      const response = await fetch("/api/trade/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: orderType,
-          nftId: selectedOrder.nftId,
-          userAddress: account,
-          price: parseFloat(orderPrice),
-          quantity: parseInt(orderQuantity),
-          marketplaceId: params.marketplaceId
-        }),
-      })
-
-      if (response.ok) {
-        setShowCreateOrderDialog(false)
-        setSelectedOrder(null)
-        setOrderPrice("")
-        setOrderQuantity("1")
-        fetchActiveOrders()
-        fetchUserOrders()
-      }
-    } catch (error) {
-      console.error("Failed to create order:", error)
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortBy(column)
+      setSortDirection("desc")
     }
   }
 
-  const handleFillOrder = async (orderId: string) => {
-    if (!isConnected || !account) return
-
-    try {
-      const response = await fetch(`/api/trade/orders/${orderId}/fill`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userAddress: account
-        }),
-      })
-
-      if (response.ok) {
-        fetchActiveOrders()
-        fetchUserOrders()
-        fetchTradeHistory()
-      }
-    } catch (error) {
-      console.error("Failed to fill order:", error)
+  const formatPrice = (price: number, currency: string = "ALGO") => {
+    if (showUSD) {
+      const usdPrice = price * 0.4 // Mock conversion rate
+      return `$${(usdPrice / 1000).toFixed(1)}K`
     }
+    return `${price.toFixed(2)} ${currency}`
   }
 
-  const handleCancelOrder = async (orderId: string) => {
-    try {
-      const response = await fetch(`/api/trade/orders/${orderId}/cancel`, {
-        method: "POST",
-      })
-
-      if (response.ok) {
-        fetchActiveOrders()
-        fetchUserOrders()
-      }
-    } catch (error) {
-      console.error("Failed to cancel order:", error)
-    }
+  const formatPercentage = (value: number) => {
+    const isPositive = value >= 0
+    return (
+      <span className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+        {isPositive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+        {Math.abs(value).toFixed(1)}%
+      </span>
+    )
   }
 
-  const filteredOrders = activeOrders.filter(order => {
-    const matchesSearch = order.nft.name.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
+  const filteredCollections = collections.filter(collection => {
+    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesBadged = !showBadged || collection.verified
+    // Only show collections that don't have allowMint as true
+    const noMintAllowed = !collection.allowMint
+    return matchesSearch && matchesBadged && noMintAllowed
+  }).sort((a, b) => {
+    let aValue, bValue
+    switch (sortBy) {
+      case "volume":
+        aValue = a.totalVolume
+        bValue = b.totalVolume
+        break
+      case "floor":
+        aValue = a.floorPrice
+        bValue = b.floorPrice
+        break
+      case "marketCap":
+        aValue = a.marketCap
+        bValue = b.marketCap
+        break
+      default:
+        aValue = a.totalVolume
+        bValue = b.totalVolume
+    }
+    return sortDirection === "asc" ? aValue - bValue : bValue - aValue
+  })
+
+  const filteredNFTs = nfts.filter(nft => {
+    const matchesSearch = nft.name.toLowerCase().includes(searchTerm.toLowerCase())
+    // Only show minted NFTs
+    const isMinted = nft.status === "minted"
+    return matchesSearch && isMinted
   })
 
   if (loading) {
@@ -364,7 +450,7 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading trade marketplace...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading marketplace...</p>
           </div>
         </div>
       </PageTransition>
@@ -420,287 +506,490 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                     Buy and sell NFTs in {marketplace.businessName}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                {/* <div className="flex items-center gap-3">
                   <WalletConnectButton />
-                </div>
+                </div> */}
               </div>
             </div>
           </FadeIn>
 
-          <Tabs defaultValue="orders" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="orders">Active Orders</TabsTrigger>
-              <TabsTrigger value="my-orders">My Orders</TabsTrigger>
-              <TabsTrigger value="history">Trade History</TabsTrigger>
-              <TabsTrigger value="create">Create Order</TabsTrigger>
-            </TabsList>
+          {/* Magic Eden Style Interface - Using marketplace colors */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            {/* Magic Eden Header */}
+            <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Top Collections</h2>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setActiveTab("top")}
+                      className={`py-2 px-1 border-b-2 transition-colors ${
+                        activeTab === "top" 
+                          ? "border-blue-500 text-blue-500" 
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      }`}
+                    >
+                      Top
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("trending")}
+                      className={`py-2 px-1 border-b-2 transition-colors ${
+                        activeTab === "trending" 
+                          ? "border-blue-500 text-blue-500" 
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      }`}
+                    >
+                      Trending
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <TabsContent value="orders" className="space-y-6">
-              {/* Search and Filters */}
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+            {/* Filters and Search */}
+            <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                  
+                  <div className="flex-1 max-w-md">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <Input
-                          placeholder="Search orders..."
+                        placeholder="Search collections..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
+                        className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                         />
                       </div>
                     </div>
-                    <Select value={filterBy} onValueChange={setFilterBy}>
-                      <SelectTrigger className="w-40">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Orders</SelectItem>
-                        <SelectItem value="buy">Buy Orders</SelectItem>
-                        <SelectItem value="sell">Sell Orders</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="price">Price</SelectItem>
-                        <SelectItem value="recent">Recent</SelectItem>
-                        <SelectItem value="quantity">Quantity</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Orders List */}
-              <div className="space-y-4">
-                {filteredOrders.map((order, index) => (
-                  <motion.div
-                    key={order.id}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Badged</span>
+                    <button
+                      onClick={() => setShowBadged(!showBadged)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        showBadged ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          showBadged ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                          
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">USD</span>
+                    <button
+                      onClick={() => setShowUSD(!showUSD)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        showUSD ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          showUSD ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                    {["10M", "1H", "6H", "1D", "7D", "30D"].map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setTimeWindow(period.toLowerCase())}
+                        className={`px-3 py-1 text-sm rounded transition-colors ${
+                          timeWindow === period.toLowerCase()
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                            </div>
+                          </div>
+                        </div>
+              </div>
+
+            {/* Collections Table */}
+            <div className="bg-white dark:bg-gray-800">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-100 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Chain</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <button
+                          onClick={() => handleSort("floor")}
+                          className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                          Floor
+                          {sortBy === "floor" && (
+                            sortDirection === "desc" ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <button
+                          onClick={() => handleSort("volume")}
+                          className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                          Total Volume
+                          {sortBy === "volume" && (
+                            sortDirection === "desc" ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <button
+                          onClick={() => handleSort("marketCap")}
+                          className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                          Market Cap
+                          {sortBy === "marketCap" && (
+                            sortDirection === "desc" ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Top Offer</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Floor 1d %</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Volume 1d</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Vol 1d %</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Sales 1d</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Listed</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Owners</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredCollections.map((collection, index) => (
+                      <motion.tr
+                        key={collection.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                        onClick={() => handleCollectionSelect(collection)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-12 h-12 rounded-full overflow-hidden">
                               <Image
-                                src={order.nft.image}
-                                alt={order.nft.name}
+                                src={collection.image}
+                                alt={collection.name}
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white">
-                                {order.nft.name}
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {order.type === 'buy' ? 'Buy Order' : 'Sell Order'} • {order.quantity} units
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-900 dark:text-white">{collection.name}</span>
+                                {collection.verified && (
+                                  <Verified className="w-4 h-4 text-blue-500" />
+                                )}
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                {order.price} {order.currency}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                per unit
-                              </p>
+                              </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className="text-xs font-bold text-white">A</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {formatPrice(collection.floorPrice)}
+                          </div>
+                          {showUSD && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              ${(collection.floorPrice * 0.4 / 1000).toFixed(1)}K
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {formatPrice(collection.totalVolume)}
+                              </div>
+                          {showUSD && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              ${(collection.totalVolume * 0.4 / 1000).toFixed(1)}K
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {formatPrice(collection.marketCap)}
+                          </div>
+                          {showUSD && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              ${(collection.marketCap * 0.4 / 1000).toFixed(1)}K
+                </div>
+              )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {formatPrice(collection.topOffer)}
+                            </div>
+                          {showUSD && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              ${(collection.topOffer * 0.4 / 1000).toFixed(1)}K
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatPercentage(collection.floorChange1d)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {formatPrice(collection.volume1d)}
+                          </div>
+                          {showUSD && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              ${(collection.volume1d * 0.4 / 1000).toFixed(1)}K
+                          </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatPercentage(collection.volumeChange1d)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {collection.sales1d.toLocaleString()}
+                        </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {collection.listed.toLocaleString()}
+              </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            ({collection.listedPercentage.toFixed(1)}%)
+                      </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-gray-900 dark:text-white font-medium">
+                            {collection.owners.toLocaleString()}
+                      </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            ({collection.ownersPercentage.toFixed(1)}%)
+                    </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+                    </div>
                             </div>
                             
+            {/* NFT Grid View */}
+            {selectedCollection && (
+              <div className="border-t border-gray-200 dark:border-gray-700">
+                <div className="px-4 py-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedCollection.name}</h2>
+                      <p className="text-gray-600 dark:text-gray-400">Browse NFTs in this collection</p>
+                    </div>
                             <div className="flex items-center gap-2">
-                              <Badge 
-                                className={`text-xs ${
-                                  order.type === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}
-                              >
-                                {order.type.toUpperCase()}
-                              </Badge>
-                              {isConnected && (
+                    <Button 
+                        variant={viewMode === "grid" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setViewMode("grid")}
+                        className="border-gray-300 dark:border-gray-600"
+                      >
+                        <Grid3X3 className="w-4 h-4" />
+                    </Button>
                                 <Button
+                        variant={viewMode === "list" ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => handleFillOrder(order.id)}
-                                  className={order.type === 'buy' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+                        onClick={() => setViewMode("list")}
+                        className="border-gray-300 dark:border-gray-600"
                                 >
-                                  {order.type === 'buy' ? 'Sell to' : 'Buy from'}
+                        <List className="w-4 h-4" />
                                 </Button>
+                </div>
+        </div>
+
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {filteredNFTs.map((nft, index) => (
+                        <motion.div
+                          key={nft.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                        >
+                          <div className="aspect-square relative">
+                            <Image
+                              src={nft.image}
+                              alt={nft.name}
+                              fill
+                              className="object-cover"
+                            />
+                            {nft.rarityScore && (
+                              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                #{nft.rarityScore}
+              </div>
                               )}
                             </div>
+                          <div className="p-3">
+                            <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{nft.name}</h3>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-blue-500 font-semibold">
+                                {formatPrice(nft.price)}
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">
+                                {nft.currency}
+                  </span>
                           </div>
+                            {isConnected && (
+                              <div className="flex gap-2 mt-3">
+                  <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 text-xs"
+                                  onClick={() => {
+                                    setSelectedNFT(nft)
+                                    setShowCreateOrder(true)
+                                  }}
+                                >
+                                  Buy
+                  </Button>
+                  <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 text-xs"
+                                  onClick={() => {
+                                    setSelectedNFT(nft)
+                                    setShowCreateOrder(true)
+                                  }}
+                                >
+                                  Sell
+                  </Button>
                         </div>
-                      </CardContent>
-                    </Card>
+                            )}
+              </div>
                   </motion.div>
                 ))}
               </div>
-            </TabsContent>
-
-            <TabsContent value="my-orders" className="space-y-6">
-              {!isConnected ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Wallet className="w-16 h-16 text-gray-400 mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      Connect Your Wallet
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                      Connect your wallet to view your orders
-                    </p>
-                    <WalletConnectButton />
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {userOrders.map((order, index) => (
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredNFTs.map((nft, index) => (
                     <motion.div
-                      key={order.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
+                          key={nft.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                        >
                             <div className="flex items-center gap-4">
                               <div className="relative w-16 h-16 rounded-lg overflow-hidden">
                                 <Image
-                                  src={order.nft.image}
-                                  alt={order.nft.name}
+                                src={nft.image}
+                                alt={nft.name}
                                   fill
                                   className="object-cover"
                                 />
                               </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-900 dark:text-white">
-                                  {order.nft.name}
-                                </h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {order.type === 'buy' ? 'Buy Order' : 'Sell Order'} • {order.quantity} units
-                                </p>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900 dark:text-white">{nft.name}</h3>
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">#{nft.id.slice(-4)}</p>
                               </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-4">
                               <div className="text-right">
-                                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                  {order.price} {order.currency}
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  per unit
-                                </p>
+                              <div className="text-blue-500 font-semibold">
+                                {formatPrice(nft.price)}
                               </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <Badge 
-                                  className={`text-xs ${
-                                    order.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                                    order.status === 'filled' ? 'bg-green-100 text-green-800' :
-                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}
-                                >
-                                  {order.status}
-                                </Badge>
-                                {order.status === 'active' && (
+                              <div className="text-gray-500 dark:text-gray-400 text-sm">
+                                {nft.currency}
+                              </div>
+                              {isConnected && (
+                                <div className="flex gap-2 mt-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleCancelOrder(order.id)}
+                                    className="text-xs"
+                                    onClick={() => {
+                                      setSelectedNFT(nft)
+                                      setShowCreateOrder(true)
+                                    }}
                                   >
-                                    Cancel
+                                    Buy
+                </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs"
+                                    onClick={() => {
+                                      setSelectedNFT(nft)
+                                      setShowCreateOrder(true)
+                                    }}
+                                  >
+                                    Sell
                                   </Button>
+              </div>
                                 )}
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
                     </motion.div>
                   ))}
                 </div>
               )}
-            </TabsContent>
+                </div>
+              </div>
+            )}
+              </div>
+            </div>
+        
+        <MarketplaceFooter marketplace={marketplace} />
 
-            <TabsContent value="history" className="space-y-6">
+        {/* Create Order Dialog */}
+        <Dialog open={showCreateOrder} onOpenChange={setShowCreateOrder}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Trading Order</DialogTitle>
+              <DialogDescription>
+                {selectedNFT ? `Create a buy or sell order for ${selectedNFT.name}` : "Create a trading order"}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedNFT && (
               <div className="space-y-4">
-                {tradeHistory.map((trade, index) => (
-                  <motion.div
-                    key={trade.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center">
-                              <TrendingUp className="w-6 h-6 text-white" />
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                    <Image
+                      src={selectedNFT.image}
+                      alt={selectedNFT.name}
+                      fill
+                      className="object-cover"
+                    />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white">
-                                Trade #{trade.id.slice(0, 8)}
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {trade.quantity} units • {new Date(trade.createdAt).toLocaleDateString()}
+                    <h3 className="font-medium text-gray-900 dark:text-white">{selectedNFT.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Current Price: {formatPrice(selectedNFT.price)}
                               </p>
                             </div>
                           </div>
                           
-                          <div className="text-right">
-                            <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {trade.price} {trade.currency}
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Total: {(trade.price * trade.quantity).toFixed(2)} {trade.currency}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="create" className="space-y-6">
-              {!isConnected ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Wallet className="w-16 h-16 text-gray-400 mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      Connect Your Wallet
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                      Connect your wallet to create trading orders
-                    </p>
-                    <WalletConnectButton />
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Create Trading Order</CardTitle>
-                    <CardDescription>
-                      Create a buy or sell order for NFTs
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                       <div>
                         <Label htmlFor="orderType">Order Type</Label>
-                        <Select value={orderType} onValueChange={(value: "buy" | "sell") => setOrderType(value)}>
+                    <Select defaultValue="buy">
                           <SelectTrigger>
-                            <SelectValue />
+                        <SelectValue placeholder="Select order type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="buy">Buy Order</SelectItem>
@@ -708,119 +997,54 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           </SelectContent>
                         </Select>
                       </div>
+
                       <div>
-                        <Label htmlFor="orderPrice">Price</Label>
+                    <Label htmlFor="price">Price (ALGO)</Label>
                         <Input
-                          id="orderPrice"
+                      id="price"
                           type="number"
-                          value={orderPrice}
-                          onChange={(e) => setOrderPrice(e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="orderQuantity">Quantity</Label>
-                      <Input
-                        id="orderQuantity"
-                        type="number"
-                        value={orderQuantity}
-                        onChange={(e) => setOrderQuantity(e.target.value)}
-                        placeholder="1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => setShowCreateOrderDialog(true)}
-                      className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                    >
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      Create Order
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+                      step="0.01"
+                      placeholder="Enter price"
+                      defaultValue={selectedNFT.price}
+                    />
         </div>
 
-        {/* Create Order Dialog */}
-        <Dialog open={showCreateOrderDialog} onOpenChange={setShowCreateOrderDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Trading Order</DialogTitle>
-              <DialogDescription>
-                Select an NFT to create an order for
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Order Type</Label>
                 <div className="flex gap-2">
                   <Button
-                    variant={orderType === 'buy' ? 'default' : 'outline'}
-                    onClick={() => setOrderType('buy')}
                     className="flex-1"
-                  >
-                    Buy Order
+                      onClick={() => {
+                        const priceInput = document.getElementById('price') as HTMLInputElement
+                        const price = parseFloat(priceInput.value)
+                        if (price > 0) {
+                          createTradingOrder(selectedNFT.id, "buy", price)
+                        } else {
+                          alert("Please enter a valid price")
+                        }
+                      }}
+                    >
+                      Create Buy Order
                   </Button>
                   <Button
-                    variant={orderType === 'sell' ? 'default' : 'outline'}
-                    onClick={() => setOrderType('sell')}
+                      variant="outline"
                     className="flex-1"
-                  >
-                    Sell Order
+                      onClick={() => {
+                        const priceInput = document.getElementById('price') as HTMLInputElement
+                        const price = parseFloat(priceInput.value)
+                        if (price > 0) {
+                          createTradingOrder(selectedNFT.id, "sell", price)
+                        } else {
+                          alert("Please enter a valid price")
+                        }
+                      }}
+                    >
+                      Create Sell Order
                   </Button>
                 </div>
               </div>
-              
-              <div>
-                <Label htmlFor="orderPrice">Price per Unit</Label>
-                <Input
-                  id="orderPrice"
-                  type="number"
-                  value={orderPrice}
-                  onChange={(e) => setOrderPrice(e.target.value)}
-                  placeholder="0.00"
-                />
               </div>
-              
-              <div>
-                <Label htmlFor="orderQuantity">Quantity</Label>
-                <Input
-                  id="orderQuantity"
-                  type="number"
-                  value={orderQuantity}
-                  onChange={(e) => setOrderQuantity(e.target.value)}
-                  placeholder="1"
-                />
-              </div>
-              
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span>Total Value:</span>
-                  <span className="font-semibold">
-                    {(parseFloat(orderPrice) * parseInt(orderQuantity)).toFixed(2)} ALGO
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowCreateOrderDialog(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateOrder}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                >
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Create Order
-                </Button>
-              </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
-        
-        <MarketplaceFooter marketplace={marketplace} />
       </div>
     </PageTransition>
   )
