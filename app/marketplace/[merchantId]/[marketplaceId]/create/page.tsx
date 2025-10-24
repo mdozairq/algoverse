@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,142 +12,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Switch } from "@/components/ui/switch"
+import { NFTCreationForm } from "@/components/nft/nft-creation-form"
+import { WalletConnectButtonCompact } from "@/components/wallet/wallet-connect-button"
 import { 
   ArrowLeft, 
   Plus,
-  Search,
-  Filter,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   Wallet,
-  Package,
-  TrendingUp,
-  Users,
-  DollarSign,
   Eye,
-  Heart,
-  Share2,
-  Star,
-  Activity,
-  BarChart3,
-  LineChart,
-  PieChart,
-  Target,
-  Award,
-  ShoppingCart,
-  Grid3X3,
-  List,
-  ChevronRight,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Settings,
-  Bell,
-  User,
-  LogOut,
-  Home,
-  HelpCircle,
-  Info,
-  Unlock,
-  Wifi,
-  WifiOff,
-  Battery,
-  BatteryLow,
-  Sun,
-  Moon,
-  Palette,
-  Layout,
-  Layers,
-  Box,
-  Tag,
-  Percent,
-  CreditCard,
-  Banknote,
-  Coins,
-  MousePointer,
-  Hand,
-  ThumbsUp,
-  ThumbsDown,
-  Flag,
-  Edit,
-  Trash2,
-  Save,
   Upload,
-  Send,
-  Paperclip,
   Image as ImageIcon,
-  Video,
-  FileText,
-  File,
-  Folder,
-  Archive,
-  Database,
-  Server,
-  Cloud,
-  CloudOff,
-  Wrench,
-  Hammer,
-  Cog,
-  Sliders,
-  ToggleLeft,
-  ToggleRight,
-  Power,
-  PowerOff,
-  PlayCircle,
-  PauseCircle,
-  StopCircle,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Volume1,
-  Mic,
-  MicOff,
-  Camera,
-  CameraOff,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Laptop,
-  Headphones,
-  Speaker,
-  Radio,
-  Tv,
-  Gamepad2,
-  Joystick,
-  Keyboard,
-  Mouse,
-  Printer,
-  PhoneCall,
-  PhoneIncoming,
-  PhoneOutgoing,
-  PhoneMissed,
-  Voicemail,
-  MessageSquare,
-  MessageSquareText,
-  MessageSquareReply,
-  MessageSquareMore,
-  MessageSquareX,
-  MessageSquareWarning,
-  MessageSquarePlus,
-  MessageSquareShare,
-  MessageSquareHeart,
-  MessageSquareLock,
-  Zap
+  Zap,
+  Loader2,
+  CheckCircle2,
+  Trash2,
+  X
 } from "lucide-react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
-import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
-import Header from "@/components/header"
-import Footer from "@/components/footer"
+import { motion } from "framer-motion"
+import { PageTransition, FadeIn} from "@/components/animations/page-transition"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
 
 interface Marketplace {
   id: string
@@ -193,7 +86,27 @@ interface CreateSession {
   publishedAt?: Date
 }
 
+interface NFTTrait {
+  trait_type: string
+  value: string
+  rarity: number
+}
+
+interface NewNFT {
+  name: string
+  description: string
+  image: string
+  ipfsHash: string
+  price: number
+  mintPrice: number
+  maxSupply: number
+  rarity: string
+  royaltyFee: number
+  traits: NFTTrait[]
+}
+
 export default function CreatePage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
+  const router = useRouter()
   const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [createTemplates, setCreateTemplates] = useState<CreateTemplate[]>([])
   const [userSessions, setUserSessions] = useState<CreateSession[]>([])
@@ -212,6 +125,27 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
   const [uploadProgress, setUploadProgress] = useState(0)
   const [availableCollections, setAvailableCollections] = useState<any[]>([])
   const [selectedCollection, setSelectedCollection] = useState<string>("")
+  const [tabLoading, setTabLoading] = useState(false)
+  
+  // NFT Creation State
+  const [newNFT, setNewNFT] = useState<NewNFT>({
+    name: "",
+    description: "",
+    image: "",
+    ipfsHash: "",
+    price: 0,
+    mintPrice: 0,
+    maxSupply: 1,
+    rarity: "common",
+    royaltyFee: 0,
+    traits: []
+  })
+  const [nftTraits, setNftTraits] = useState<NFTTrait[]>([])
+  const [createdNFTId, setCreatedNFTId] = useState<string | null>(null)
+  const [showMintDialog, setShowMintDialog] = useState(false)
+  const [mintStatus, setMintStatus] = useState<'idle' | 'creating' | 'signing' | 'submitting' | 'success' | 'error'>('idle')
+  const [mintResult, setMintResult] = useState<any>(null)
+  const [enableOnChainMint, setEnableOnChainMint] = useState(false)
 
   // Form data for creating new items
   const [formData, setFormData] = useState({
@@ -231,11 +165,33 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     maxSupply: "",
     mintLimit: "",
     mintStartDate: "",
-    mintStages: []
+    mintStages: [],
+    source: "public",
+    isEnabled: true
   })
 
   const { isConnected, account, connect, disconnect } = useWallet()
   const { toast } = useToast()
+  const { user, isAuthenticated } = useAuth()
+
+  // Set up the transaction signer
+  useEffect(() => {
+    transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
+  }, [isConnected, account, connect, disconnect])
+
+  const handleTabChange = async (value: string) => {
+    setTabLoading(true)
+    
+    // Simulate a small delay for smooth transition
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Handle specific tab data fetching if needed
+    if (value === "my-creations" && availableCollections.length === 0) {
+      await fetchAvailableCollections()
+    }
+    
+    setTabLoading(false)
+  }
 
   const fetchMarketplaceData = async () => {
     setLoading(true)
@@ -285,9 +241,9 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     try {
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/collections`)
       const data = await response.json()
-      
+      console.log("available collections", data);
       if (response.ok) {
-        setAvailableCollections(data.collections || [])
+        setAvailableCollections(data.collections.filter((collection: any) => collection.isEnabled && collection.source === "public") || [])
       }
     } catch (error) {
       console.error("Failed to fetch collections:", error)
@@ -449,7 +405,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
         body: JSON.stringify({
           ...formData,
           artType: selectedArtType,
-          userAddress: account.address,
+          userAddress: account,
           marketplaceId: params.marketplaceId,
           merchantId: params.merchantId,
           mintPrice: parseFloat(formData.mintPrice || "0") || 0,
@@ -457,7 +413,9 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           maxSupply: parseInt(formData.maxSupply || "1000") || 1000,
           mintLimit: parseInt(formData.mintLimit || "1") || 1,
           nftImages: uploadedNFTImages,
-          creatorAddress: account
+          creatorAddress: account,
+          source: "public",
+          isEnabled: true
         }),
       })
 
@@ -481,7 +439,9 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           maxSupply: "",
           mintLimit: "",
           mintStartDate: "",
-          mintStages: []
+          mintStages: [],
+          source: "public",
+          isEnabled: true
         })
         setSelectedArtType("unique")
         setUploadedImage(null)
@@ -495,9 +455,9 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           description: "Your NFT collection has been created successfully!",
         })
         
-        // Refresh marketplace data to show the new collection
+        // Navigate back to marketplace after successful creation
         setTimeout(() => {
-          window.location.href = `/marketplace/${params.merchantId}/${params.marketplaceId}`
+          router.push(`/marketplace/${params.merchantId}/${params.marketplaceId}`)
         }, 2000)
       } else {
         const errorData = await response.json()
@@ -520,6 +480,145 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     }
   }
 
+  const handleCreateNFT = async () => {
+    if (!selectedCollection || selectedCollection === "no-collections") {
+      toast({
+        title: "Error",
+        description: "Please select a collection first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!newNFT.name || !newNFT.description) {
+      toast({
+        title: "Error",
+        description: "NFT name and description are required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setCreating(true)
+    try {
+      const response = await fetch(`/api/nfts/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newNFT,
+          collectionId: selectedCollection,
+          marketplaceId: params.marketplaceId,
+          merchantId: params.merchantId,
+          userAddress: account,
+          traits: nftTraits
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setCreatedNFTId(result.nftId)
+        toast({
+          title: "Success",
+          description: "NFT created successfully! You can now mint it on the blockchain.",
+        })
+        
+        // Reset form
+        setNewNFT({
+          name: "",
+          description: "",
+          image: "",
+          ipfsHash: "",
+          price: 0,
+          mintPrice: 0,
+          maxSupply: 1,
+          rarity: "common",
+          royaltyFee: 0,
+          traits: []
+        })
+        setNftTraits([])
+        fetchAvailableCollections()
+      } else {
+        throw new Error("Failed to create NFT")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create NFT",
+        variant: "destructive",
+      })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleMintNFT = async (nftId: string, userAddress: string) => {
+    if (!user) return
+
+    setMintStatus('creating')
+    try {
+      // Step 1: Create mint transaction
+      const createResponse = await fetch(`/api/nfts/mint-wallet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nftId,
+          userAddress
+        }),
+      })
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json()
+        throw new Error(error.error || "Failed to create mint transaction")
+      }
+
+      const { transaction } = await createResponse.json()
+
+      // Step 2: Sign transaction with wallet using the transaction signer
+      let signedTransaction
+      
+      try {
+        setMintStatus('signing')
+        signedTransaction = await transactionSigner.signTransaction(transaction.txn, userAddress)
+        console.log('Transaction signed successfully with Pera Wallet')
+      } catch (error: any) {
+        console.error('Wallet signing failed:', error)
+        throw new Error(`Failed to sign transaction: ${error.message || 'Unknown error'}`)
+      }
+
+      // Step 3: Submit signed transaction
+      setMintStatus('submitting')
+      const submitResponse = await fetch(`/api/nfts/mint-wallet`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nftId,
+          signedTransaction
+        }),
+      })
+
+      if (submitResponse.ok) {
+        const result = await submitResponse.json()
+        setMintResult(result)
+        setMintStatus('success')
+        toast({
+          title: "Success",
+          description: `NFT minted successfully! Asset ID: ${result.assetId}`,
+        })
+        fetchAvailableCollections()
+      } else {
+        const error = await submitResponse.json()
+        throw new Error(error.error || "Failed to submit mint transaction")
+      }
+    } catch (error: any) {
+      setMintStatus('error')
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mint NFT",
+        variant: "destructive",
+      })
+    }
+  }
+
   const filteredTemplates = createTemplates.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -527,29 +626,12 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
   })
 
   if (loading) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading create marketplace...</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
+    return <CreatePageLoadingTemplate />
   }
 
   if (!marketplace) {
     return (
-      <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <Plus className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Marketplace Not Found</h1>
-            <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
-          </div>
-        </div>
-      </PageTransition>
+      <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
     )
   }
 
@@ -595,117 +677,22 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
             </div>
           </FadeIn>
 
-          <Tabs defaultValue="templates" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="templates">Templates</TabsTrigger>
+          <Tabs defaultValue="templates" className="space-y-6" onValueChange={handleTabChange}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="my-creations">My Creations</TabsTrigger>
               <TabsTrigger value="create">Create Collection</TabsTrigger>
               <TabsTrigger value="create-nft">Create NFT</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="templates" className="space-y-6">
-              {/* Search and Filters */}
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          placeholder="Search templates..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    <Select value={filterBy} onValueChange={setFilterBy}>
-                      <SelectTrigger className="select-theme-filter">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Templates</SelectItem>
-                        <SelectItem value="nft">NFTs</SelectItem>
-                        <SelectItem value="event">Events</SelectItem>
-                        <SelectItem value="merchandise">Merchandise</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="select-theme-sort">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="recent">Recent</SelectItem>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="price">Price</SelectItem>
-                        <SelectItem value="popular">Popular</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Template Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {filteredTemplates.map((template, index) => (
-                  <motion.div
-                    key={template.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Card className="group hover:shadow-lg transition-all duration-200">
-                      <div className="relative aspect-square overflow-hidden rounded-t-lg">
-                        <Image
-                          src={template.image}
-                          alt={template.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-200"
-                        />
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-blue-100 text-blue-800 text-xs">
-                            {template.type}
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
-                              {template.name}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                              {template.description}
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {template.price} {template.currency}
-                            </span>
-                            <Button
-                              onClick={() => {
-                                setSelectedTemplate(template)
-                                setShowCreateDialog(true)
-                              }}
-                              disabled={!isConnected}
-                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Use Template
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </TabsContent>
-
             <TabsContent value="my-creations" className="space-y-6">
-              {!isConnected ? (
+              {tabLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">Loading collections...</p>
+                  </div>
+                </div>
+              ) : !isConnected ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Wallet className="w-16 h-16 text-gray-400 mb-4" />
@@ -718,50 +705,202 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-4">
-                  {userSessions.map((session, index) => (
-                    <motion.div
-                      key={session.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                                <Plus className="w-6 h-6 text-white" />
+                <div className="space-y-6">
+                  {/* Search and Filter Controls */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search collections..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Select value={filterBy} onValueChange={setFilterBy}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="recent">Recent</SelectItem>
+                          <SelectItem value="name">Name</SelectItem>
+                          <SelectItem value="status">Status</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Collections Grid */}
+                  {availableCollections.length === 0 ? (
+                    <Card>
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                          <Plus className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                          No Collections Found
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+                          {searchTerm || filterBy !== 'all' 
+                            ? 'No collections match your current filters. Try adjusting your search or filter criteria.'
+                            : 'You haven\'t created any collections yet. Start by creating your first collection!'
+                          }
+                        </p>
+                        {!searchTerm && filterBy === 'all' && (
+                          <Button 
+                            onClick={() => {
+                              const createTab = document.querySelector('[value="create"]') as HTMLElement;
+                              createTab?.click();
+                            }}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Your First Collection
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {availableCollections
+                        .filter(collection => {
+                          const matchesSearch = collection.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                               collection.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                               collection.symbol?.toLowerCase().includes(searchTerm.toLowerCase())
+                          const matchesFilter = filterBy === 'all' || collection.status === filterBy
+                          return matchesSearch && matchesFilter
+                        })
+                        .sort((a, b) => {
+                          switch (sortBy) {
+                            case 'name':
+                              return (a.name || '').localeCompare(b.name || '')
+                            case 'status':
+                              return (a.status || '').localeCompare(b.status || '')
+                            case 'recent':
+                            default:
+                              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                          }
+                        })
+                        .map((collection, index) => (
+                        <motion.div
+                          key={collection.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                        >
+                          <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                            <CardContent className="p-0">
+                              {/* Collection Image */}
+                              <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                                {collection.image ? (
+                                  <Image
+                                    src={collection.image}
+                                    alt={collection.name || 'Collection'}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                    <Plus className="w-12 h-12 text-white opacity-80" />
+                                  </div>
+                                )}
+                                <div className="absolute top-3 right-3">
+                                  <Badge 
+                                    className={`text-xs ${
+                                      collection.status === 'published' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                      collection.status === 'draft' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                    }`}
+                                  >
+                                    {collection.status || 'draft'}
+                                  </Badge>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-900 dark:text-white">
-                                  Creation #{session.id.slice(0, 8)}
-                                </h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {new Date(session.createdAt).toLocaleDateString()}
-                                </p>
+
+                              {/* Collection Info */}
+                              <div className="p-6 space-y-4">
+                                <div>
+                                  <h4 className="font-bold text-lg text-gray-900 dark:text-white mb-1 line-clamp-1">
+                                    {collection.name || 'Untitled Collection'}
+                                  </h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    {collection.symbol && `(${collection.symbol})`}
+                                  </p>
+                                  {collection.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                      {collection.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Collection Stats */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <p className="text-gray-500 dark:text-gray-400">Max Supply</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                      {collection.maxSupply || '∞'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500 dark:text-gray-400">Mint Price</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                      {collection.mintPrice ? `${collection.mintPrice} ALGO` : 'Free'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Collection Metadata */}
+                                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span>Created {new Date(collection.createdAt).toLocaleDateString()}</span>
+                                    <span>{collection.chain || 'Algorand'}</span>
+                                  </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="flex-1"
+                                    onClick={() => {
+                                      // Navigate to collection page
+                                      router.push(`/marketplace/${params.merchantId}/${params.marketplaceId}/collection/${collection.id}`)
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    View
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      // Navigate to create NFT in this collection
+                                      router.push(`/marketplace/${params.merchantId}/${params.marketplaceId}/collection/${collection.id}/create-nft`)
+                                    }}
+                                  >
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Add NFT
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge 
-                                className={`text-xs ${
-                                  session.status === 'published' ? 'bg-green-100 text-green-800' :
-                                  session.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}
-                              >
-                                {session.status}
-                              </Badge>
-                              <Button variant="outline" size="sm">
-                                <Eye className="w-4 h-4 mr-1" />
-                                View
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -1155,7 +1294,9 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                               maxSupply: "",
                               mintLimit: "",
                               mintStartDate: "",
-                              mintStages: []
+                              mintStages: [],
+                              source: "public",
+                              isEnabled: true
                             })
                             setSelectedArtType("unique")
                             setUploadedImage(null)
@@ -1194,164 +1335,123 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                     <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
                       Please connect your wallet using the button in the header to create NFTs
                     </p>
+                    <WalletConnectButtonCompact />
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Create NFT in Collection</CardTitle>
-                    <CardDescription>
-                      Create a new NFT and add it to an existing collection. NFTs must belong to a collection.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-8">
-                    {/* NFT Name */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nftName" className="text-sm font-medium">NFT Name *</Label>
-                      <Input
-                        id="nftName"
-                        placeholder="Enter NFT name"
-                        className="w-full"
-                        required
-                      />
-                    </div>
-
-                    {/* NFT Description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nftDescription" className="text-sm font-medium">Description</Label>
-                      <Textarea
-                        id="nftDescription"
-                        placeholder="Describe your NFT"
-                        rows={3}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* NFT Image Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">NFT Image *</Label>
-                      <p className="text-xs text-gray-500">Upload the image for your NFT. Recommended: 800×800px</p>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                        <div className="space-y-4">
-                          {uploadingImages ? (
-                            <div className="space-y-2">
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
-                                Uploading... {uploadProgress}%
-                              </div>
-                              <Progress value={uploadProgress} className="h-2" />
-                            </div>
-                          ) : (
-                            <>
-                              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto" />
-                              <div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                  Drop your NFT image here to upload
-                                </p>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleImageUpload}
-                                  className="hidden"
-                                  id="nft-single-upload"
-                                />
-                                <Button variant="outline" size="sm" asChild>
-                                  <label htmlFor="nft-single-upload" className="cursor-pointer">
-                                    Choose Image...
-                                  </label>
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Collection Selection */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Select Collection *</Label>
-                      <p className="text-xs text-gray-500">NFTs must belong to a collection. Choose an existing collection or create a new one.</p>
-                      <Select value={selectedCollection} onValueChange={setSelectedCollection}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a collection" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCollections.length > 0 ? (
-                            availableCollections.map((collection) => (
-                              <SelectItem key={collection.id} value={collection.id}>
-                                {collection.name} ({collection.symbol})
+                <div className="space-y-6">
+                  {/* Collection Selection */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl font-bold">Select Collection</CardTitle>
+                      <CardDescription>
+                        Choose a collection to add your NFT to. NFTs must belong to a collection.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <Select value={selectedCollection} onValueChange={setSelectedCollection}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a collection" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCollections.length > 0 ? (
+                              availableCollections.map((collection) => (
+                                <SelectItem key={collection.id} value={collection.id}>
+                                  {collection.name} ({collection.symbol})
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-collections" disabled>
+                                No collections available
                               </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-collections" disabled>
-                              No collections available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {availableCollections.length === 0 && (
-                        <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-                          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                            No collections found. Please create a collection first using the "Create Collection" tab.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {availableCollections.length === 0 && (
+                          <Alert>
+                            <AlertDescription>
+                              No collections found. Please create a collection first using the "Create Collection" tab.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    {/* NFT Properties */}
-                    <div className="space-y-4">
-                      <Label className="text-sm font-medium">NFT Properties</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nftRarity" className="text-sm">Rarity</Label>
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select rarity" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="common">Common</SelectItem>
-                              <SelectItem value="uncommon">Uncommon</SelectItem>
-                              <SelectItem value="rare">Rare</SelectItem>
-                              <SelectItem value="epic">Epic</SelectItem>
-                              <SelectItem value="legendary">Legendary</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="nftCategory" className="text-sm">Category</Label>
-                          <Input
-                            id="nftCategory"
-                            placeholder="e.g., Art, Gaming, Music"
-                            className="w-full"
+                  {/* NFT Creation Form */}
+                  {selectedCollection && selectedCollection !== "no-collections" && (
+                    <NFTCreationForm
+                      newNFT={newNFT}
+                      setNewNFT={setNewNFT}
+                      nftTraits={nftTraits}
+                      setNftTraits={setNftTraits}
+                      onCancel={() => {
+                        setNewNFT({
+                          name: "",
+                          description: "",
+                          image: "",
+                          ipfsHash: "",
+                          price: 0,
+                          mintPrice: 0,
+                          maxSupply: 1,
+                          rarity: "common",
+                          royaltyFee: 0,
+                          traits: []
+                        })
+                        setNftTraits([])
+                        setCreatedNFTId(null)
+                      }}
+                      onCreate={handleCreateNFT}
+                      onMint={handleMintNFT}
+                      isLoading={creating}
+                      createdNFTId={createdNFTId}
+                      showMintOption={enableOnChainMint}
+                    />
+                  )}
+
+                  {/* On-Chain Minting Toggle */}
+                  {selectedCollection && selectedCollection !== "no-collections" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold">Minting Options</CardTitle>
+                        <CardDescription>
+                          Choose whether to mint your NFT on the blockchain immediately
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between p-4 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                              <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <div>
+                              <p className="font-medium">On-Chain Minting</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {enableOnChainMint 
+                                  ? 'NFT will be minted on Algorand blockchain immediately after creation'
+                                  : 'NFT will be created off-chain only (can be minted later)'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={enableOnChainMint}
+                            onCheckedChange={setEnableOnChainMint}
                           />
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="pt-4 space-y-4">
-                      <div className="flex gap-3">
-                        <Button 
-                          variant="outline" 
-                          className="flex-1"
-                        >
-                          Save as Draft
-                        </Button>
-                        <Button 
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
-                          size="lg"
-                          disabled={!selectedCollection || selectedCollection === "no-collections"}
-                        >
-                          <Zap className="w-5 h-5 mr-2" />
-                          {!selectedCollection ? 'Select Collection First' : 'Create NFT'}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center">
-                        By creating an NFT, you agree to the Marketplace Terms of Service.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                        {enableOnChainMint && (
+                          <Alert className="mt-4">
+                            <AlertDescription>
+                              <strong>Note:</strong> On-chain minting requires wallet connection and will incur blockchain transaction fees. 
+                              Your NFT will be permanently recorded on the Algorand blockchain.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               )}
             </TabsContent>
           </Tabs>
