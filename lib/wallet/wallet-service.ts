@@ -20,7 +20,7 @@ export interface WalletTransaction {
 // Internal transaction interface for wallet state management
 export interface WalletTransactionRecord {
   id: string
-  type: 'send' | 'receive' | 'swap' | 'mint' | 'burn'
+  type: 'send' | 'receive' | 'swap' | 'mint' | 'burn' | 'buy' | 'sell'
   amount: number
   currency: string
   from?: string
@@ -28,6 +28,8 @@ export interface WalletTransactionRecord {
   status: 'pending' | 'confirmed' | 'failed'
   timestamp: Date
   hash?: string
+  nftAssetId?: number
+  nftName?: string
 }
 
 export interface WalletState {
@@ -37,6 +39,14 @@ export interface WalletState {
   transactions: WalletTransactionRecord[]
   balance: number
   error: string | null
+}
+
+export interface NFTListing {
+  nftAssetId: number
+  price: number // in microAlgos
+  sellerAddress: string
+  marketplaceAddress: string
+  royaltyReceiver: string
 }
 
 export class WalletService {
@@ -50,6 +60,9 @@ export class WalletService {
     error: null
   }
   private listeners: Set<(state: WalletState) => void> = new Set()
+
+  // Royalty Enforcer App ID - you'll need to set this based on your deployment
+  private royaltyEnforcerAppId: number = 0; // Set your actual app ID here
 
   private constructor() {
     this.initializeWallet()
@@ -591,6 +604,215 @@ export class WalletService {
       installed,
       version: installed ? '1.0.0' : undefined
     }
+  }
+
+  // NFT Buying and Selling Functions
+
+  public async listNFTForSale(listing: NFTListing, algodClient: any): Promise<string> {
+    if (!this.state.isConnected || !this.state.account) {
+      throw new Error('Wallet not connected')
+    }
+
+    const transaction: WalletTransactionRecord = {
+      id: Date.now().toString(),
+      type: 'sell',
+      amount: listing.price / 1000000, // Convert microAlgos to ALGO
+      currency: 'ALGO',
+      from: this.state.account.address,
+      status: 'pending',
+      timestamp: new Date(),
+      nftAssetId: listing.nftAssetId
+    }
+
+    this.setState({
+      transactions: [transaction, ...this.state.transactions]
+    })
+
+    try {
+      const suggestedParams = await algodClient.getTransactionParams().do();
+      
+      // Application call to offer method
+      const appArgs = [
+        new Uint8Array(Buffer.from("offer")),
+        algosdk.encodeUint64(listing.nftAssetId),
+        algosdk.encodeUint64(1), // 1 NFT
+        algosdk.decodeAddress(listing.marketplaceAddress).publicKey,
+        algosdk.encodeUint64(listing.price),
+        new Uint8Array(32) // zero address
+      ];
+
+      const appCallTxn = algosdk.makeApplicationCallTxnFromObject({
+        sender: this.state.account.address,
+        appIndex: this.royaltyEnforcerAppId,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        appArgs: appArgs,
+        suggestedParams: suggestedParams,
+        foreignAssets: [listing.nftAssetId]
+      });
+
+      // Convert to base64 for signing
+      const unsignedTxn = appCallTxn.toByte();
+      const base64Txn = Buffer.from(unsignedTxn).toString('base64');
+
+      // Sign transaction
+      const signedTxns = await this.signTransactions([base64Txn]);
+      const result = await algodClient.sendRawTransaction(signedTxns.map(txn => Buffer.from(txn, 'base64'))).do();
+      
+      await algosdk.waitForConfirmation(algodClient, result.txId, 4);
+
+      transaction.status = 'confirmed';
+      transaction.hash = result.txId;
+
+      this.setState({
+        transactions: this.state.transactions.map(t => 
+          t.id === transaction.id ? transaction : t
+        )
+      });
+
+      return result.txId;
+    } catch (error: any) {
+      transaction.status = 'failed';
+      this.setState({
+        transactions: this.state.transactions.map(t => 
+          t.id === transaction.id ? transaction : t
+        ),
+        error: error.message || 'Failed to list NFT for sale'
+      });
+      throw error;
+    }
+  }
+
+  public async buyNFT(listing: NFTListing, nftName: string, algodClient: any): Promise<string> {
+    if (!this.state.isConnected || !this.state.account) {
+      throw new Error('Wallet not connected')
+    }
+
+    const transaction: WalletTransactionRecord = {
+      id: Date.now().toString(),
+      type: 'buy',
+      amount: listing.price / 1000000, // Convert microAlgos to ALGO
+      currency: 'ALGO',
+      from: this.state.account.address,
+      to: listing.sellerAddress,
+      status: 'pending',
+      timestamp: new Date(),
+      nftAssetId: listing.nftAssetId,
+      nftName: nftName
+    }
+
+    this.setState({
+      transactions: [transaction, ...this.state.transactions]
+    })
+
+    try {
+      const suggestedParams = await algodClient.getTransactionParams().do();
+      
+      // 1. Payment transaction: buyer -> Royalty Enforcer app
+      const paymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: this.state.account.address,
+        receiver: algosdk.getApplicationAddress(this.royaltyEnforcerAppId),
+        amount: listing.price,
+        suggestedParams: suggestedParams
+      });
+
+      // 2. Application call to transfer_algo_payment method
+      const appArgs = [
+        new Uint8Array(Buffer.from("transfer_algo_payment")),
+        algosdk.encodeUint64(listing.nftAssetId),
+        algosdk.encodeUint64(1), // 1 NFT
+        algosdk.decodeAddress(listing.sellerAddress).publicKey, // from
+        algosdk.decodeAddress(this.state.account.address).publicKey, // to
+        algosdk.decodeAddress(listing.royaltyReceiver).publicKey, // royalty_receiver
+        algosdk.encodeUint64(listing.price) // current_offer_amount
+      ];
+
+      const appCallTxn = algosdk.makeApplicationCallTxnFromObject({
+        sender: this.state.account.address,
+        appIndex: this.royaltyEnforcerAppId,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        appArgs: appArgs,
+        suggestedParams: suggestedParams,
+        foreignAssets: [listing.nftAssetId],
+        accounts: [listing.sellerAddress, listing.royaltyReceiver]
+      });
+
+      // Assign group ID to both transactions
+      const txns = [paymentTxn, appCallTxn];
+      algosdk.assignGroupID(txns);
+
+      // Convert to base64 for signing
+      const unsignedTxns = txns.map(txn => Buffer.from(txn.toByte()).toString('base64'));
+
+      // Sign transactions
+      const signedTxns = await this.signTransactions(unsignedTxns);
+      const result = await algodClient.sendRawTransaction(signedTxns.map(txn => Buffer.from(txn, 'base64'))).do();
+      
+      await algosdk.waitForConfirmation(algodClient, result.txId, 4);
+
+      transaction.status = 'confirmed';
+      transaction.hash = result.txId;
+
+      this.setState({
+        transactions: this.state.transactions.map(t => 
+          t.id === transaction.id ? transaction : t
+        )
+      });
+
+      return result.txId;
+    } catch (error: any) {
+      transaction.status = 'failed';
+      this.setState({
+        transactions: this.state.transactions.map(t => 
+          t.id === transaction.id ? transaction : t
+        ),
+        error: error.message || 'Failed to buy NFT'
+      });
+      throw error;
+    }
+  }
+
+  public async handleBuyNFT(nft: any, algodClient: any): Promise<string> {
+    if (!this.state.account) {
+      throw new Error('Wallet not connected');
+    }
+
+    const priceInMicroAlgos = nft.price * 1000000;
+    
+    const listing: NFTListing = {
+      nftAssetId: nft.assetId, // You'll need to store this when minting
+      price: priceInMicroAlgos,
+      sellerAddress: nft.creatorAddress, // Current owner
+      marketplaceAddress: "YOUR_MARKETPLACE_ADDRESS", // Replace with your marketplace address
+      royaltyReceiver: nft.creatorAddress
+    };
+
+    return await this.buyNFT(listing, nft.name, algodClient);
+  }
+
+  public async handleSellNFT(nft: any, price: number, algodClient: any): Promise<string> {
+    if (!this.state.account) {
+      throw new Error('Wallet not connected');
+    }
+
+    const priceInMicroAlgos = price * 1000000;
+    
+    const listing: NFTListing = {
+      nftAssetId: nft.assetId,
+      price: priceInMicroAlgos,
+      sellerAddress: this.state.account.address,
+      marketplaceAddress: "YOUR_MARKETPLACE_ADDRESS", // Replace with your marketplace address
+      royaltyReceiver: nft.creatorAddress
+    };
+
+    return await this.listNFTForSale(listing, algodClient);
+  }
+
+  public setRoyaltyEnforcerAppId(appId: number): void {
+    this.royaltyEnforcerAppId = appId;
+  }
+
+  public getRoyaltyEnforcerAppId(): number {
+    return this.royaltyEnforcerAppId;
   }
 }
 

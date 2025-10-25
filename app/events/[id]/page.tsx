@@ -20,13 +20,16 @@ import {
   Ticket,
   ShoppingCart,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Wallet,
+  Loader2
 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useWallet } from "@/hooks/use-wallet"
 import Link from "next/link"
 
 interface Event {
@@ -59,6 +62,14 @@ export default function EventDetailPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuth()
+  const { 
+    isConnected, 
+    isConnecting, 
+    account, 
+    connect, 
+    disconnect,
+    error: walletError 
+  } = useWallet()
   const eventId = params.id as string
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -67,6 +78,7 @@ export default function EventDetailPage() {
   const [isFavorited, setIsFavorited] = useState(false)
   const [relatedEvents, setRelatedEvents] = useState<Event[]>([])
   const [timeUntilEvent, setTimeUntilEvent] = useState<string>("")
+  const [walletConnecting, setWalletConnecting] = useState(false)
 
   useEffect(() => {
     const loadEventData = async () => {
@@ -151,6 +163,7 @@ export default function EventDetailPage() {
   }, [event])
 
   const handlePurchase = async () => {
+    // Check authentication first
     if (!isAuthenticated) {
       toast({
         title: "Authentication Required",
@@ -161,10 +174,46 @@ export default function EventDetailPage() {
       return
     }
 
+    // Check wallet connection
+    if (!isConnected) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to purchase tickets.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Check if event exists and has available supply
+    if (!event) {
+      toast({
+        title: "Event Not Found",
+        description: "The event you're trying to purchase is no longer available.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate supply
+    if (event.availableSupply <= 0) {
+      toast({
+        title: "Sold Out",
+        description: "This event is sold out. No tickets are available.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setPurchasing(true)
     try {
-      // Simulate purchase process
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Update available supply before purchase
+      const updatedSupply = event.availableSupply - 1
+      
+      // Simulate blockchain transaction
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      // Update event state with new supply
+      setEvent(prev => prev ? { ...prev, availableSupply: updatedSupply } : null)
       
       toast({
         title: "Purchase Successful!",
@@ -182,6 +231,26 @@ export default function EventDetailPage() {
       })
     } finally {
       setPurchasing(false)
+    }
+  }
+
+  const handleWalletConnect = async () => {
+    setWalletConnecting(true)
+    try {
+      await connect()
+      toast({
+        title: "Wallet Connected",
+        description: "Your wallet has been connected successfully.",
+      })
+    } catch (error: any) {
+      console.error('Wallet connection error:', error)
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect wallet. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setWalletConnecting(false)
     }
   }
 
@@ -540,26 +609,75 @@ export default function EventDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Wallet Connection Status */}
+                  {!isConnected && (
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                        <Wallet className="w-4 h-4" />
+                        <span className="text-sm font-medium">Wallet Required</span>
+                      </div>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                        Connect your wallet to purchase tickets
+                      </p>
+                    </div>
+                  )}
+
+                  {isConnected && account && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-sm font-medium">Wallet Connected</span>
+                      </div>
+                      <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                        {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Purchase Button */}
                   {isEventEnded ? (
                     <Button disabled className="w-full">
                       <AlertCircle className="w-4 h-4 mr-2" />
                       Event Ended
                     </Button>
+                  ) : !isConnected ? (
+                    <Button
+                      onClick={handleWalletConnect}
+                      disabled={walletConnecting || isConnecting}
+                      className="w-full"
+                    >
+                      {walletConnecting || isConnecting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Wallet className="w-4 h-4 mr-2" />
+                          Connect Wallet
+                        </>
+                      )}
+                    </Button>
                   ) : (
                     <Button
                       onClick={handlePurchase}
-                      disabled={purchasing || event.availableSupply === 0}
+                      disabled={purchasing || event.availableSupply === 0 || !isAuthenticated}
                       className="w-full"
                     >
                       {purchasing ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Processing...
                         </>
                       ) : event.availableSupply === 0 ? (
                         <>
                           <AlertCircle className="w-4 h-4 mr-2" />
                           Sold Out
+                        </>
+                      ) : !isAuthenticated ? (
+                        <>
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          Login Required
                         </>
                       ) : (
                         <>
