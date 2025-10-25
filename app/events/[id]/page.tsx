@@ -399,8 +399,8 @@ export default function EventDetailPage() {
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-gray-500" />
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{formatEventDate(event.date)}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{formatEventTime(event.date)}</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{event.date}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{event.date}</p>
                       {timeUntilEvent && eventStatus === "upcoming" && (
                         <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                           {timeUntilEvent} until event

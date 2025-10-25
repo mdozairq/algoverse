@@ -212,7 +212,7 @@ export default function EventsPage() {
                     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden group">
                       <div className="aspect-[3/2] bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
                         <img
-                          src={event.image || "/placeholder.svg"}
+                          src={event.imageUrl || "/placeholder.svg"}
                           alt={event.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
@@ -341,7 +341,7 @@ export default function EventsPage() {
                     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden group h-full">
                       <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
                         <img
-                          src={event.image || "/placeholder.svg"}
+                          src={event.imageUrl || "/placeholder.svg"}
                           alt={event.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />

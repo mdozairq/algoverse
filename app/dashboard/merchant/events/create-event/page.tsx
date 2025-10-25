@@ -141,6 +141,7 @@ export default function CreateEventPage() {
           website: eventWebsite,
           imageUrl: eventImageUrl,
           totalSupply,
+          availableSupply: totalSupply,
           price,
           ticketTiers,
           enableResale,
