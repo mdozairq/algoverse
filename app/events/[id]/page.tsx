@@ -30,6 +30,7 @@ import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useWallet } from "@/hooks/use-wallet"
+import { walletService } from "@/lib/wallet/wallet-service"
 import Link from "next/link"
 
 interface Event {
@@ -79,6 +80,7 @@ export default function EventDetailPage() {
   const [relatedEvents, setRelatedEvents] = useState<Event[]>([])
   const [timeUntilEvent, setTimeUntilEvent] = useState<string>("")
   const [walletConnecting, setWalletConnecting] = useState(false)
+  const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
     const loadEventData = async () => {
@@ -206,27 +208,71 @@ export default function EventDetailPage() {
 
     setPurchasing(true)
     try {
-      // Update available supply before purchase
-      const updatedSupply = event.availableSupply - 1
+      // Step 1: Create purchase transaction
+      const purchaseResponse = await fetch(`/api/events/${eventId}/purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userAddress: account?.address,
+          quantity: quantity
+        })
+      })
+
+      if (!purchaseResponse.ok) {
+        const errorData = await purchaseResponse.json()
+        throw new Error(errorData.error || 'Failed to create purchase transaction')
+      }
+
+      const purchaseData = await purchaseResponse.json()
       
-      // Simulate blockchain transaction
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      // Step 2: Sign the payment transaction
+      toast({
+        title: "Signing Transaction",
+        description: "Please sign the payment transaction in your wallet.",
+      })
+
+      const signedTransactions = await walletService.signTransactions([purchaseData.transaction])
+      
+      // Step 3: Confirm purchase and mint NFT tickets
+      const confirmResponse = await fetch(`/api/events/${eventId}/confirm-purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          signedTransaction: signedTransactions[0],
+          quantity: quantity
+        })
+      })
+
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json()
+        throw new Error(errorData.error || 'Failed to confirm purchase')
+      }
+
+      const confirmData = await confirmResponse.json()
       
       // Update event state with new supply
-      setEvent(prev => prev ? { ...prev, availableSupply: updatedSupply } : null)
+      setEvent(prev => prev ? { 
+        ...prev, 
+        availableSupply: confirmData.updatedEvent.availableSupply 
+      } : null)
       
       toast({
         title: "Purchase Successful!",
-        description: "Your NFT ticket has been minted and added to your wallet.",
+        description: `Your NFT ticket has been minted and added to your wallet. Transaction: ${confirmData.paymentTransactionId.slice(0, 8)}...`,
       })
       
       // Redirect to user dashboard or NFT page
       router.push("/dashboard/user/nfts")
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Purchase error:', error)
       toast({
         title: "Purchase Failed",
-        description: "There was an error processing your purchase. Please try again.",
+        description: error.message || "There was an error processing your purchase. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -634,6 +680,37 @@ export default function EventDetailPage() {
                     </div>
                   )}
 
+                  {/* Quantity Selector */}
+                  {isConnected && event.availableSupply > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900 dark:text-white">
+                        Quantity
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                        >
+                          -
+                        </Button>
+                        <span className="w-12 text-center font-medium">{quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuantity(Math.min(event.availableSupply, quantity + 1))}
+                          disabled={quantity >= event.availableSupply}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Total: {parseFloat(event.price.replace(/[^\d.]/g, '')) * quantity} ALGO
+                      </p>
+                    </div>
+                  )}
+
                   {/* Purchase Button */}
                   {isEventEnded ? (
                     <Button disabled className="w-full">
@@ -682,7 +759,7 @@ export default function EventDetailPage() {
                       ) : (
                         <>
                           <ShoppingCart className="w-4 h-4 mr-2" />
-                          Purchase Ticket
+                          Purchase {quantity} Ticket{quantity > 1 ? 's' : ''}
                         </>
                       )}
                     </Button>

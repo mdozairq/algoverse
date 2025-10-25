@@ -65,6 +65,21 @@ export interface Event {
   royaltyFee?: number
 }
 
+export interface Purchase {
+  id: string
+  eventId: string
+  userId: string
+  quantity: number
+  totalPrice: number
+  paymentTransactionId: string
+  nftTickets: Array<{
+    transactionId: string
+    metadataUrl: string
+  }>
+  status: 'pending' | 'completed' | 'failed'
+  createdAt: Date
+}
+
 export interface NFT {
   id: string
   eventId: string
@@ -1068,6 +1083,50 @@ export const swapsCollection = {
   },
 }
 
+export const purchasesCollection = {
+  async create(purchaseData: Omit<Purchase, "id" | "createdAt">): Promise<string> {
+    const doc = await adminDb.collection("purchases").add({
+      ...purchaseData,
+      createdAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(id: string): Promise<Purchase | null> {
+    if (!id || id.trim() === "") {
+      return null
+    }
+    const doc = await adminDb.collection("purchases").doc(id).get()
+    if (doc.exists) {
+      return { ...doc.data(), id } as Purchase
+    }
+    return null
+  },
+
+  async getByUser(userId: string): Promise<Purchase[]> {
+    const snapshot = await adminDb.collection("purchases").where("userId", "==", userId).get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Purchase)
+  },
+
+  async getByEvent(eventId: string): Promise<Purchase[]> {
+    const snapshot = await adminDb.collection("purchases").where("eventId", "==", eventId).get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Purchase)
+  },
+
+  async getAll(): Promise<Purchase[]> {
+    const snapshot = await adminDb.collection("purchases").get()
+    return snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id }) as Purchase)
+  },
+
+  async update(id: string, updates: Partial<Purchase>): Promise<void> {
+    await adminDb.collection("purchases").doc(id).update(updates)
+  },
+
+  async delete(id: string): Promise<void> {
+    await adminDb.collection("purchases").doc(id).delete()
+  },
+}
+
 // FirebaseService class for API routes
 export class FirebaseService {
   static async createUser(userData: Omit<User, "id" | "createdAt">): Promise<string> {
@@ -1175,6 +1234,27 @@ export class FirebaseService {
 
   static async deleteEvent(id: string): Promise<void> {
     return eventsCollection.delete(id)
+  }
+
+  // Purchase methods
+  static async createPurchase(purchaseData: Omit<Purchase, "id" | "createdAt">): Promise<string> {
+    return purchasesCollection.create(purchaseData)
+  }
+
+  static async getPurchaseById(id: string): Promise<Purchase | null> {
+    return purchasesCollection.getById(id)
+  }
+
+  static async getPurchasesByUser(userId: string): Promise<Purchase[]> {
+    return purchasesCollection.getByUser(userId)
+  }
+
+  static async getPurchasesByEvent(eventId: string): Promise<Purchase[]> {
+    return purchasesCollection.getByEvent(eventId)
+  }
+
+  static async updatePurchase(id: string, updates: Partial<Purchase>): Promise<void> {
+    return purchasesCollection.update(id, updates)
   }
 
   static async createNFT(nftData: Omit<NFT, "id" | "createdAt">): Promise<string> {
