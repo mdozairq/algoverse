@@ -31,11 +31,15 @@ export interface Event {
   merchantId: string
   category: string
   date: string
+  time?: string
   location: string
+  venue?: string
+  website?: string
   imageUrl?: string
   totalSupply: number
   availableSupply: number
-  status?: "draft" | "pending" | "approved" | "rejected"
+  currentSupply?: number
+  status?: "draft" | "pending" | "approved" | "rejected" | "minted"
   createdAt: Date
   updatedAt?: Date
   featured?: boolean
@@ -47,6 +51,18 @@ export interface Event {
   nftAssetName?: string
   nftUrl?: string
   royaltyPercentage?: number
+  assetId?: number
+  transactionId?: string
+  metadataUrl?: string
+  ticketTiers?: Array<{
+    id: number
+    name: string
+    price: string
+    quantity: number
+    description: string
+  }>
+  enableResale?: boolean
+  royaltyFee?: number
 }
 
 export interface NFT {

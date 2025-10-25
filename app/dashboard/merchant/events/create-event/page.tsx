@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,15 +19,20 @@ import {
   ImageIcon,
   LinkIcon,
   TrendingUp,
+  Loader2,
 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
+import ImageUpload from "@/components/ui/image-upload"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
+import { useWallet } from "@/hooks/use-wallet"
 
 interface TicketTier {
   id: number
@@ -38,6 +43,16 @@ interface TicketTier {
 }
 
 export default function CreateEventPage() {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const router = useRouter()
+  const useWalletHook = useWallet()
+
+  // Set up the useWallet hook for the transaction signer
+  useEffect(() => {
+    transactionSigner.setUseWalletHook(useWalletHook)
+  }, [useWalletHook])
+
   const [step, setStep] = useState(1)
   const [eventName, setEventName] = useState("")
   const [eventDescription, setEventDescription] = useState("")
@@ -47,13 +62,18 @@ export default function CreateEventPage() {
   const [eventLocation, setEventLocation] = useState("")
   const [eventVenue, setEventVenue] = useState("")
   const [eventImage, setEventImage] = useState<File | null>(null)
+  const [eventImageUrl, setEventImageUrl] = useState<string>("")
   const [eventWebsite, setEventWebsite] = useState("")
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([
     { id: 1, name: "Standard", price: "", quantity: 0, description: "" },
   ])
   const [enableResale, setEnableResale] = useState(true)
   const [royaltyFee, setRoyaltyFee] = useState("5")
-  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isMinting, setIsMinting] = useState(false)
+  const [mintStatus, setMintStatus] = useState<'idle' | 'minting' | 'success' | 'error'>('idle')
+  const [assetId, setAssetId] = useState<number | null>(null)
+  const [transactionId, setTransactionId] = useState<string>("")
   const categories = [
     "Concert",
     "Conference",
@@ -77,6 +97,16 @@ export default function CreateEventPage() {
     setTicketTiers(ticketTiers.map((tier) => (tier.id === id ? { ...tier, [field]: value } : tier)))
   }
 
+  const handleImageUpload = (ipfsHash: string, ipfsUrl: string) => {
+    setEventImageUrl(ipfsUrl)
+    toast({ title: "Image uploaded", description: "Event image uploaded to IPFS successfully." })
+  }
+
+  const handleImageRemove = () => {
+    setEventImageUrl("")
+    setEventImage(null)
+  }
+
   const handleNext = () => {
     setStep(step + 1)
   }
@@ -85,12 +115,18 @@ export default function CreateEventPage() {
     setStep(step - 1)
   }
 
-  const { toast } = useToast()
-
   const handleSubmit = async () => {
+    if (!eventImageUrl) {
+      toast({ title: "Image required", description: "Please upload an event image before creating the event.", variant: "destructive" })
+      return
+    }
+
+    setIsSubmitting(true)
     try {
       const totalSupply = ticketTiers.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0)
       const price = `${ticketTiers[0]?.price || "0"} ALGO`
+      
+      // Create event first
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,18 +135,104 @@ export default function CreateEventPage() {
           description: eventDescription,
           category: eventCategory,
           date: eventDate ? format(eventDate, "PPP") : "",
+          time: eventTime,
           location: eventLocation,
-          imageUrl: "/placeholder.svg",
+          venue: eventVenue,
+          website: eventWebsite,
+          imageUrl: eventImageUrl,
           totalSupply,
           price,
+          ticketTiers,
+          enableResale,
+          royaltyFee: Number(royaltyFee),
+          status: "draft"
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to create event")
-      toast({ title: "Event created", description: "Your event has been created successfully." })
-      router.push(`/dashboard/merchant/event/${data.event.id}`)
+      
+      toast({ title: "Event created", description: "Your event has been created successfully. Now minting NFTs..." })
+      
+      // Now mint the NFTs
+      await handleMintEventNFTs(data.eventId)
+      
     } catch (error: any) {
       toast({ title: "Creation failed", description: error.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleMintEventNFTs = async (eventId: string) => {
+    setIsMinting(true)
+    setMintStatus('minting')
+    
+    try {
+      // Step 1: Create mint transaction (like NFT creation form)
+      const createRes = await fetch("/api/events/mint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          eventName,
+          eventDescription,
+          eventCategory,
+          imageUrl: eventImageUrl,
+          ticketTiers,
+          enableResale,
+          royaltyFee: Number(royaltyFee),
+          userAddress: user?.walletAddress // User's wallet address
+        }),
+      })
+      
+      const createData = await createRes.json()
+      if (!createRes.ok) {
+        console.error("Create mint transaction error:", createData)
+        throw new Error(createData.error || "Failed to create mint transaction")
+      }
+      
+      // Step 2: Sign transaction with wallet (like NFT creation form)
+      let signedTransaction
+      try {
+        signedTransaction = await transactionSigner.signTransaction(createData.transaction.txn, user?.walletAddress)
+        console.log('Transaction signed successfully with wallet')
+      } catch (error: any) {
+        console.error('Wallet signing failed:', error)
+        throw new Error(`Failed to sign transaction: ${error.message || 'Unknown error'}`)
+      }
+      
+      // Step 3: Submit signed transaction (like NFT creation form)
+      const submitRes = await fetch("/api/events/mint", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          signedTransaction
+        }),
+      })
+      
+      const submitData = await submitRes.json()
+      if (!submitRes.ok) {
+        console.error("Submit signed transaction error:", submitData)
+        throw new Error(submitData.error || "Failed to submit signed transaction")
+      }
+      
+      setAssetId(submitData.assetId)
+      setTransactionId(submitData.transactionId)
+      setMintStatus('success')
+      
+      toast({ 
+        title: "NFTs minted successfully", 
+        description: `Event NFTs created with Asset ID: ${submitData.assetId}. Transaction ID: ${submitData.transactionId}` 
+      })
+      
+      router.push(`/dashboard/merchant/event/${eventId}`)
+      
+    } catch (error: any) {
+      setMintStatus('error')
+      toast({ title: "Minting failed", description: error.message, variant: "destructive" })
+    } finally {
+      setIsMinting(false)
     }
   }
 
@@ -302,32 +424,19 @@ export default function CreateEventPage() {
                 </CardHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="eventImage" className="text-gray-900 dark:text-gray-300 flex items-center gap-2">
+                    <Label className="text-gray-900 dark:text-gray-300 flex items-center gap-2">
                       <ImageIcon className="w-4 h-4" />
                       Event Image *
                     </Label>
-                    <div className="mt-2 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-300 dark:hover:border-gray-500 transition-colors">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        Drag & drop your event poster here, or click to upload
-                      </p>
-                      <Input
-                        id="eventImage"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setEventImage(e.target.files ? e.target.files[0] : null)}
-                        className="hidden"
+                    <div className="mt-2">
+                      <ImageUpload
+                        onImageUpload={handleImageUpload}
+                        onImageRemove={handleImageRemove}
+                        currentImage={eventImageUrl}
+                        maxSize={10}
+                        acceptedTypes={["image/jpeg", "image/png", "image/gif", "image/webp"]}
+                        className="w-full"
                       />
-                      <Label htmlFor="eventImage">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full bg-transparent border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Choose File
-                        </Button>
-                      </Label>
-                      {eventImage && <p className="text-sm text-gray-500 mt-2">{eventImage.name}</p>}
                     </div>
                   </div>
                   <div>
@@ -520,6 +629,29 @@ export default function CreateEventPage() {
                       <li>• Once minted, event details cannot be changed.</li>
                     </ul>
                   </div>
+
+                  {mintStatus === 'success' && assetId && (
+                    <div className="bg-green-100/20 border border-green-700 rounded-lg p-4">
+                      <h3 className="font-bold text-green-800 dark:text-green-400 mb-2">NFTs Successfully Minted!</h3>
+                      <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                        <p>• Asset ID: {assetId}</p>
+                        <p>• Transaction ID: {transactionId}</p>
+                        <p>• Total Supply: {ticketTiers.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0)} NFTs</p>
+                        <p>• Royalty Fee: {royaltyFee}%</p>
+                        <p>• Resale Enabled: {enableResale ? 'Yes' : 'No'}</p>
+                        <p>• Status: Minted and ready for sale</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {mintStatus === 'error' && (
+                    <div className="bg-red-100/20 border border-red-700 rounded-lg p-4">
+                      <h3 className="font-bold text-red-800 dark:text-red-400 mb-2">Minting Failed</h3>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        There was an error minting the NFTs. Please try again.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-4">
                   <Button
@@ -531,9 +663,22 @@ export default function CreateEventPage() {
                   </Button>
                   <Button
                     onClick={handleSubmit}
-                    className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full py-3 text-sm font-medium"
+                    disabled={isSubmitting || isMinting}
+                    className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full py-3 text-sm font-medium disabled:opacity-50"
                   >
-                    CREATE EVENT & MINT NFTS
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Event...
+                      </>
+                    ) : isMinting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Minting NFTs...
+                      </>
+                    ) : (
+                      "CREATE EVENT & MINT NFTS"
+                    )}
                   </Button>
                 </div>
               </motion.div>
