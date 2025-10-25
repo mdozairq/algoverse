@@ -105,25 +105,62 @@ export default function ClaimTicketsPage() {
       const claimData = await claimResponse.json()
       
       // Sign NFT minting transactions
+      toast({
+        title: "Signing NFT Transactions",
+        description: "Please sign the NFT minting transactions in your wallet.",
+      })
+      
       const nftTransactions = claimData.nftTransactions.map((tx: any) => tx.transaction)
       const signedNftTransactions = await walletService.signTransactions(nftTransactions)
       
       // Submit NFT transactions
+      toast({
+        title: "Submitting NFT Transactions",
+        description: "Submitting NFT minting transactions to the blockchain...",
+      })
+      
       let successCount = 0
-      for (const signedTxn of signedNftTransactions) {
+      const nftAssetIds = []
+      
+      for (let i = 0; i < signedNftTransactions.length; i++) {
         try {
-          const signedTxnBytes = Buffer.from(signedTxn, 'base64')
-          await WalletMintService.submitSignedTransaction(signedTxnBytes)
-          successCount++
+          const signedTxnBytes = Buffer.from(signedNftTransactions[i], 'base64')
+          const result = await WalletMintService.submitSignedTransaction(signedTxnBytes)
+          
+          if (result.transactionId) {
+            successCount++
+            nftAssetIds.push(result.transactionId)
+            console.log(`NFT ${i + 1} minted successfully:`, result.transactionId)
+          }
         } catch (error) {
-          console.error('Error submitting NFT transaction:', error)
+          console.error(`Error submitting NFT transaction ${i + 1}:`, error)
         }
       }
       
-      toast({
-        title: "NFT Tickets Claimed!",
-        description: `Successfully minted ${successCount} NFT ticket(s) for ${claimData.purchase.eventTitle}`,
-      })
+      if (successCount > 0) {
+        toast({
+          title: "NFT Tickets Minted!",
+          description: `Successfully minted ${successCount} NFT ticket(s) for ${claimData.purchase.eventTitle}. Check your wallet!`,
+        })
+        
+        // Update the purchase record with NFT asset IDs
+        try {
+          await fetch(`/api/user/update-purchase-nfts`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              purchaseId: purchaseId,
+              nftAssetIds: nftAssetIds
+            })
+          })
+        } catch (updateError) {
+          console.error('Error updating purchase with NFT IDs:', updateError)
+        }
+      } else {
+        throw new Error('Failed to mint any NFTs')
+      }
       
       // Reload purchases to update status
       loadUserPurchases()
@@ -224,6 +261,15 @@ export default function ClaimTicketsPage() {
                     <span>Transaction: {purchase.paymentTransactionId.slice(0, 8)}...</span>
                   </div>
 
+                  {purchase.nftTickets && purchase.nftTickets.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Ticket className="w-4 h-4" />
+                      <span>
+                        NFTs: {purchase.nftTickets.filter(ticket => ticket.assetId).length}/{purchase.nftTickets.length} minted
+                      </span>
+                    </div>
+                  )}
+
                   {purchase.status === 'completed' && (
                     <div className="flex items-center gap-2">
                       {isConnected ? (
@@ -236,6 +282,11 @@ export default function ClaimTicketsPage() {
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Claiming NFTs...
+                            </>
+                          ) : purchase.nftTickets && purchase.nftTickets.some(ticket => ticket.assetId) ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                              View NFT Tickets
                             </>
                           ) : (
                             <>

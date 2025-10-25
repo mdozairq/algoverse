@@ -261,25 +261,12 @@ export default function EventDetailPage() {
         availableSupply: confirmData.updatedEvent.availableSupply 
       } : null)
       
-      // Step 4: Mint NFT tickets (simplified approach)
-      try {
-        toast({
-          title: "Purchase Successful!",
-          description: `Payment completed successfully. Transaction: ${confirmData.paymentTransactionId.slice(0, 8)}...`,
-        })
-        
-        // For now, we'll skip the NFT minting to avoid wallet signing issues
-        // The purchase is complete and the event supply has been updated
-        console.log('Purchase completed successfully, NFT minting will be handled separately')
-        
-      } catch (mintError: any) {
-        console.error('NFT minting error:', mintError)
-        toast({
-          title: "Purchase Successful!",
-          description: `Payment completed but NFT minting failed. Transaction: ${confirmData.paymentTransactionId.slice(0, 8)}...`,
-          variant: "destructive"
-        })
-      }
+      toast({
+        title: "Purchase Successful!",
+        description: `Payment completed successfully. Transaction: ${confirmData.paymentTransactionId.slice(0, 8)}...`,
+      })
+      
+      console.log('Purchase completed successfully')
       
       // Redirect to claim tickets page
       router.push("/dashboard/user/claim-tickets")

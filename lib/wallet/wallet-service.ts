@@ -438,29 +438,108 @@ export class WalletService {
             const txnBytes = Buffer.from(transaction, 'base64')
             const decodedTxn = algosdk.decodeUnsignedTransaction(txnBytes)
             
-            // Create the transaction group format that Pera Wallet expects
-            const transactionGroup = [{
-              txn: decodedTxn,
-              signers: [this.state.account?.address].filter(Boolean)
-            }]
+            console.log('Decoded transaction:', {
+              sender: (decodedTxn as any).from,
+              type: (decodedTxn as any).type,
+              amount: (decodedTxn as any).amount
+            })
             
-            console.log('Transaction group:', transactionGroup)
+            // Try different transaction group formats
+            let signedTxns: any = null
             
-            // Pera Wallet expects an array of transaction groups
-            const signedTxns = await peraWallet.signTransaction([transactionGroup] as any)
-            console.log('signTransaction result:', signedTxns)
+            // Format 1: Array of transaction groups
+            try {
+              console.log('Trying format 1: Array of transaction groups')
+              const transactionGroup = [{
+                txn: decodedTxn,
+                signers: [this.state.account?.address].filter(Boolean)
+              }]
+              
+              signedTxns = await peraWallet.signTransaction([transactionGroup] as any)
+              console.log('Format 1 result:', signedTxns)
+            } catch (error) {
+              console.log('Format 1 failed:', error)
+            }
+            
+            // Format 2: Direct transaction array
+            if (!signedTxns || (Array.isArray(signedTxns) && signedTxns.length === 0)) {
+              try {
+                console.log('Trying format 2: Direct transaction array')
+                signedTxns = await peraWallet.signTransaction([decodedTxn] as any)
+                console.log('Format 2 result:', signedTxns)
+              } catch (error) {
+                console.log('Format 2 failed:', error)
+              }
+            }
+            
+            // Format 3: Single transaction object
+            if (!signedTxns || (Array.isArray(signedTxns) && signedTxns.length === 0)) {
+              try {
+                console.log('Trying format 3: Single transaction object')
+                signedTxns = await peraWallet.signTransaction({
+                  txn: decodedTxn,
+                  signers: [this.state.account?.address].filter(Boolean)
+                } as any)
+                console.log('Format 3 result:', signedTxns)
+              } catch (error) {
+                console.log('Format 3 failed:', error)
+              }
+            }
+            
+            console.log('Final signedTxns result:', signedTxns)
+            console.log('signedTxns type:', typeof signedTxns)
+            console.log('signedTxns isArray:', Array.isArray(signedTxns))
+            console.log('signedTxns length:', signedTxns?.length)
             
             if (Array.isArray(signedTxns) && signedTxns.length > 0) {
               // Convert Uint8Array to base64 string
               const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64')
               signedTransactions.push(signedTxnBase64)
+              console.log('Transaction signed successfully')
+            } else if (signedTxns && !Array.isArray(signedTxns)) {
+              // Handle case where result is not an array
+              const signedTxnBase64 = Buffer.from(signedTxns).toString('base64')
+              signedTransactions.push(signedTxnBase64)
+              console.log('Transaction signed successfully (non-array result)')
             } else {
+              console.error('No valid signed transactions returned:', signedTxns)
               throw new Error('No signed transactions returned from signTransaction')
             }
           } else {
-            // If signTransaction is not available, throw an error with helpful message
-            console.error('Pera Wallet methods available:', Object.getOwnPropertyNames(peraWallet))
-            throw new Error('Pera Wallet signTransaction method not available. Please ensure you are using a compatible version of Pera Wallet.')
+            // Fallback: Try to use the useWallet hook directly if available
+            console.log('signTransaction not available, trying alternative methods')
+            
+            // Check if we can use the useWallet hook
+            if (typeof window !== 'undefined' && (window as any).useWallet) {
+              try {
+                console.log('Trying useWallet hook directly')
+                const { signTransactions } = (window as any).useWallet()
+                
+                if (signTransactions) {
+                  // Convert base64 transaction to Uint8Array
+                  const txnBytes = new Uint8Array(Buffer.from(transaction, 'base64'))
+                  
+                  const signedTxns = await signTransactions([txnBytes])
+                  
+                  if (Array.isArray(signedTxns) && signedTxns.length > 0) {
+                    const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64')
+                    signedTransactions.push(signedTxnBase64)
+                    console.log('Transaction signed successfully via useWallet hook')
+                  } else {
+                    throw new Error('No signed transactions returned from useWallet hook')
+                  }
+                } else {
+                  throw new Error('signTransactions not available from useWallet hook')
+                }
+              } catch (hookError) {
+                console.error('useWallet hook failed:', hookError)
+                throw new Error('Pera Wallet signTransaction method not available and useWallet hook failed. Please ensure you are using a compatible version of Pera Wallet.')
+              }
+            } else {
+              // If signTransaction is not available, throw an error with helpful message
+              console.error('Pera Wallet methods available:', Object.getOwnPropertyNames(peraWallet))
+              throw new Error('Pera Wallet signTransaction method not available. Please ensure you are using a compatible version of Pera Wallet.')
+            }
           }
         } catch (txnError: any) {
           console.error('Error signing individual transaction:', txnError)

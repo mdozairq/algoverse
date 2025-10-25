@@ -75,9 +75,12 @@ export interface Purchase {
   nftTickets: Array<{
     transactionId: string
     metadataUrl: string
+    assetId?: string
+    status?: 'pending' | 'minted' | 'failed'
   }>
   status: 'pending' | 'completed' | 'failed'
   createdAt: Date
+  updatedAt?: Date
 }
 
 export interface NFT {
