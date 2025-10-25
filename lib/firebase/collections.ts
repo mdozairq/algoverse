@@ -101,6 +101,12 @@ export interface NFT {
   allowSwap: boolean
   transactionId?: string
   status?: string
+  // Quantity tracking
+  maxSupply?: number
+  availableSupply?: number
+  ownerAddress?: string
+  mintedAt?: Date
+  forSale?: boolean
 }
 
 export interface Merchant {

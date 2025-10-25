@@ -29,6 +29,17 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       return NextResponse.json({ error: "NFT is already minted on blockchain" }, { status: 400 })
     }
 
+    // Check available supply
+    if (nft.availableSupply !== undefined && nft.availableSupply <= 0) {
+      return NextResponse.json({ error: "NFT is no longer available for minting" }, { status: 400 })
+    }
+
+    // Get collection details to check collection supply
+    const collection = await FirebaseService.getCollectionById(nft.collectionId)
+    if (collection && collection.availableSupply !== undefined && collection.availableSupply <= 0) {
+      return NextResponse.json({ error: "Collection is sold out" }, { status: 400 })
+    }
+
     // Prepare metadata for Algorand
     const metadata = {
       name: nft.metadata?.name || "NFT",
@@ -116,13 +127,35 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
     // Update NFT in database with blockchain details
     console.log("Updating NFT in database...")
     try {
+      // Get current NFT data to update available supply
+      const currentNft = await FirebaseService.getNFTById(submitData.nftId)
+      const newAvailableSupply = currentNft?.availableSupply !== undefined ? 
+        Math.max(0, currentNft.availableSupply - 1) : undefined
+
       await FirebaseService.updateNFT(submitData.nftId, {
         assetId: result.assetId,
         transactionId: result.transactionId,
         status: "minted",
         ownerId: submitData.userAddress,
-        listedForSale: true
+        ownerAddress: submitData.userAddress,
+        listedForSale: true,
+        forSale: true,
+        availableSupply: newAvailableSupply,
+        mintedAt: new Date()
       })
+
+      // Update collection available supply
+      if (currentNft?.collectionId) {
+        const collection = await FirebaseService.getCollectionById(currentNft.collectionId)
+        if (collection && collection.availableSupply !== undefined) {
+          const newCollectionSupply = Math.max(0, collection.availableSupply - 1)
+          await FirebaseService.updateCollection(currentNft.collectionId, {
+            availableSupply: newCollectionSupply
+          })
+          console.log(`Collection ${currentNft.collectionId} available supply updated to ${newCollectionSupply}`)
+        }
+      }
+
       console.log("NFT updated successfully")
     } catch (updateError: any) {
       console.error("Error updating NFT:", updateError)

@@ -185,6 +185,7 @@ interface Collection {
   mintPrice: number
   royaltyFee: number
   maxSupply: number
+  availableSupply: number
   mintLimit: number
   mintStartDate: Date
   mintStages: any[]
@@ -216,6 +217,9 @@ interface NFT {
   allowSwap: boolean
   createdAt: Date
   updatedAt: Date
+  // Quantity tracking
+  maxSupply?: number
+  availableSupply?: number
 }
 
 export default function CollectionPage({ params }: { params: { merchantId: string; marketplaceId: string; collectionId: string } }) {
@@ -467,6 +471,26 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
       return
     }
 
+    // Check if NFT is available for purchase
+    if (nft.availableSupply !== undefined && nft.availableSupply <= 0) {
+      toast({
+        title: "Not Available",
+        description: "This NFT is no longer available for purchase.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Check if collection has available supply
+    if (collection && collection.availableSupply !== undefined && collection.availableSupply <= 0) {
+      toast({
+        title: "Collection Sold Out",
+        description: "This collection is sold out.",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       // Step 1: Create NFT using NFT create API (like marketplace create page)
       toast({
@@ -474,31 +498,9 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
         description: `Creating ${nft.metadata.name} NFT...`,
       })
 
-      const createResponse = await fetch('/api/nfts/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: nft.metadata.name,
-          description: nft.metadata.description,
-          image: nft.metadata.image,
-          price: nft.price || 0,
-          collectionId: nft.collectionId,
-          marketplaceId: params.marketplaceId,
-          merchantId: params.merchantId,
-          userAddress: account.address,
-          traits: nft.metadata.attributes || []
-        })
-      })
+      
 
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json()
-        throw new Error(errorData.error || 'Failed to create NFT')
-      }
-
-      const createData = await createResponse.json()
-      const nftId = createData.nftId
+      const nftId = nft.id
       
       // Step 2: Create mint transaction using mint-wallet API (like marketplace create page)
       toast({
@@ -561,7 +563,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
         description: `Successfully minted ${nft.metadata.name}. Asset ID: ${result.assetId}. Check your wallet!`,
       })
 
-      // Refresh collection data
+      // Refresh collection data to get updated supply information
       fetchCollectionData()
       
     } catch (error: any) {
@@ -824,6 +826,10 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                 {nfts[selectedNFTIndex]?.assetId && nfts[selectedNFTIndex]?.price ? (
                                   <Button
                                     size="lg"
+                                    disabled={
+                                      (nfts[selectedNFTIndex]?.availableSupply !== undefined && nfts[selectedNFTIndex]?.availableSupply <= 0) ||
+                                      (collection?.availableSupply !== undefined && collection?.availableSupply <= 0)
+                                    }
                                     className="w-full h-12 font-semibold rounded-xl"
                                     style={{
                                       backgroundColor: marketplace.primaryColor,
@@ -832,12 +838,19 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                     onClick={() => handleBuyNFT(nfts[selectedNFTIndex])}
                                   >
                                     <ShoppingCart className="w-5 h-5 mr-2" />
-                                    Buy for {nfts[selectedNFTIndex].price} ALGO
+                                    {nfts[selectedNFTIndex]?.availableSupply !== undefined && nfts[selectedNFTIndex]?.availableSupply <= 0 ? 
+                                      'Sold Out' : 
+                                      `Buy for ${nfts[selectedNFTIndex].price} ALGO`
+                                    }
                                   </Button>
                                 ) : (
                                   <Button
                                     size="lg"
-                                    disabled={!isConnected || minting}
+                                    disabled={
+                                      !isConnected || 
+                                      minting || 
+                                      (collection?.availableSupply !== undefined && collection?.availableSupply <= 0)
+                                    }
                                     onClick={() => setShowMintDialog(true)}
                                     style={{
                                       backgroundColor: marketplace.primaryColor,
@@ -849,6 +862,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                       <>
                                         <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                                         Minting...
+                                      </>
+                                    ) : collection?.availableSupply !== undefined && collection?.availableSupply <= 0 ? (
+                                      <>
+                                        <X className="w-5 h-5 mr-2" />
+                                        Collection Sold Out
                                       </>
                                     ) : (
                                       <>
@@ -1056,6 +1074,10 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                 </span>
                                 <Button
                                   size="sm"
+                                  disabled={
+                                    (nft.availableSupply !== undefined && nft.availableSupply <= 0) ||
+                                    (collection?.availableSupply !== undefined && collection?.availableSupply <= 0)
+                                  }
                                   className="text-xs h-7 px-3 rounded-lg"
                                   style={{
                                     backgroundColor: marketplace.primaryColor,
@@ -1063,7 +1085,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                   }}
                                   onClick={() => handleBuyNFT(nft)}
                                 >
-                                  Buy
+                                  {nft.availableSupply !== undefined && nft.availableSupply <= 0 ? 'Sold Out' : 'Buy'}
                                 </Button>
                               </div>
                             </div>
@@ -1186,7 +1208,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Collection Stats</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 text-center">
                         <div className="text-2xl font-bold text-gray-900 dark:text-white">
                           {nfts.length.toLocaleString()}
@@ -1198,6 +1220,12 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                           {collection.maxSupply ? collection.maxSupply.toLocaleString() : '∞'}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Max Supply</div>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 text-center">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {collection.availableSupply !== undefined ? collection.availableSupply.toLocaleString() : '∞'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Available Supply</div>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 text-center">
                         <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1288,6 +1316,12 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                   <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
                   <span className="font-semibold">{mintQuantity}</span>
                 </div>
+                {collection.availableSupply !== undefined && (
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-600 dark:text-gray-400">Available:</span>
+                    <span className="font-semibold">{collection.availableSupply} remaining</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-bold border-t border-gray-300 dark:border-gray-600 pt-2">
                   <span>Total:</span>
                   <span className="text-lg">{(collection.mintPrice || 0) * mintQuantity} ALGO</span>
@@ -1325,7 +1359,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 </Button>
                 <Button
                   onClick={() => handleMint(nfts[selectedNFTIndex].id)}
-                  disabled={minting || !isConnected}
+                  disabled={
+                    minting || 
+                    !isConnected || 
+                    (collection?.availableSupply !== undefined && collection?.availableSupply <= 0)
+                  }
                   style={{
                     backgroundColor: marketplace.primaryColor,
                     color: 'white'
@@ -1340,6 +1378,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                       {mintStatus === 'submitting' && 'Submitting...'}
                       {mintStatus === 'success' && 'Complete!'}
                       {mintStatus === 'error' && 'Failed'}
+                    </>
+                  ) : collection?.availableSupply !== undefined && collection?.availableSupply <= 0 ? (
+                    <>
+                      <X className="w-4 h-4 mr-2" />
+                      Collection Sold Out
                     </>
                   ) : (
                     <>
