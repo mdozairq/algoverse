@@ -16,7 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useWallet } from "@/hooks/use-wallet"
-import { walletService } from "@/lib/wallet/wallet-service"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
 import { WalletMintService } from "@/lib/algorand/wallet-mint-service"
 
 interface Purchase {
@@ -47,7 +47,7 @@ interface Event {
 
 export default function ClaimTicketsPage() {
   const { user, isAuthenticated } = useAuth()
-  const { isConnected, account } = useWallet()
+  const { isConnected, account, connect, disconnect } = useWallet()
   const { toast } = useToast()
   
   const [purchases, setPurchases] = useState<Purchase[]>([])
@@ -59,6 +59,11 @@ export default function ClaimTicketsPage() {
       loadUserPurchases()
     }
   }, [isAuthenticated])
+
+  // Set up the transaction signer
+  useEffect(() => {
+    transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
+  }, [isConnected, account, connect, disconnect])
 
   const loadUserPurchases = async () => {
     try {
@@ -111,56 +116,53 @@ export default function ClaimTicketsPage() {
         description: "Please sign the NFT minting transactions in your wallet.",
       })
       
-      const nftTransactions = claimData.nftTransactions.map((tx: any) => tx.transaction)
-      const signedNftTransactions = await walletService.signTransactions(nftTransactions)
-      
-      // Submit NFT transactions
-      toast({
-        title: "Submitting NFT Transactions",
-        description: "Submitting NFT minting transactions to the blockchain...",
-      })
-      
-      let successCount = 0
-      const nftAssetIds = []
-      
-      for (let i = 0; i < signedNftTransactions.length; i++) {
-        try {
-          const signedTxnBytes = Buffer.from(signedNftTransactions[i], 'base64')
-          const result = await WalletMintService.submitSignedTransaction(signedTxnBytes)
-          
-          if (result.transactionId) {
-            successCount++
-            nftAssetIds.push(result.transactionId)
-            console.log(`NFT ${i + 1} minted successfully:`, result.transactionId)
-          }
-        } catch (error) {
-          console.error(`Error submitting NFT transaction ${i + 1}:`, error)
-        }
+      // Sign the single NFT transaction using transactionSigner
+      let signedNftTransaction
+      try {
+        signedNftTransaction = await transactionSigner.signTransaction(claimData.nftTransaction.transaction, account.address)
+      } catch (error: any) {
+        console.error('Error signing NFT transaction:', error)
+        throw new Error(`Failed to sign NFT transaction: ${error.message || 'Unknown error'}`)
       }
       
-      if (successCount > 0) {
-        toast({
-          title: "NFT Tickets Minted!",
-          description: `Successfully minted ${successCount} NFT ticket(s) for ${claimData.purchase.eventTitle}. Check your wallet!`,
-        })
+      // Submit NFT transaction
+      toast({
+        title: "Submitting NFT Transaction",
+        description: "Submitting NFT asset creation to the blockchain...",
+      })
+      
+      try {
+        const signedTxnBytes = Buffer.from(signedNftTransaction, 'base64')
+        const result = await WalletMintService.submitSignedTransaction(signedTxnBytes)
         
-        // Update the purchase record with NFT asset IDs
-        try {
-          await fetch(`/api/user/update-purchase-nfts`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              purchaseId: purchaseId,
-              nftAssetIds: nftAssetIds
-            })
+        if (result.transactionId) {
+          toast({
+            title: "NFT Tickets Created!",
+            description: `Successfully created NFT asset with ${claimData.nftTransaction.totalSupply} ticket units for ${claimData.purchase.eventTitle}. Asset ID: ${result.assetId}. Check your wallet!`,
           })
-        } catch (updateError) {
-          console.error('Error updating purchase with NFT IDs:', updateError)
+          
+          // Update the purchase record with NFT asset ID
+          try {
+            await fetch(`/api/user/update-purchase-nfts`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                purchaseId: purchaseId,
+                nftAssetId: result.assetId,
+                totalSupply: claimData.nftTransaction.totalSupply
+              })
+            })
+          } catch (updateError) {
+            console.error('Error updating purchase with NFT ID:', updateError)
+          }
+        } else {
+          throw new Error('Failed to create NFT asset')
         }
-      } else {
-        throw new Error('Failed to mint any NFTs')
+      } catch (error) {
+        console.error('Error submitting NFT transaction:', error)
+        throw new Error('Failed to submit NFT transaction to blockchain')
       }
       
       // Reload purchases to update status

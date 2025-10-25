@@ -5,14 +5,15 @@ import { requireRole } from '@/lib/auth/middleware'
 export const POST = requireRole(["user"])(async (request: NextRequest) => {
   try {
     const auth = (request as any).auth
-    const { purchaseId, nftAssetIds } = await request.json()
+    const { purchaseId, nftAssetId, totalSupply, nftAssetIds } = await request.json()
 
     if (!purchaseId) {
       return NextResponse.json({ error: "Purchase ID is required" }, { status: 400 })
     }
 
-    if (!nftAssetIds || !Array.isArray(nftAssetIds)) {
-      return NextResponse.json({ error: "NFT Asset IDs are required" }, { status: 400 })
+    // Support both old format (array) and new format (single asset with units)
+    if (!nftAssetId && (!nftAssetIds || !Array.isArray(nftAssetIds))) {
+      return NextResponse.json({ error: "NFT Asset ID or Asset IDs are required" }, { status: 400 })
     }
 
     // Get purchase details
@@ -26,12 +27,25 @@ export const POST = requireRole(["user"])(async (request: NextRequest) => {
       return NextResponse.json({ error: "Unauthorized access to purchase" }, { status: 403 })
     }
 
-    // Update the purchase with NFT asset IDs
-    const updatedNftTickets = purchase.nftTickets.map((ticket, index) => ({
-      ...ticket,
-      assetId: nftAssetIds[index] || null,
-      status: nftAssetIds[index] ? 'minted' : 'pending'
-    }))
+    let updatedNftTickets
+
+    if (nftAssetId && totalSupply) {
+      // New format: Single asset with multiple units
+      updatedNftTickets = purchase.nftTickets.map((ticket, index) => ({
+        ...ticket,
+        assetId: nftAssetId,
+        unitNumber: index + 1,
+        totalSupply: totalSupply,
+        status: 'minted' as const
+      }))
+    } else {
+      // Old format: Multiple individual assets
+      updatedNftTickets = purchase.nftTickets.map((ticket, index) => ({
+        ...ticket,
+        assetId: nftAssetIds[index] || null,
+        status: (nftAssetIds[index] ? 'minted' as const : 'pending' as const)
+      }))
+    }
 
     await FirebaseService.updatePurchase(purchaseId, {
       nftTickets: updatedNftTickets,
@@ -41,7 +55,11 @@ export const POST = requireRole(["user"])(async (request: NextRequest) => {
 
     return NextResponse.json({
       success: true,
-      message: `Updated purchase with ${nftAssetIds.length} NFT asset IDs`,
+      message: nftAssetId 
+        ? `Updated purchase with NFT asset ID ${nftAssetId} containing ${totalSupply} units`
+        : `Updated purchase with ${nftAssetIds.length} NFT asset IDs`,
+      nftAssetId: nftAssetId,
+      totalSupply: totalSupply,
       nftAssetIds: nftAssetIds
     })
 

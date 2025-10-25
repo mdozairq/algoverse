@@ -41,67 +41,80 @@ export const POST = requireRole(["user"])(async (request: NextRequest) => {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
+    // Add balance check like the minting flow
+    const balanceCheck = await WalletMintService.checkAccountBalance(userAddress)
+    
+    if (!balanceCheck.hasSufficientBalance) {
+      return NextResponse.json({
+        success: false,
+        error: "Insufficient balance for NFT minting",
+        details: {
+          currentBalance: balanceCheck.currentBalance,
+          requiredBalance: balanceCheck.requiredBalance,
+          dispenserUrl: balanceCheck.dispenserUrl,
+          message: `Your account has ${balanceCheck.currentBalance} microAlgos but needs at least ${balanceCheck.requiredBalance} microAlgos to mint NFTs. Please fund your account using the testnet dispenser.`
+        }
+      }, { status: 400 })
+    }
+
     try {
       const suggestedParams = await algodClient.getTransactionParams().do()
-      const nftTransactions = []
 
-      // Create NFT minting transactions for each ticket in the purchase
-      for (let i = 0; i < purchase.quantity; i++) {
-        // Create metadata for the NFT ticket
-        const ticketMetadata = {
-          name: `${event.title} - Ticket #${i + 1}`,
-          description: `NFT Ticket for ${event.title} - ${event.description}`,
-          image: event.imageUrl || '/placeholder.svg',
-          attributes: [
-            { trait_type: "Event", value: event.title },
-            { trait_type: "Date", value: event.date },
-            { trait_type: "Location", value: event.location },
-            { trait_type: "Category", value: event.category },
-            { trait_type: "Ticket Number", value: `${i + 1}` },
-            { trait_type: "Event ID", value: event.id },
-            { trait_type: "Price", value: event.price },
-            { trait_type: "Purchase ID", value: purchaseId }
-          ]
-        }
+      // Create a single NFT asset with total supply equal to the number of tickets
+      const ticketMetadata = {
+        name: `${event.title} - Event Tickets`,
+        description: `NFT Tickets for ${event.title} - ${event.description}`,
+        image: event.imageUrl || 'https://example.com/placeholder.svg',
+        attributes: [
+          { trait_type: "Event", value: event.title },
+          { trait_type: "Date", value: event.date },
+          { trait_type: "Location", value: event.location },
+          { trait_type: "Category", value: event.category },
+          { trait_type: "Total Tickets", value: purchase.quantity.toString() },
+          { trait_type: "Event ID", value: event.id },
+          { trait_type: "Price", value: event.price },
+          { trait_type: "Purchase ID", value: purchaseId }
+        ]
+      }
 
-        // Create NFT asset transaction
-        const nftAsset = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-          sender: userAddress,
-          suggestedParams,
-          total: 1,
-          decimals: 0,
-          defaultFrozen: false,
-          unitName: `${event.title.substring(0, 8).toUpperCase()}${i + 1}`,
-          assetName: `${event.title} - Ticket #${i + 1}`,
-          assetURL: event.imageUrl || '/placeholder.svg',
-          manager: userAddress,
-          reserve: userAddress,
-          freeze: userAddress,
-          clawback: userAddress,
-          note: new TextEncoder().encode(`Event Ticket NFT: ${event.title} - Purchase: ${purchaseId}`)
-        })
+      // Create single NFT asset with total supply equal to number of tickets
+      const nftAsset = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+        sender: userAddress,
+        suggestedParams,
+        total: purchase.quantity, // Total supply = number of tickets
+        decimals: 0,
+        defaultFrozen: false,
+        unitName: `${event.title.substring(0, 6).toUpperCase()}TK`, // Ensure <= 8 chars
+        assetName: `${event.title} - Tickets`.substring(0, 32), // Ensure <= 32 chars
+        assetURL: event.imageUrl || 'https://example.com/placeholder.svg',
+        manager: userAddress,
+        reserve: userAddress,
+        freeze: userAddress,
+        clawback: userAddress,
+        note: new TextEncoder().encode(`Event Ticket NFTs: ${event.title} - Purchase: ${purchaseId}`)
+      })
 
-        // Convert to base64 for signing
-        const unsignedTxn = nftAsset.toByte()
-        const base64Txn = Buffer.from(unsignedTxn).toString('base64')
+      // Convert to base64 using the same method as marketplace create API
+      const base64Txn = Buffer.from(algosdk.encodeUnsignedTransaction(nftAsset)).toString('base64')
 
-        nftTransactions.push({
-          transaction: base64Txn,
-          transactionId: nftAsset.txID(),
-          metadata: ticketMetadata
-        })
+      // Return single transaction instead of multiple
+      const nftTransaction = {
+        transaction: base64Txn,
+        transactionId: nftAsset.txID(),
+        metadata: ticketMetadata,
+        totalSupply: purchase.quantity
       }
 
       return NextResponse.json({
         success: true,
-        nftTransactions: nftTransactions,
+        nftTransaction: nftTransaction, // Single transaction instead of array
         purchase: {
           id: purchase.id,
           eventTitle: event.title,
           quantity: purchase.quantity,
           totalPrice: purchase.totalPrice
         },
-        message: `Created ${purchase.quantity} NFT minting transaction(s) for ${event.title}`
+        message: `Created NFT asset with ${purchase.quantity} ticket units for ${event.title}`
       })
 
     } catch (error: any) {
