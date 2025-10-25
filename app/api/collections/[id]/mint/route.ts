@@ -22,10 +22,8 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
       return NextResponse.json({ error: "Collection not found" }, { status: 404 })
     }
 
-    // Check if collection is published
-    if (collection.status !== 'published') {
-      return NextResponse.json({ error: "Collection is not published" }, { status: 400 })
-    }
+    // Allow minting from any collection status
+    // Removed published status check to allow minting from draft collections
 
     // Check mint limit
     const userMints = await FirebaseService.getUserMintsInCollection(collectionId, userAddress)
@@ -48,6 +46,7 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
     const mintedNFTs = []
     for (let i = 0; i < quantity; i++) {
       const nftId = await FirebaseService.createNFT({
+        collectionId: collectionId,
         eventId: collectionId,
         metadata: {
           name: `${collection.name} #${userMints.length + i + 1}`,

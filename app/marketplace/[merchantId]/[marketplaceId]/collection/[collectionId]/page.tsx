@@ -144,6 +144,8 @@ import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
+import { WalletMintService } from "@/lib/algorand/wallet-mint-service"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
 
@@ -223,6 +225,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   const [loading, setLoading] = useState(true)
   const [minting, setMinting] = useState(false)
   const [mintProgress, setMintProgress] = useState(0)
+  const [mintStatus, setMintStatus] = useState<'idle' | 'creating' | 'signing' | 'submitting' | 'success' | 'error'>('idle')
+  const [mintResult, setMintResult] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBy, setFilterBy] = useState("all")
   const [sortBy, setSortBy] = useState("recent")
@@ -240,6 +244,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   useEffect(() => {
     fetchCollectionData()
   }, [params.collectionId])
+
+  // Set up the transaction signer
+  useEffect(() => {
+    transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
+  }, [isConnected, account, connect, disconnect])
 
   // Remove auto-refresh on visibility change to prevent constant refreshing
 
@@ -288,7 +297,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     }
   }
 
-  const handleMint = async () => {
+  const handleMint = async (nftId: string) => {
     if (!isConnected || !account) {
       toast({
         title: "Wallet Required",
@@ -300,56 +309,96 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
 
     if (!collection) return
 
+    setMintStatus('creating')
     setMinting(true)
     setMintProgress(0)
 
     try {
-      // Simulate minting progress
-      const progressInterval = setInterval(() => {
-        setMintProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval)
-            return prev
-          }
-          return prev + 10
-        })
-      }, 200)
+      // Step 1: Create NFTs from collection
+      // const createResponse = await fetch(`/api/collections/${params.collectionId}/mint`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     userAddress: account.address,
+      //     quantity: mintQuantity
+      //   }),
+      // })
 
-      const response = await fetch(`/api/collections/${params.collectionId}/mint`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userAddress: account.address,
-          quantity: mintQuantity,
-          collectionId: params.collectionId
-        }),
+      // if (!createResponse.ok) {
+      //   const error = await createResponse.json()
+      //   throw new Error(error.error || "Failed to create NFTs from collection")
+      // }
+
+      // const { nftIds } = await createResponse.json()
+      
+      // Step 2: Mint each NFT on the blockchain
+      setMintStatus('signing')
+      const mintResult = []
+      
+      // for (let i = 0; i < nftIds.length; i++) {
+        // const nftId = nftIds[i]
+        
+        // Create mint transaction for this NFT
+        const mintResponse = await fetch(`/api/nfts/mint-wallet`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nftId: nftId,
+            userAddress: account.address
+          }),
+        })
+
+        if (!mintResponse.ok) {
+          const error = await mintResponse.json()
+          throw new Error(error.error || "Failed to create mint transaction")
+        }
+
+        const { transaction } = await mintResponse.json()
+
+        // Sign transaction with wallet
+        const signedTransaction = await transactionSigner.signTransaction(transaction.txn, account.address)
+        console.log(`Transaction signed successfully for NFT ${nftId}`)
+
+        // Submit signed transaction
+        setMintStatus('submitting')
+        const submitResponse = await fetch(`/api/nfts/mint-wallet`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nftId: nftId,
+            signedTransaction,
+            userAddress: account.address
+          }),
+        })
+
+        if (submitResponse.ok) {
+          const result = await submitResponse.json()
+          mintResult.push(result)
+        } else {
+          const error = await submitResponse.json()
+          throw new Error(error.error || "Failed to submit mint transaction")
+        }
+      // }
+
+      setMintResult(mintResult)
+      setMintStatus('success')
+      setMintProgress(100)
+      setShowMintDialog(false)
+      setMintQuantity(1)
+      
+      toast({
+        title: "Success",
+        description: `Successfully minted ${mintResult.length} NFT(s) on the blockchain!`,
       })
-
-      if (response.ok) {
-        setMintProgress(100)
-        setShowMintDialog(false)
-        setMintQuantity(1)
-
-        toast({
-          title: "NFT Minted Successfully",
-          description: `You have minted ${mintQuantity} NFT(s) from ${collection.name}`,
-        })
-
-        // Refresh NFTs
-        fetchCollectionData()
-      } else {
-        const errorData = await response.json()
-        toast({
-          title: "Minting Failed",
-          description: errorData.error || "Unknown error occurred",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
+      
+      // Refresh collection data to get updated NFTs
+      fetchCollectionData()
+    } catch (error: any) {
+      setMintStatus('error')
       console.error("Failed to mint NFT:", error)
       toast({
-        title: "Minting Failed",
-        description: "Failed to mint NFT. Please try again.",
+        title: "Error",
+        description: error.message || "Failed to mint NFT",
         variant: "destructive",
       })
     } finally {
@@ -398,8 +447,17 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     }
   })
 
-  // NFT Operations
+  // NFT Operations - Create and Mint NFT using proper APIs
   const handleBuyNFT = async (nft: NFT) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to purchase NFTs.",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (!isConnected || !account) {
       toast({
         title: "Wallet Required",
@@ -410,15 +468,107 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     }
 
     try {
-      // Implement NFT purchase logic
+      // Step 1: Create NFT using NFT create API (like marketplace create page)
       toast({
-        title: "Purchase Initiated",
-        description: `Buying ${nft.metadata.name} for ${nft.price} ALGO`,
+        title: "Creating NFT",
+        description: `Creating ${nft.metadata.name} NFT...`,
       })
-    } catch (error) {
+
+      const createResponse = await fetch('/api/nfts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: nft.metadata.name,
+          description: nft.metadata.description,
+          image: nft.metadata.image,
+          price: nft.price || 0,
+          collectionId: nft.collectionId,
+          marketplaceId: params.marketplaceId,
+          merchantId: params.merchantId,
+          userAddress: account.address,
+          traits: nft.metadata.attributes || []
+        })
+      })
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json()
+        throw new Error(errorData.error || 'Failed to create NFT')
+      }
+
+      const createData = await createResponse.json()
+      const nftId = createData.nftId
+      
+      // Step 2: Create mint transaction using mint-wallet API (like marketplace create page)
       toast({
-        title: "Purchase Failed",
-        description: "Failed to purchase NFT",
+        title: "Preparing Mint Transaction",
+        description: "Creating blockchain transaction for your NFT...",
+      })
+
+      const mintResponse = await fetch('/api/nfts/mint-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nftId: nftId,
+          userAddress: account.address
+        })
+      })
+
+      if (!mintResponse.ok) {
+        const errorData = await mintResponse.json()
+        throw new Error(errorData.error || 'Failed to create mint transaction')
+      }
+
+      const mintData = await mintResponse.json()
+      
+      // Step 3: Sign transaction using transactionSigner (same as marketplace create)
+      toast({
+        title: "Signing Transaction",
+        description: "Please sign the NFT minting transaction in your wallet.",
+      })
+      
+      const signedTransaction = await transactionSigner.signTransaction(mintData.transaction.txn, account.address)
+      
+      // Step 4: Submit signed transaction using mint-wallet PUT endpoint
+      toast({
+        title: "Submitting Transaction",
+        description: "Submitting NFT minting transaction to the blockchain...",
+      })
+      
+      const submitResponse = await fetch('/api/nfts/mint-wallet', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nftId: nftId,
+          signedTransaction: signedTransaction
+        })
+      })
+
+      if (!submitResponse.ok) {
+        const errorData = await submitResponse.json()
+        throw new Error(errorData.error || 'Failed to submit mint transaction')
+      }
+
+      const result = await submitResponse.json()
+      
+      toast({
+        title: "NFT Minted Successfully!",
+        description: `Successfully minted ${nft.metadata.name}. Asset ID: ${result.assetId}. Check your wallet!`,
+      })
+
+      // Refresh collection data
+      fetchCollectionData()
+      
+    } catch (error: any) {
+      console.error('Buy NFT error:', error)
+      toast({
+        title: "NFT Creation Failed",
+        description: error.message || "Failed to create NFT. Please try again.",
         variant: "destructive",
       })
     }
@@ -655,7 +805,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                 </div>
                                 <div className="bg-white dark:bg-gray-700 rounded-xl p-3 text-center">
                                   <div className="text-lg font-bold text-gray-900 dark:text-white">
-                                    {nfts[selectedNFTIndex]?.forSale ? 'Yes' : 'No'}
+                                    {nfts[selectedNFTIndex]?.forSale ? 'No' : 'Yes'}
                                   </div>
                                   <div className="text-xs text-gray-600 dark:text-gray-400">For Sale</div>
                                 </div>
@@ -671,7 +821,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             {/* NFT Actions */}
                             <div className="lg:w-80">
                               <div className="space-y-4">
-                                {nfts[selectedNFTIndex]?.forSale && nfts[selectedNFTIndex]?.price ? (
+                                {nfts[selectedNFTIndex]?.assetId && nfts[selectedNFTIndex]?.price ? (
                                   <Button
                                     size="lg"
                                     className="w-full h-12 font-semibold rounded-xl"
@@ -1147,10 +1297,21 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
               {minting && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Minting NFT</span>
+                    <span className="font-medium">
+                      {mintStatus === 'creating' && 'Creating Transaction...'}
+                      {mintStatus === 'signing' && 'Signing Transaction...'}
+                      {mintStatus === 'submitting' && 'Submitting to Blockchain...'}
+                      {mintStatus === 'success' && 'Minting Complete!'}
+                      {mintStatus === 'error' && 'Minting Failed'}
+                    </span>
                     <span className="font-semibold">{mintProgress}%</span>
                   </div>
                   <Progress value={mintProgress} className="h-3 rounded-full" />
+                  {mintStatus === 'signing' && (
+                    <p className="text-xs text-gray-500 text-center">
+                      Please check your wallet to sign the transaction
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1163,7 +1324,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleMint}
+                  onClick={() => handleMint(nfts[selectedNFTIndex].id)}
                   disabled={minting || !isConnected}
                   style={{
                     backgroundColor: marketplace.primaryColor,
@@ -1174,7 +1335,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                   {minting ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Minting...
+                      {mintStatus === 'creating' && 'Creating...'}
+                      {mintStatus === 'signing' && 'Signing...'}
+                      {mintStatus === 'submitting' && 'Submitting...'}
+                      {mintStatus === 'success' && 'Complete!'}
+                      {mintStatus === 'error' && 'Failed'}
                     </>
                   ) : (
                     <>

@@ -57,7 +57,8 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
     const mintParams = {
       nftId: mintData.nftId,
       userAddress: mintData.userAddress,
-      metadata
+      metadata,
+      totalSupply: 1 // NFTs are typically unique, so total supply is 1
     }
 
     const { transaction, transactionId } = await WalletMintService.createMintTransaction(mintParams)
@@ -87,6 +88,8 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
     const auth = (request as any).auth
     const submitData = await request.json()
 
+    console.log("PUT request data:", submitData)
+
     // Validate required fields
     if (!submitData.signedTransaction) {
       return NextResponse.json({ error: "Signed transaction is required" }, { status: 400 })
@@ -96,18 +99,35 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
       return NextResponse.json({ error: "NFT ID is required" }, { status: 400 })
     }
 
+    if (!submitData.userAddress) {
+      return NextResponse.json({ error: "User address is required" }, { status: 400 })
+    }
+
     // Convert base64 signed transaction back to Uint8Array
     const signedTxn = new Uint8Array(Buffer.from(submitData.signedTransaction, 'base64'))
 
     // Submit signed transaction to network
+    console.log("Submitting signed transaction to network...")
     const result = await WalletMintService.submitSignedTransaction(signedTxn)
 
+    console.log("Transaction result:", result)
+    console.log("Submit data:", submitData)
+    
     // Update NFT in database with blockchain details
-    await FirebaseService.updateNFT(submitData.nftId, {
-      assetId: result.assetId,
-      transactionId: result.transactionId,
-      status: "minted"
-    })
+    console.log("Updating NFT in database...")
+    try {
+      await FirebaseService.updateNFT(submitData.nftId, {
+        assetId: result.assetId,
+        transactionId: result.transactionId,
+        status: "minted",
+        ownerId: submitData.userAddress,
+        listedForSale: true
+      })
+      console.log("NFT updated successfully")
+    } catch (updateError: any) {
+      console.error("Error updating NFT:", updateError)
+      throw new Error(`Failed to update NFT: ${updateError.message}`)
+    }
 
     return NextResponse.json({
       success: true,
