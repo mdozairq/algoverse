@@ -120,7 +120,8 @@ export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
     const mintParams = {
       nftId: eventId, // Use eventId as nftId for the mint service
       userAddress: userAddress,
-      metadata
+      metadata,
+      totalSupply: totalSupply
     }
 
     const { transaction, transactionId } = await WalletMintService.createMintTransaction(mintParams)

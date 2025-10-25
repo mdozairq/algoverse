@@ -20,6 +20,7 @@ export interface WalletMintParams {
       value: string
     }>
   }
+  totalSupply: number
 }
 
 export class WalletMintService {
@@ -46,7 +47,7 @@ export class WalletMintService {
       const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
         sender: params.userAddress,
         suggestedParams,
-        total: 1,
+        total: params.totalSupply,
         decimals: 0,
         defaultFrozen: false,
         unitName: params.metadata.name.substring(0, 8).toUpperCase(),
