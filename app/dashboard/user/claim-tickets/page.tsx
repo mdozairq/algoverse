@@ -29,6 +29,7 @@ interface Purchase {
   nftTickets: Array<{
     transactionId: string
     metadataUrl: string
+    assetId?: string
   }>
   status: 'pending' | 'completed' | 'failed'
   createdAt: string
@@ -253,7 +254,7 @@ export default function ClaimTicketsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Calendar className="w-4 h-4" />
-                    <span>Purchased: {new Date(purchase.createdAt).toLocaleDateString()}</span>
+                    <span>Purchased: {purchase.createdAt}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
