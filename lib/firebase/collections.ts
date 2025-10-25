@@ -48,11 +48,11 @@ export interface Event {
   nftCreated?: boolean
   nftCreatedAt?: Date
   nftUnitName?: string
+  assetId?: number
+  transactionId?: string
   nftAssetName?: string
   nftUrl?: string
   royaltyPercentage?: number
-  assetId?: number
-  transactionId?: string
   metadataUrl?: string
   ticketTiers?: Array<{
     id: number

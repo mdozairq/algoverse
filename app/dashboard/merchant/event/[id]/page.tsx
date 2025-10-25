@@ -75,6 +75,7 @@ export default function MerchantEventDetailPage() {
       }
 
       const data = await response.json()
+      console.log('Event data received:', data.event)
       setEvent(data.event)
     } catch (error) {
       console.error("Error fetching event:", error)
@@ -216,10 +217,18 @@ export default function MerchantEventDetailPage() {
     )
   }
 
-  const soldCount = event.totalSupply - event.availableSupply
-  const soldPercentage = event.totalSupply > 0 ? (soldCount / event.totalSupply) * 100 : 0
-  const revenue = soldCount * parseFloat(event.price)
-  const status = event.availableSupply === 0 ? "completed" : event.availableSupply < event.totalSupply ? "active" : "draft"
+  // Safely handle potentially undefined values
+  const totalSupply = Number(event.totalSupply) || 0
+  const availableSupply = Number(event.availableSupply) || 0
+  const price = parseFloat(event.price) || 0
+  
+  const soldCount = Math.max(0, totalSupply - availableSupply)
+  const soldPercentage = totalSupply > 0 ? Math.max(0, Math.min(100, (soldCount / totalSupply) * 100)) : 0
+  const revenue = soldCount * price
+  // Use the event's status if it exists, otherwise calculate based on supply
+  const status = (event as any).status || (availableSupply === 0 ? "completed" : availableSupply < totalSupply ? "active" : "draft")
+  
+  console.log('Calculated values:', { totalSupply, availableSupply, price, soldCount, soldPercentage, revenue, status })
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -227,6 +236,8 @@ export default function MerchantEventDetailPage() {
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>
       case "active":
         return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"><TrendingUp className="h-3 w-3 mr-1" />Active</Badge>
+      case "minted":
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"><CheckCircle className="h-3 w-3 mr-1" />Minted</Badge>
       case "draft":
         return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"><Clock className="h-3 w-3 mr-1" />Draft</Badge>
       default:
@@ -290,14 +301,14 @@ export default function MerchantEventDetailPage() {
                     <div>
                       <p className="font-medium">Date & Time</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(event.date).toLocaleDateString("en-US", {
+                        {event.date ? new Date(event.date).toLocaleDateString("en-US", {
                           weekday: "long",
                           year: "numeric",
                           month: "long",
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}
+                        }) : 'Date not set'}
                       </p>
                     </div>
                   </div>
@@ -314,7 +325,7 @@ export default function MerchantEventDetailPage() {
                     <DollarSign className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="font-medium">Price</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">${event.price}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">${price.toFixed(2)}</p>
                     </div>
                   </div>
                   
@@ -322,12 +333,50 @@ export default function MerchantEventDetailPage() {
                     <Users className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="font-medium">Capacity</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{event.totalSupply} tickets</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{totalSupply} tickets</p>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* NFT Information */}
+            {(event as any).status === "minted" && ((event as any).assetId || (event as any).nftAssetId) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>NFT Information</CardTitle>
+                  <CardDescription>Blockchain details for your event NFTs</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="font-medium">Asset ID</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                        {(event as any).assetId || (event as any).nftAssetId || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Transaction ID</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                        {(event as any).transactionId || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium">NFT Created</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {(event as any).nftCreatedAt ? new Date((event as any).nftCreatedAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Total Supply</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {totalSupply} NFTs
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Sales Analytics */}
             <Card>
@@ -342,7 +391,7 @@ export default function MerchantEventDetailPage() {
                     <p className="text-sm text-gray-600 dark:text-gray-400">Tickets Sold</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{event.availableSupply}</p>
+                    <p className="text-2xl font-bold text-blue-600">{availableSupply}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Available</p>
                   </div>
                   <div className="text-center">
@@ -458,7 +507,7 @@ export default function MerchantEventDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Created</span>
                   <span className="text-sm font-medium">
-                    {event.createdAt}
+                    {event.createdAt ? new Date(event.createdAt).toLocaleDateString() : 'Unknown'}
                   </span>
                 </div>
                 <div className="flex justify-between">
