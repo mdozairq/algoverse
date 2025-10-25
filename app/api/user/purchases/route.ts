@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { FirebaseService } from '@/lib/firebase/collections'
 import { requireRole } from '@/lib/auth/middleware'
+import { convertObjectTimestamps } from '@/lib/utils/timestamp'
 
 export const GET = requireRole(["user"])(async (request: NextRequest) => {
   try {
@@ -14,11 +15,8 @@ export const GET = requireRole(["user"])(async (request: NextRequest) => {
     // Get user's purchases
     const purchases = await FirebaseService.getPurchasesByUser(userId)
 
-    // Convert date fields to strings
-    const purchasesWithStringDates = purchases.map(purchase => ({
-      ...purchase,
-      createdAt: purchase.createdAt instanceof Date ? purchase.createdAt.toISOString() : purchase.createdAt
-    }))
+    // Convert Firebase Timestamps to ISO strings
+    const purchasesWithStringDates = convertObjectTimestamps(purchases)
 
     return NextResponse.json({ 
       purchases: purchasesWithStringDates,
