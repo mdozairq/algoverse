@@ -32,6 +32,7 @@ import {
   Shield,
   DollarSign,
   Activity,
+  Ticket,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -83,6 +84,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Wallet, label: "Wallet", href: "/dashboard/user/wallet" },
           { icon: Wallet, label: "My NFTs", href: "/dashboard/user/nfts" },
           { icon: Calendar, label: "My Events", href: "/dashboard/user/events" },
+          { icon: Ticket, label: "Claim Tickets", href: "/dashboard/user/claim-tickets" },
           { icon: Activity, label: "Activity", href: "/dashboard/user/activity" },
           { icon: Trophy, label: "Rewards", href: "/dashboard/user/rewards" },
           { icon: Settings, label: "Profile", href: "/dashboard/user/profile" },
