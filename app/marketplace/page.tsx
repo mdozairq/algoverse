@@ -141,7 +141,7 @@ export default function MarketplacePage() {
                       <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 relative">
                         {marketplace.banner ? (
                           <img
-                            src={marketplace.banner}
+                            src={marketplace.banner ?? marketplace.banner[0] ?? '/images/marketplace-banner.jpg'}
                             alt={marketplace.businessName}
                             className="w-full h-full object-cover"
                           />

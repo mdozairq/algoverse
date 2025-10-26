@@ -451,7 +451,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
               >
                 {marketplace.banner ? (
                   <img
-                    src={marketplace.banner}
+                    src={marketplace.banner || marketplace.banner[0] || '/images/marketplace-banner.jpg'}
                     alt={marketplace.businessName}
                     className="w-full h-32 sm:h-48 md:h-56 lg:h-64 object-cover"
                   />

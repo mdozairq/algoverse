@@ -30,6 +30,7 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Grid3X3,
   List,
   SlidersHorizontal,
@@ -179,7 +180,7 @@ interface Marketplace {
   category: string
   website?: string
   logo?: string
-  banner?: string
+  banner?: string | string[]
   template: string
   primaryColor: string
   secondaryColor: string
@@ -300,6 +301,8 @@ export default function MarketplacePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
+  const [isBannerAutoPlaying, setIsBannerAutoPlaying] = useState(true)
   const { theme, resolvedTheme } = useTheme()
   const isDarkMode = resolvedTheme === 'dark'
   const [renderedComponents, setRenderedComponents] = useState<{
@@ -313,6 +316,41 @@ export default function MarketplacePage() {
   // Wallet and auth hooks
   const { isConnected, account, balance, connect, disconnect, sendTransaction } = useWallet()
   const { user, isAuthenticated } = useAuth()
+
+  // Banner helper functions
+  const getBannerImages = () => {
+    if (!marketplace?.banner) return []
+    if (typeof marketplace.banner === 'string') {
+      return [marketplace.banner]
+    }
+    return marketplace.banner
+  }
+
+  const nextBanner = () => {
+    const images = getBannerImages()
+    setCurrentBannerIndex((prev) => (prev + 1) % images.length)
+  }
+
+  const prevBanner = () => {
+    const images = getBannerImages()
+    setCurrentBannerIndex((prev) => (prev - 1 + images.length) % images.length)
+  }
+
+  const goToBanner = (index: number) => {
+    setCurrentBannerIndex(index)
+  }
+
+  // Auto-play banner functionality
+  useEffect(() => {
+    const images = getBannerImages()
+    if (images.length <= 1 || !isBannerAutoPlaying) return
+
+    const interval = setInterval(() => {
+      nextBanner()
+    }, 5000) // Change banner every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [isBannerAutoPlaying, marketplace?.banner])
 
   useEffect(() => {
     fetchMarketplaceData()
@@ -737,6 +775,154 @@ export default function MarketplacePage() {
           marketplaceId={marketplaceId} 
         />
 
+        {/* Banner Section */}
+        {getBannerImages().length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative w-full overflow-hidden"
+            style={{ 
+              height: template?.configuration.layout.headerStyle === 'fixed' ? '60vh' : '50vh',
+              marginTop: template?.configuration.layout.headerStyle === 'fixed' ? '80px' : '0'
+            }}
+          >
+            <div className="relative w-full h-full">
+              {/* Banner Images */}
+              <AnimatePresence mode="wait">
+                {getBannerImages().map((image, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ 
+                      opacity: index === currentBannerIndex ? 1 : 0,
+                      scale: index === currentBannerIndex ? 1 : 1.1
+                    }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.8, ease: "easeInOut" }}
+                    className={`absolute inset-0 ${index === currentBannerIndex ? 'z-10' : 'z-0'}`}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${marketplace.businessName} Banner ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      priority={index === 0}
+                    />
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent" />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* Navigation Controls */}
+              {getBannerImages().length > 1 && (
+                <>
+                  {/* Previous Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={prevBanner}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-200"
+                    style={{ color: 'white' }}
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </motion.button>
+
+                  {/* Next Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={nextBanner}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-200"
+                    style={{ color: 'white' }}
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </motion.button>
+
+                  {/* Play/Pause Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsBannerAutoPlaying(!isBannerAutoPlaying)}
+                    className="absolute top-4 right-4 z-20 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
+                    style={{ color: 'white' }}
+                  >
+                    {isBannerAutoPlaying ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5" />
+                    )}
+                  </motion.button>
+
+                  {/* Dots Indicator */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
+                    {getBannerImages().map((_, index) => (
+                      <motion.button
+                        key={index}
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.8 }}
+                        onClick={() => goToBanner(index)}
+                        className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                          index === currentBannerIndex 
+                            ? 'bg-white' 
+                            : 'bg-white/50 hover:bg-white/70'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Banner Counter */}
+                  <div className="absolute bottom-4 right-4 z-20 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-white">
+                    {currentBannerIndex + 1} / {getBannerImages().length}
+                  </div>
+                </>
+              )}
+
+              {/* Banner Content Overlay */}
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <div className="text-center text-white px-4 max-w-4xl">
+                  <motion.div
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                  >
+                    <h1 className="text-4xl md:text-6xl font-black mb-4">
+                      {marketplace.businessName}
+                    </h1>
+                    <p className="text-lg md:text-xl mb-6 opacity-90">
+                      {marketplace.description}
+                    </p>
+                    {/* <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button 
+                          size="lg"
+                          className="bg-white text-gray-900 hover:bg-gray-100 shadow-xl"
+                          style={{ borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px' }}
+                        >
+                          <ShoppingCart className="w-5 h-5 mr-2" />
+                          Explore Collections
+                        </Button>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button 
+                          variant="outline" 
+                          size="lg"
+                          className="border-white text-white hover:bg-white/10 backdrop-blur-sm"
+                          style={{ borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px' }}
+                        >
+                          <Eye className="w-5 h-5 mr-2" />
+                          View Gallery
+                        </Button>
+                      </motion.div>
+                    </div> */}
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
         {/* Dynamic Hero Section */}
         {template?.configuration.features.heroSection && (
           <motion.section 
@@ -747,7 +933,7 @@ export default function MarketplacePage() {
             style={getHeroStyle()}
           >
             {/* Background */}
-            {marketplace.banner ? (
+            {marketplace.banner && typeof marketplace.banner === 'string' ? (
               <div className="absolute inset-0">
                 <Image
                   src={marketplace.banner}
