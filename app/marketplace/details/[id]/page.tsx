@@ -134,7 +134,10 @@ import {
   MessageSquarePlus,
   MessageSquareShare,
   MessageSquareHeart,
-  MessageSquareLock
+  MessageSquareLock,
+  QrCode,
+  Copy,
+  Check
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -278,6 +281,8 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("volume")
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const fetchMarketplaceData = async () => {
     setLoading(true)
@@ -294,7 +299,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
         const collectionsData = await collectionsRes.json()
         
         if (collectionsRes.ok) {
-          setCollections(collectionsData.collections || [])
+          setCollections(collectionsData.collections.filter((collection: Collection) => collection.isEnabled) || [])
           
           // Calculate analytics
           const analyticsData = calculateAnalytics(collectionsData.collections || [])
@@ -337,6 +342,34 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
   useEffect(() => {
     fetchMarketplaceData()
   }, [params.id])
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/marketplace/${marketplace?.merchantId}/${marketplace?.id}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: marketplace?.businessName,
+          text: marketplace?.description,
+          url: shareUrl,
+        })
+      } catch (error) {
+        console.log('Error sharing:', error)
+      }
+    } else {
+      // Fallback to copy to clipboard
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleCopyLink = async () => {
+    const shareUrl = `${window.location.origin}/marketplace/${marketplace?.merchantId}/${marketplace?.id}`
+    await navigator.clipboard.writeText(shareUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const filteredCollections = collections.filter(collection => {
     const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -434,7 +467,8 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+                {/* Left side - Badges */}
                 <div className="flex flex-wrap gap-2">
                   <Badge 
                     className="text-xs sm:text-sm px-2 sm:px-3 py-1"
@@ -453,28 +487,43 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                     {marketplace.paymentMethod} Payments
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Right side - Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Primary Action - Open Marketplace */}
                   <Button
-                    variant="outline"
-                    size="sm"
+                    size="lg"
                     asChild
-                    className="flex-1 sm:flex-none text-xs sm:text-sm"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Open Marketplace</span>
-                      <span className="sm:hidden">Open</span>
+                      <ExternalLink className="w-5 h-5 mr-2" />
+                      Open Marketplace
                     </Link>
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 sm:flex-none text-xs sm:text-sm"
-                  >
-                    <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Share</span>
-                    <span className="sm:hidden">Share</span>
-                  </Button>
+
+                  {/* Secondary Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleShare}
+                      className="border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium px-4 py-3 rounded-lg transition-all duration-200"
+                    >
+                      <Share2 className="w-5 h-5 mr-2" />
+                      Share
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setShowQRModal(true)}
+                      className="border-2 border-gray-300 dark:border-gray-600 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium px-4 py-3 rounded-lg transition-all duration-200"
+                    >
+                      <QrCode className="w-5 h-5 mr-2" />
+                      QR Code
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -750,6 +799,94 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
         </div>
       </div>
       <Footer />
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {showQRModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowQRModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Share Marketplace</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowQRModal(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    ×
+                  </Button>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 inline-block">
+                    {/* QR Code Placeholder - In a real app, you'd use a QR code library */}
+                    <div className="w-48 h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <QrCode className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">QR Code</p>
+                        <p className="text-xs text-gray-400 mt-1">Scan to visit marketplace</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Share URL:</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded border text-left break-all">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/marketplace/${marketplace?.merchantId}/${marketplace?.id}` : ''}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCopyLink}
+                        className="shrink-0"
+                      >
+                        {copied ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleShare}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowQRModal(false)}
+                      className="flex-1"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   )
 }
