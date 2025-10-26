@@ -42,14 +42,14 @@ export default function ProductDetailPage() {
             <RefreshCw className="w-4 h-4 animate-spin" />
             <span className="text-sm text-gray-500">Redirecting...</span>
           </div>
-          <div className="pt-4">
+          {/* <div className="pt-4">
             <Button asChild variant="outline">
               <Link href={`/marketplace/${merchantId}/${marketplaceId}`}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Marketplace
               </Link>
             </Button>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>

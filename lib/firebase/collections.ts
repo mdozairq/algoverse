@@ -135,7 +135,7 @@ export interface Marketplace {
   category: string
   website?: string
   logo?: string
-  banner?: string
+  banner?: string | string[]
   template: string
   primaryColor: string
   secondaryColor: string
@@ -1334,6 +1334,11 @@ export class FirebaseService {
     return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
   }
 
+  static async getNFTsByCollection(collectionId: string): Promise<NFT[]> {
+    const snapshot = await adminDb.collection("nfts").where("collectionId", "==", collectionId).get()
+    return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
+  }
+
   static async getNFTsForSale(): Promise<NFT[]> {
     const snapshot = await adminDb.collection("nfts").where("listedForSale", "==", true).get()
     return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }) as NFT)
@@ -1893,27 +1898,6 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error updating collection:', error)
       throw error
-    }
-  }
-
-  // Additional NFT methods for collections
-  static async getNFTsByCollection(collectionId: string): Promise<any[]> {
-    try {
-      const snapshot = await adminDb.collection('nfts')
-        .where('collectionId', '==', collectionId)
-        .orderBy('mintedAt', 'desc')
-        .get()
-      
-      return snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
-        updatedAt: doc.data()?.updatedAt?.toDate(),
-        mintedAt: doc.data()?.mintedAt?.toDate() || new Date()
-      }))
-    } catch (error) {
-      console.error('Error fetching collection NFTs:', error)
-      return []
     }
   }
 

@@ -159,6 +159,8 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import TemplateLoader from "@/components/marketplace/template-loader"
+import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
@@ -236,7 +238,6 @@ interface NFT {
 }
 
 export default function TradePage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
-  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [collections, setCollections] = useState<Collection[]>([])
   const [nfts, setNfts] = useState<NFT[]>([])
   const [loading, setLoading] = useState(true)
@@ -255,22 +256,6 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null)
 
   const { isConnected, account, connect, disconnect, sendTransaction } = useWallet()
-
-  const fetchMarketplaceData = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setMarketplace(data.marketplace)
-      }
-    } catch (error) {
-      console.error("Failed to fetch marketplace data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchCollections = async () => {
     try {
@@ -371,7 +356,6 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
   }
 
   useEffect(() => {
-    fetchMarketplaceData()
     fetchCollections()
     fetchNFTs()
     fetchTradingOrders()
@@ -457,32 +441,34 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
     )
   }
 
-  if (!marketplace) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Marketplace Not Found</h1>
-            <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <MarketplaceHeader 
-          marketplace={marketplace} 
-          merchantId={params.merchantId} 
-          marketplaceId={params.marketplaceId} 
-        />
+    <TemplateLoader marketplaceId={params.marketplaceId}>
+      {({ marketplace, template, loading, getButtonStyle, getCardStyle, getBadgeStyle, getThemeStyles }) => {
+        if (loading) {
+          return <CreatePageLoadingTemplate />
+        }
+
+        if (!marketplace) {
+          return (
+            <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
+          )
+        }
+
+        return (
+          <PageTransition>
+            <div 
+              className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              style={getThemeStyles()}
+            >
+              <MarketplaceHeader 
+                marketplace={marketplace} 
+                merchantId={params.merchantId} 
+                marketplaceId={params.marketplaceId} 
+              />
 
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
           {/* Back Button */}
-          <FadeIn>
+          {/* <FadeIn>
             <div className="mb-4 sm:mb-6">
               <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}`}>
                 <Button variant="outline" className="rounded-full text-sm sm:text-base">
@@ -492,7 +478,7 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                 </Button>
               </Link>
             </div>
-          </FadeIn>
+          </FadeIn> */}
 
           {/* Header */}
           <FadeIn>
@@ -1047,5 +1033,8 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
         </Dialog>
       </div>
     </PageTransition>
+        )
+      }}
+    </TemplateLoader>
   )
 }

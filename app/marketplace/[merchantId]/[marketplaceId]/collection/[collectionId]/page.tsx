@@ -148,6 +148,8 @@ import { transactionSigner } from "@/lib/wallet/transaction-signer"
 import { WalletMintService } from "@/lib/algorand/wallet-mint-service"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import TemplateLoader from "@/components/marketplace/template-loader"
+import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 
 interface Marketplace {
   id: string
@@ -223,7 +225,6 @@ interface NFT {
 }
 
 export default function CollectionPage({ params }: { params: { merchantId: string; marketplaceId: string; collectionId: string } }) {
-  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [collection, setCollection] = useState<Collection | null>(null)
   const [nfts, setNfts] = useState<NFT[]>([])
   const [loading, setLoading] = useState(true)
@@ -245,6 +246,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
 
+
   useEffect(() => {
     fetchCollectionData()
   }, [params.collectionId])
@@ -259,14 +261,6 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   const fetchCollectionData = async () => {
     setLoading(true)
     try {
-      // Fetch marketplace details
-      const marketplaceRes = await fetch(`/api/marketplaces/${params.marketplaceId}`)
-      const marketplaceData = await marketplaceRes.json()
-
-      if (marketplaceRes.ok) {
-        setMarketplace(marketplaceData.marketplace)
-      }
-
       // Fetch collection details
       const collectionRes = await fetch(`/api/collections/${params.collectionId}`)
       const collectionData = await collectionRes.json()
@@ -608,28 +602,30 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     )
   }
 
-  if (!collection || !marketplace) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Collection Not Found</h1>
-            <p className="text-gray-600 dark:text-gray-400">The collection you're looking for doesn't exist or has been removed.</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <MarketplaceHeader
-          marketplace={marketplace}
-          merchantId={params.merchantId}
-          marketplaceId={params.marketplaceId}
-        />
+    <TemplateLoader marketplaceId={params.marketplaceId}>
+      {({ marketplace, template, loading, getButtonStyle, getCardStyle, getBadgeStyle, getThemeStyles }) => {
+        if (loading) {
+          return <CreatePageLoadingTemplate />
+        }
+
+        if (!marketplace || !collection) {
+          return (
+            <SimpleLoadingTemplate message="Collection not found. Redirecting..." />
+          )
+        }
+
+        return (
+          <PageTransition>
+            <div 
+              className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              style={getThemeStyles()}
+            >
+              <MarketplaceHeader
+                marketplace={marketplace}
+                merchantId={params.merchantId}
+                marketplaceId={params.marketplaceId}
+              />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Navigation Breadcrumb */}
@@ -1399,5 +1395,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
         <MarketplaceFooter marketplace={marketplace} />
       </div>
     </PageTransition>
+        )
+      }}
+    </TemplateLoader>
   )
 }

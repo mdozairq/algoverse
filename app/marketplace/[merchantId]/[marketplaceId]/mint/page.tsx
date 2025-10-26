@@ -25,6 +25,8 @@ import { motion } from "framer-motion"
 import { PageTransition, FadeIn, } from "@/components/animations/page-transition"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import TemplateLoader from "@/components/marketplace/template-loader"
+import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
@@ -111,7 +113,6 @@ interface DraftNFT {
 }
 
 export default function MintPage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
-  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [mintableCollections, setMintableCollections] = useState<MintableCollection[]>([])
   const [draftNFTs, setDraftNFTs] = useState<DraftNFT[]>([])
   const [userMintSessions, setUserMintSessions] = useState<MintSession[]>([])
@@ -129,22 +130,6 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
   const { isConnected, account, connect, disconnect, sendTransaction } = useWallet()
 
-  const fetchMarketplaceData = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setMarketplace(data.marketplace)
-      }
-    } catch (error) {
-      console.error("Failed to fetch marketplace data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const fetchMintableCollections = async () => {
     try {
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/collections`)
@@ -153,7 +138,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       if (response.ok) {
         setMintableCollections(data.collections || [])
       } else {
-        console.error("Failed to fetch mintable collections")
+        console.error("Failed to fetch mintable collections:", data.error)
         setMintableCollections([])
       }
     } catch (error) {
@@ -186,13 +171,13 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     if (!isConnected || !account) return
     
     try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/sessions?userAddress=${account}`)
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/sessions?userAddress=${account.address}`)
       const data = await response.json()
       
       if (response.ok) {
         setUserMintSessions(data.sessions || [])
       } else {
-        console.error("Failed to fetch mint sessions")
+        console.error("Failed to fetch mint sessions:", data.error)
         setUserMintSessions([])
       }
     } catch (error) {
@@ -202,9 +187,21 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   }
 
   useEffect(() => {
-    fetchMarketplaceData()
-    fetchMintableCollections()
-    fetchDraftNFTs()
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          fetchMintableCollections(),
+          fetchDraftNFTs()
+        ])
+      } catch (error) {
+        console.error("Error loading mint data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
   }, [params.marketplaceId])
 
   useEffect(() => {
@@ -257,7 +254,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         body: JSON.stringify({
           collectionId: selectedCollection.id,
           nftIds,
-          userAddress: account,
+          userAddress: account.address,
           quantity: selectedNFTs.length,
           totalCost,
           currency: "ALGO"
@@ -270,7 +267,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         // Simulate transaction
         if (sendTransaction) {
           await sendTransaction(
-            marketplace?.walletAddress || "",
+            "", // Wallet address will be handled by the template loader
             totalCost,
             `Mint ${selectedNFTs.length} NFT(s) from ${selectedCollection.name}`
           )
@@ -316,32 +313,34 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     )
   }
 
-  if (!marketplace) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <Zap className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Marketplace Not Found</h1>
-            <p className="text-gray-600 dark:text-gray-400">The marketplace you're looking for doesn't exist or has been removed.</p>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <MarketplaceHeader 
-          marketplace={marketplace} 
-          merchantId={params.merchantId} 
-          marketplaceId={params.marketplaceId} 
-        />
+    <TemplateLoader marketplaceId={params.marketplaceId}>
+      {({ marketplace, template, loading, getButtonStyle, getCardStyle, getBadgeStyle, getThemeStyles }) => {
+        if (loading) {
+          return <CreatePageLoadingTemplate />
+        }
+
+        if (!marketplace) {
+          return (
+            <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
+          )
+        }
+
+        return (
+          <PageTransition>
+            <div 
+              className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              style={getThemeStyles()}
+            >
+              <MarketplaceHeader 
+                marketplace={marketplace} 
+                merchantId={params.merchantId} 
+                marketplaceId={params.marketplaceId} 
+              />
 
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
           {/* Back Button */}
-          <FadeIn>
+          {/* <FadeIn>
             <div className="mb-4 sm:mb-6">
               <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}`}>
                 <Button variant="outline" className="rounded-full text-sm sm:text-base">
@@ -351,7 +350,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                 </Button>
               </Link>
             </div>
-          </FadeIn>
+          </FadeIn> */}
 
           {/* Header */}
           <FadeIn>
@@ -362,7 +361,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                     NFT Minting Studio
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Create and mint unique NFTs in {marketplace.businessName}
+                    Create and mint unique NFTs in {marketplace?.businessName || 'this marketplace'}
                   </p>
                 </div>
                 {/* <div className="flex items-center gap-3">
@@ -478,7 +477,8 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                               handleCollectionSelect(collection)
                             }}
                             disabled={!isConnected || collection.availableSupply === 0}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            className="w-full hover:from-blue-700 hover:to-purple-700"
+                            style={getButtonStyle('primary')}
                           >
                             <Zap className="w-4 h-4 mr-2" />
                             {collection.availableSupply === 0 ? 'Sold Out' : 'Browse NFTs'}
@@ -807,5 +807,8 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         <MarketplaceFooter marketplace={marketplace} />
       </div>
     </PageTransition>
+        )
+      }}
+    </TemplateLoader>
   )
 }

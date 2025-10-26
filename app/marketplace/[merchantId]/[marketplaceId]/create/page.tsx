@@ -34,6 +34,7 @@ import { motion } from "framer-motion"
 import { PageTransition, FadeIn} from "@/components/animations/page-transition"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
+import TemplateLoader from "@/components/marketplace/template-loader"
 import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
@@ -107,10 +108,8 @@ interface NewNFT {
 
 export default function CreatePage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
   const router = useRouter()
-  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
   const [createTemplates, setCreateTemplates] = useState<CreateTemplate[]>([])
   const [userSessions, setUserSessions] = useState<CreateSession[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState<CreateTemplate | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -193,21 +192,6 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     setTabLoading(false)
   }
 
-  const fetchMarketplaceData = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setMarketplace(data.marketplace)
-      }
-    } catch (error) {
-      console.error("Failed to fetch marketplace data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchCreateTemplates = async () => {
     try {
@@ -251,7 +235,6 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
   }
 
   useEffect(() => {
-    fetchMarketplaceData()
     fetchCreateTemplates()
     fetchAvailableCollections()
   }, [params.marketplaceId])
@@ -625,28 +608,34 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     return matchesSearch
   })
 
-  if (loading) {
-    return <CreatePageLoadingTemplate />
-  }
-
-  if (!marketplace) {
-    return (
-      <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
-    )
-  }
-
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <MarketplaceHeader 
-          marketplace={marketplace} 
-          merchantId={params.merchantId} 
-          marketplaceId={params.marketplaceId} 
-        />
+    <TemplateLoader marketplaceId={params.marketplaceId}>
+      {({ marketplace, template, loading, getButtonStyle, getCardStyle, getBadgeStyle, getThemeStyles }) => {
+        if (loading) {
+          return <CreatePageLoadingTemplate />
+        }
+
+        if (!marketplace) {
+          return (
+            <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
+          )
+        }
+
+        return (
+          <PageTransition>
+            <div 
+              className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              style={getThemeStyles()}
+            >
+              <MarketplaceHeader 
+                marketplace={marketplace} 
+                merchantId={params.merchantId} 
+                marketplaceId={params.marketplaceId} 
+              />
 
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
           {/* Back Button */}
-          <FadeIn>
+          {/* <FadeIn>
             <div className="mb-4 sm:mb-6">
               <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}`}>
                 <Button variant="outline" className="rounded-full text-sm sm:text-base">
@@ -656,7 +645,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                 </Button>
               </Link>
             </div>
-          </FadeIn>
+          </FadeIn> */}
 
           {/* Header */}
           <FadeIn>
@@ -677,7 +666,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
             </div>
           </FadeIn>
 
-          <Tabs defaultValue="templates" className="space-y-6" onValueChange={handleTabChange}>
+          <Tabs defaultValue="create" className="space-y-6" onValueChange={handleTabChange}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="my-creations">My Creations</TabsTrigger>
               <TabsTrigger value="create">Create Collection</TabsTrigger>
@@ -763,7 +752,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                               const createTab = document.querySelector('[value="create"]') as HTMLElement;
                               createTab?.click();
                             }}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            style={getButtonStyle('primary')}
                           >
                             <Plus className="w-4 h-4 mr-2" />
                             Create Your First Collection
@@ -882,17 +871,19 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                                     <Eye className="w-4 h-4 mr-1" />
                                     View
                                   </Button>
-                                  <Button 
+                                  {/* <Button 
                                     variant="outline" 
                                     size="sm"
+                                    className="hover:from-blue-700 hover:to-purple-700 text-white"
                                     onClick={() => {
                                       // Navigate to create NFT in this collection
                                       router.push(`/marketplace/${params.merchantId}/${params.marketplaceId}/collection/${collection.id}/create-nft`)
                                     }}
+                                    style={{ backgroundColor: marketplace.primaryColor }}
                                   >
                                     <Plus className="w-4 h-4 mr-1" />
                                     Add NFT
-                                  </Button>
+                                  </Button> */}
                                 </div>
                               </div>
                             </CardContent>
@@ -1308,8 +1299,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                         </Button>
                         <Button 
                           onClick={() => setShowCreateDialog(true)}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
-                          size="lg"
+                            style={getButtonStyle('primary')}
                         >
                           <Plus className="w-5 h-5 mr-2" />
                           Publish on Algorand
@@ -1525,5 +1515,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
         <MarketplaceFooter marketplace={marketplace} />
       </div>
     </PageTransition>
+        )
+      }}
+    </TemplateLoader>
   )
 }
