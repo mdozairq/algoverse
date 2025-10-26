@@ -22,7 +22,7 @@ interface Marketplace {
   category: string
   website?: string
   logo?: string
-  banner?: string
+  banner?: string | string[]
   template: string
   primaryColor: string
   secondaryColor: string
@@ -189,13 +189,28 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
             
             {/* Social Links */}
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="p-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-2"
+                style={getButtonStyle('outline')}
+              >
                 <Twitter className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="p-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-2"
+                style={getButtonStyle('outline')}
+              >
                 <Github className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="p-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-2"
+                style={getButtonStyle('outline')}
+              >
                 <Mail className="w-4 h-4" />
               </Button>
             </div>

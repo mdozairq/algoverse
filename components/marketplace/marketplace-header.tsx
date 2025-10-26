@@ -24,7 +24,7 @@ interface Marketplace {
   category: string
   website?: string
   logo?: string
-  banner?: string
+  banner?: string | string[]
   template: string
   primaryColor: string
   secondaryColor: string
