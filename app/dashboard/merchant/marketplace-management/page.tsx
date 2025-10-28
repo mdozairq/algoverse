@@ -162,7 +162,9 @@ export default function MarketplaceManagement() {
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
-    ipfsHash: ""
+    ipfsHash: "",
+    royaltyPercentage: 5, // Default 5% royalty
+    royaltyRecipient: "" // Will be set to merchant wallet address
   })
   const [editCollectionData, setEditCollectionData] = useState({
     name: "",
@@ -171,7 +173,9 @@ export default function MarketplaceManagement() {
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
-    ipfsHash: ""
+    ipfsHash: "",
+    royaltyPercentage: 5,
+    royaltyRecipient: ""
   })
   const [newNFT, setNewNFT] = useState({
     name: "",
@@ -678,7 +682,9 @@ export default function MarketplaceManagement() {
           category: "",
           type: "nft",
           image: "",
-          ipfsHash: ""
+          ipfsHash: "",
+          royaltyPercentage: 5,
+          royaltyRecipient: ""
         })
         setShowAddCollectionDialog(false)
         fetchCollections(selectedMarketplace.id)
@@ -768,7 +774,9 @@ export default function MarketplaceManagement() {
       category: collection.category,
       type: collection.type,
       image: collection.image,
-      ipfsHash: (collection as any).ipfsHash || ""
+      ipfsHash: (collection as any).ipfsHash || "",
+      royaltyPercentage: (collection as any).royaltyPercentage || 5,
+      royaltyRecipient: (collection as any).royaltyRecipient || ""
     })
     setShowEditCollectionDialog(true)
   }
@@ -1314,7 +1322,7 @@ export default function MarketplaceManagement() {
                                   Add Collection
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="max-w-2xl">
+                              <DialogContent className="max-w-2xl scrollbar-hide overflow-y-auto max-h-[90vh]">
                                 <DialogHeader>
                                   <DialogTitle>Add New Collection</DialogTitle>
                                   <DialogDescription>
@@ -1395,6 +1403,49 @@ export default function MarketplaceManagement() {
                                       className="mt-2"
                                     />
                                   </div>
+                                  
+                                  {/* Royalty Settings */}
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label htmlFor="royaltyPercentage">Royalty Percentage</Label>
+                                      <Input
+                                        id="royaltyPercentage"
+                                        type="number"
+                                        min="0"
+                                        max="25"
+                                        step="0.1"
+                                        value={newCollection.royaltyPercentage}
+                                        onChange={(e) => setNewCollection({ 
+                                          ...newCollection, 
+                                          royaltyPercentage: parseFloat(e.target.value) || 0 
+                                        })}
+                                        placeholder="5"
+                                        className="mt-2"
+                                      />
+                                      <p className="text-sm text-gray-500 mt-1">
+                                        Percentage of sale price paid to creator (0-25%)
+                                      </p>
+                                    </div>
+                                    
+                                    <div>
+                                      <Label htmlFor="royaltyRecipient">Royalty Recipient Address</Label>
+                                      <Input
+                                        id="royaltyRecipient"
+                                        type="text"
+                                        value={newCollection.royaltyRecipient}
+                                        onChange={(e) => setNewCollection({ 
+                                          ...newCollection, 
+                                          royaltyRecipient: e.target.value 
+                                        })}
+                                        placeholder="Enter Algorand wallet address"
+                                        className="mt-2"
+                                      />
+                                      <p className="text-sm text-gray-500 mt-1">
+                                        Algorand address that will receive royalty payments
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
                                   <div className="flex justify-end gap-2">
                                     <Button variant="outline" onClick={() => setNewCollection({
                                       name: "",
@@ -1403,7 +1454,9 @@ export default function MarketplaceManagement() {
                                       category: "",
                                       type: "nft",
                                       image: "",
-                                      ipfsHash: ""
+                                      ipfsHash: "",
+                                      royaltyPercentage: 5,
+                                      royaltyRecipient: ""
                                     })}>
                                       Cancel
                                     </Button>
@@ -1505,6 +1558,49 @@ export default function MarketplaceManagement() {
                                   className="mt-2"
                                 />
                               </div>
+                              
+                              {/* Royalty Settings */}
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="editRoyaltyPercentage">Royalty Percentage</Label>
+                                  <Input
+                                    id="editRoyaltyPercentage"
+                                    type="number"
+                                    min="0"
+                                    max="25"
+                                    step="0.1"
+                                    value={editCollectionData.royaltyPercentage}
+                                    onChange={(e) => setEditCollectionData({ 
+                                      ...editCollectionData, 
+                                      royaltyPercentage: parseFloat(e.target.value) || 0 
+                                    })}
+                                    placeholder="5"
+                                    className="mt-2"
+                                  />
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Percentage of sale price paid to creator (0-25%)
+                                  </p>
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor="editRoyaltyRecipient">Royalty Recipient Address</Label>
+                                  <Input
+                                    id="editRoyaltyRecipient"
+                                    type="text"
+                                    value={editCollectionData.royaltyRecipient}
+                                    onChange={(e) => setEditCollectionData({ 
+                                      ...editCollectionData, 
+                                      royaltyRecipient: e.target.value 
+                                    })}
+                                    placeholder="Enter Algorand wallet address"
+                                    className="mt-2"
+                                  />
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Algorand address that will receive royalty payments
+                                  </p>
+                                </div>
+                              </div>
+                              
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" onClick={() => setShowEditCollectionDialog(false)}>
                                   Cancel

@@ -83,6 +83,29 @@ export interface Purchase {
   updatedAt?: Date
 }
 
+export interface Collection {
+  id: string
+  name: string
+  description: string
+  image: string
+  category: string
+  type: "nft" | "event" | "merchandise"
+  currency: string
+  marketplaceId: string
+  merchantId: string
+  isEnabled: boolean
+  allowSwap: boolean
+  nftCount: number
+  createdAt: Date
+  updatedAt?: Date
+  // Supply tracking
+  availableSupply?: number
+  maxSupply?: number
+  // Royalty settings
+  royaltyPercentage?: number // Default royalty percentage for NFTs in this collection
+  royaltyRecipient?: string // Default royalty recipient address
+}
+
 export interface NFT {
   id: string
   eventId: string
@@ -108,6 +131,9 @@ export interface NFT {
   ownerAddress?: string
   mintedAt?: Date
   forSale?: boolean
+  // Royalty settings
+  royaltyPercentage?: number // Percentage (0-100) of sale price paid to creator
+  royaltyRecipient?: string // Address that receives royalty payments
 }
 
 export interface Merchant {
@@ -1279,6 +1305,19 @@ export class FirebaseService {
     return nftsCollection.getByOwner(ownerId)
   }
 
+  // Royalty calculation utilities
+  static calculateRoyalty(salePrice: number, royaltyPercentage: number): number {
+    return (salePrice * royaltyPercentage) / 100
+  }
+
+  static calculateSellerAmount(salePrice: number, royaltyPercentage: number): number {
+    return salePrice - this.calculateRoyalty(salePrice, royaltyPercentage)
+  }
+
+  static async createTransaction(transactionData: Omit<Transaction, "id" | "createdAt">): Promise<string> {
+    return transactionsCollection.create(transactionData)
+  }
+
   static async updateNFT(id: string, updates: Partial<NFT>): Promise<void> {
     // Filter out undefined values to prevent Firestore errors
     const filteredUpdates = Object.fromEntries(
@@ -1446,10 +1485,6 @@ export class FirebaseService {
   }
 
   // Transaction methods
-  static async createTransaction(transactionData: Omit<Transaction, "id" | "createdAt">): Promise<string> {
-    return transactionsCollection.create(transactionData)
-  }
-
   static async getTransactionById(id: string): Promise<Transaction | null> {
     return transactionsCollection.getById(id)
   }
@@ -1798,7 +1833,7 @@ export class FirebaseService {
   }
 
   // Collection methods
-  static async createCollection(collectionData: any): Promise<string> {
+  static async createCollection(collectionData: Partial<Collection>): Promise<string> {
     try {
       const doc = await adminDb.collection('collections').add({
         ...collectionData,
@@ -1812,7 +1847,7 @@ export class FirebaseService {
     }
   }
 
-  static async getCollectionById(id: string): Promise<any> {
+  static async getCollectionById(id: string): Promise<Collection | null> {
     try {
       if (!id || id.trim() === "") {
         return null
@@ -1848,7 +1883,7 @@ export class FirebaseService {
     }
   }
 
-  static async getCollectionsByMarketplace(marketplaceId: string): Promise<any[]> {
+  static async getCollectionsByMarketplace(marketplaceId: string): Promise<Collection[]> {
     try {
       const snapshot = await adminDb.collection('collections')
         .where('marketplaceId', '==', marketplaceId)
@@ -1890,7 +1925,7 @@ export class FirebaseService {
     }
   }
 
-  static async updateCollection(collectionId: string, updateData: any): Promise<void> {
+  static async updateCollection(collectionId: string, updateData: Partial<Collection>): Promise<void> {
     try {
       if (!collectionId || collectionId.trim() === "") {
         throw new Error("Collection ID is required")

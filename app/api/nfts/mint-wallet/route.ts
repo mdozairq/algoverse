@@ -69,7 +69,9 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       nftId: mintData.nftId,
       userAddress: mintData.userAddress,
       metadata,
-      totalSupply: mintData.totalSupply || 1 // NFTs are typically unique, so total supply is 1
+      totalSupply: mintData.totalSupply || 1, // NFTs are typically unique, so total supply is 1
+      royaltyPercentage: mintData.royaltyPercentage || 5, // Default 5% royalty
+      royaltyRecipient: mintData.royaltyRecipient || mintData.userAddress // Default to creator
     }
 
     const { transaction, transactionId } = await WalletMintService.createMintTransaction(mintParams)
@@ -138,9 +140,12 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
         status: "minted",
         ownerId: submitData.userAddress,
         ownerAddress: submitData.userAddress,
+        creatorAddress: submitData.userAddress,
         listedForSale: true,
         forSale: true,
-        mintedAt: new Date()
+        mintedAt: new Date(),
+        royaltyPercentage: submitData.royaltyPercentage || 5,
+        royaltyRecipient: submitData.royaltyRecipient || submitData.userAddress
       }
 
       // Only include availableSupply if it's defined

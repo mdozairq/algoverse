@@ -21,6 +21,8 @@ export interface WalletMintParams {
     }>
   }
   totalSupply: number
+  royaltyPercentage?: number // Percentage (0-100) of sale price paid to creator
+  royaltyRecipient?: string // Address that receives royalty payments
 }
 
 export class WalletMintService {
