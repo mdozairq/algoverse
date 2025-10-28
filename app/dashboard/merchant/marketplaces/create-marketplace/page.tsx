@@ -73,14 +73,16 @@ export default function CreateMarketplace() {
   const [isSaving, setIsSaving] = useState(false)
   const [templates, setTemplates] = useState<MarketplaceTemplate[]>([])
   const [templatesLoading, setTemplatesLoading] = useState(true)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     businessName: "",
     description: "",
     category: "",
     website: "",
-    logo: null,
-    banner: null,
+    logo: null as string | null,
+    banner: [] as string[], // Changed to array for multiple banners
     template: "",
     primaryColor: "#3B82F6",
     secondaryColor: "#10B981",
@@ -158,6 +160,130 @@ export default function CreateMarketplace() {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // IPFS Upload Functions
+  const uploadToIPFS = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch('/api/ipfs/upload', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Upload failed')
+    }
+
+    const result = await response.json()
+    return result.ipfsUrl
+  }
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a valid image file (JPEG, PNG, GIF, WebP)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (2MB limit for logo)
+    const maxSize = 2 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Logo must be smaller than 2MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUploadingLogo(true)
+    try {
+      const ipfsUrl = await uploadToIPFS(file)
+      setFormData(prev => ({ ...prev, logo: ipfsUrl }))
+      toast({
+        title: "Logo uploaded",
+        description: "Logo has been uploaded to IPFS successfully",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload logo",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
+    // Validate file types
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    const invalidFiles = files.filter(file => !allowedTypes.includes(file.type))
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload valid image files (JPEG, PNG, GIF, WebP)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file sizes (5MB limit for banners)
+    const maxSize = 5 * 1024 * 1024
+    const oversizedFiles = files.filter(file => file.size > maxSize)
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: "Banner images must be smaller than 5MB each",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUploadingBanner(true)
+    try {
+      const uploadPromises = files.map(file => uploadToIPFS(file))
+      const ipfsUrls = await Promise.all(uploadPromises)
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        banner: [...prev.banner, ...ipfsUrls] 
+      }))
+      
+      toast({
+        title: "Banners uploaded",
+        description: `${files.length} banner(s) uploaded to IPFS successfully`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload banners",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
+  const removeBanner = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      banner: prev.banner.filter((_, i) => i !== index)
+    }))
   }
 
   const validateStep = (step: number) => {
@@ -247,7 +373,7 @@ export default function CreateMarketplace() {
           category: "",
           website: "",
           logo: null,
-          banner: null,
+          banner: [],
           template: "modern",
           primaryColor: "#3B82F6",
           secondaryColor: "#10B981",
@@ -427,22 +553,116 @@ export default function CreateMarketplace() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Logo Upload */}
                       <div>
                         <Label className="text-gray-900 dark:text-white">Logo</Label>
-                        <div className="mt-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                          <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload logo</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">PNG, JPG up to 2MB</p>
+                        <div className="mt-2">
+                          {formData.logo ? (
+                            <div className="relative">
+                              <img 
+                                src={formData.logo} 
+                                alt="Logo preview" 
+                                className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                              />
+                              <button
+                                onClick={() => setFormData(prev => ({ ...prev, logo: null }))}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="block">
+                              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                                {uploadingLogo ? (
+                                  <div className="flex flex-col items-center">
+                                    <Loader2 className="w-8 h-8 mx-auto text-blue-500 mb-2 animate-spin" />
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Uploading to IPFS...</p>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload logo</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">PNG, JPG up to 2MB</p>
+                                  </div>
+                                )}
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLogoUpload}
+                                className="hidden"
+                                disabled={uploadingLogo}
+                              />
+                            </label>
+                          )}
                         </div>
                       </div>
+
+                      {/* Banner Upload */}
                       <div>
-                        <Label className="text-gray-900 dark:text-white">Banner</Label>
-                        <div className="mt-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                          <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload banner</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            PNG, JPG up to 5MB (1920x400 recommended)
-                          </p>
+                        <Label className="text-gray-900 dark:text-white">Banners</Label>
+                        <div className="mt-2">
+                          {/* Upload Area */}
+                          <label className="block">
+                            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                              {uploadingBanner ? (
+                                <div className="flex flex-col items-center">
+                                  <Loader2 className="w-6 h-6 mx-auto text-blue-500 mb-2 animate-spin" />
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">Uploading to IPFS...</p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <Upload className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload banners</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                    PNG, JPG up to 5MB each (1920x400 recommended)
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                    You can select multiple files
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handleBannerUpload}
+                              className="hidden"
+                              disabled={uploadingBanner}
+                            />
+                          </label>
+
+                          {/* Banner Previews */}
+                          {formData.banner.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {formData.banner.length} banner(s) uploaded
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {formData.banner.map((bannerUrl, index) => (
+                                  <div key={index} className="relative">
+                                    <img 
+                                      src={bannerUrl} 
+                                      alt={`Banner ${index + 1}`} 
+                                      className="w-full h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                                    />
+                                    <button
+                                      onClick={() => removeBanner(index)}
+                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -647,16 +867,40 @@ export default function CreateMarketplace() {
                     </CardHeader>
                     <CardContent>
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-700">
-                        <div className="text-center mb-6">
-                          <h2
-                            className="text-2xl font-black text-gray-900 dark:text-white"
-                            style={{ color: formData.primaryColor }}
-                          >
-                            {formData.businessName || "Your Business Name"}
-                          </h2>
-                          <p className="text-gray-600 dark:text-gray-400 mt-2">
-                            {formData.description || "Your marketplace description will appear here"}
-                          </p>
+                        {/* Header with Logo and Banner */}
+                        <div className="mb-6">
+                          {/* Banner */}
+                          {formData.banner.length > 0 && (
+                            <div className="mb-4">
+                              <img 
+                                src={formData.banner[0]} 
+                                alt="Marketplace banner" 
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Logo and Title */}
+                          <div className="flex items-center gap-4 mb-4">
+                            {formData.logo && (
+                              <img 
+                                src={formData.logo} 
+                                alt="Marketplace logo" 
+                                className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                              />
+                            )}
+                            <div>
+                              <h2
+                                className="text-2xl font-black text-gray-900 dark:text-white"
+                                style={{ color: formData.primaryColor }}
+                              >
+                                {formData.businessName || "Your Business Name"}
+                              </h2>
+                              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                {formData.description || "Your marketplace description will appear here"}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -684,7 +928,7 @@ export default function CreateMarketplace() {
                       <CardTitle className="text-gray-900 dark:text-white">Submission Summary</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                           <h4 className="font-bold text-gray-900 dark:text-white mb-2">Business Details</h4>
                           <p className="text-sm text-gray-600 dark:text-gray-400">Name: {formData.businessName}</p>
@@ -692,9 +936,21 @@ export default function CreateMarketplace() {
                           <p className="text-sm text-gray-600 dark:text-gray-400">Template: {formData.template}</p>
                         </div>
                         <div>
+                          <h4 className="font-bold text-gray-900 dark:text-white mb-2">Branding Assets</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Logo: {formData.logo ? "✅ Uploaded to IPFS" : "❌ Not uploaded"}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Banners: {formData.banner.length} uploaded to IPFS
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Primary Color: <span className="inline-block w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: formData.primaryColor }}></span> {formData.primaryColor}
+                          </p>
+                        </div>
+                        <div>
                           <h4 className="font-bold text-gray-900 dark:text-white mb-2">Payment Setup</h4>
                           <p className="text-sm text-gray-600 dark:text-gray-400">Method: {formData.paymentMethod}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Wallet: {formData.walletAddress}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Wallet: {formData.walletAddress || "Not set"}</p>
                         </div>
                       </div>
                     </CardContent>
