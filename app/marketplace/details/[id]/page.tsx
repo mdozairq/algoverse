@@ -140,11 +140,11 @@ import {
   Check
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import Image from "next/image"
 
 interface Marketplace {
   id: string
@@ -154,7 +154,7 @@ interface Marketplace {
   category: string
   website?: string
   logo?: string
-  banner?: string
+  banner?: string | string[] // Support both single banner and banner array
   template: string
   primaryColor: string
   secondaryColor: string
@@ -283,6 +283,14 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
   const [sortBy, setSortBy] = useState("volume")
   const [showQRModal, setShowQRModal] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Helper function to get banner URL
+  const getBannerUrl = (banner: string | string[] | undefined): string | null => {
+    if (!banner) return null
+    if (typeof banner === 'string') return banner
+    if (Array.isArray(banner) && banner.length > 0) return banner[0]
+    return null
+  }
 
   const fetchMarketplaceData = async () => {
     setLoading(true)
@@ -444,19 +452,20 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
           <FadeIn>
             <div className="mb-8">
               <div 
-                className="relative rounded-lg overflow-hidden mb-4 sm:mb-6"
+                className="relative rounded-lg overflow-hidden mb-4 sm:mb-6 h-32 sm:h-48 md:h-56 lg:h-64"
                 style={{ 
                   background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
                 }}
               >
-                {marketplace.banner ? (
-                  <img
-                    src={marketplace.banner || marketplace.banner[0] || '/images/marketplace-banner.jpg'}
+                {getBannerUrl(marketplace.banner) ? (
+                  <Image
+                    src={getBannerUrl(marketplace.banner)!}
                     alt={marketplace.businessName}
-                    className="w-full h-32 sm:h-48 md:h-56 lg:h-64 object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-32 sm:h-48 md:h-56 lg:h-64 flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center">
                     <Store className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-gray-400" />
                   </div>
                 )}

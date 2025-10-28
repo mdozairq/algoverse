@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Search, Filter, Calendar, Store, ArrowRight, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import Header from "@/components/header"
@@ -139,22 +140,28 @@ export default function MarketplacePage() {
                   >
                     <Card className="overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full flex flex-col">
                       <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 relative">
-                        {marketplace.banner ? (
-                          <img
-                            src={marketplace.banner ?? marketplace.banner[0] ?? '/images/marketplace-banner.jpg'}
-                            alt={marketplace.businessName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div 
-                            className="w-full h-full flex items-center justify-center"
-                            style={{ 
-                              background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
-                            }}
-                          >
-                            <Store className="w-16 h-16 text-gray-400" />
-                          </div>
-                        )}
+                        {(() => {
+                          const bannerUrl = Array.isArray(marketplace.banner) 
+                            ? marketplace.banner[0] 
+                            : marketplace.banner
+                          return bannerUrl ? (
+                            <Image
+                              src={bannerUrl}
+                              alt={marketplace.businessName}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div 
+                              className="w-full h-full flex items-center justify-center"
+                              style={{ 
+                                background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
+                              }}
+                            >
+                              <Store className="w-16 h-16 text-gray-400" />
+                            </div>
+                          )
+                        })()}
                         <div className="absolute top-2 right-2">
                           <Badge className="bg-white/90 text-gray-800 border-gray-200">
                             {marketplace.template}

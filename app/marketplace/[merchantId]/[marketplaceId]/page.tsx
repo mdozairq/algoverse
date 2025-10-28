@@ -933,27 +933,32 @@ export default function MarketplacePage() {
             style={getHeroStyle()}
           >
             {/* Background */}
-            {marketplace.banner && typeof marketplace.banner === 'string' ? (
-              <div className="absolute inset-0">
-                <Image
-                  src={marketplace.banner}
-                  alt={marketplace.businessName}
-                  fill
-                  className="object-cover"
-                  priority
+            {(() => {
+              const bannerImages = getBannerImages()
+              const currentBanner = bannerImages[currentBannerIndex] || bannerImages[0]
+              
+              return currentBanner ? (
+                <div className="absolute inset-0">
+                  <Image
+                    src={currentBanner}
+                    alt={marketplace.businessName}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  {template?.configuration.sections.hero.overlay && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
+                  )}
+                </div>
+              ) : (
+                <div 
+                  className="absolute inset-0"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})` 
+                  }}
                 />
-                {template?.configuration.sections.hero.overlay && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
-                )}
-              </div>
-            ) : (
-              <div 
-                className="absolute inset-0"
-                style={{ 
-                  background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})` 
-                }}
-              />
-            )}
+              )
+            })()}
             
             {/* Animated Background Elements */}
             <div className="absolute inset-0 overflow-hidden">
