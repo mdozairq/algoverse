@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { 
-  ArrowLeft, 
-  ExternalLink, 
-  Store, 
-  Calendar, 
-  MapPin, 
-  Globe, 
+import {
+  ArrowLeft,
+  ExternalLink,
+  Store,
+  Calendar,
+  MapPin,
+  Globe,
   Wallet,
   TrendingUp,
   TrendingDown,
@@ -298,17 +298,17 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
       // Fetch marketplace details
       const marketplaceRes = await fetch(`/api/marketplaces/${params.id}`)
       const marketplaceData = await marketplaceRes.json()
-      
+
       if (marketplaceRes.ok) {
         setMarketplace(marketplaceData.marketplace)
-        
+
         // Fetch collections
         const collectionsRes = await fetch(`/api/marketplaces/${params.id}/collections`)
         const collectionsData = await collectionsRes.json()
-        
+
         if (collectionsRes.ok) {
           setCollections(collectionsData.collections.filter((collection: Collection) => collection.isEnabled) || [])
-          
+
           // Calculate analytics
           const analyticsData = calculateAnalytics(collectionsData.collections || [])
           setAnalytics(analyticsData)
@@ -353,7 +353,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/marketplace/${marketplace?.merchantId}/${marketplace?.id}`
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -381,7 +381,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
 
   const filteredCollections = collections.filter(collection => {
     const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         collection.description.toLowerCase().includes(searchTerm.toLowerCase())
+      collection.description.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
@@ -451,10 +451,10 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
           {/* Marketplace Header */}
           <FadeIn>
             <div className="mb-8">
-              <div 
+              <div
                 className="relative rounded-lg overflow-hidden mb-4 sm:mb-6 h-32 sm:h-48 md:h-56 lg:h-64"
-                style={{ 
-                  background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
+                style={{
+                  background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)`
                 }}
               >
                 {getBannerUrl(marketplace.banner) ? (
@@ -479,9 +479,9 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* Left side - Badges */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge 
+                  <Badge
                     className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-                    style={{ 
+                    style={{
                       backgroundColor: `${marketplace.primaryColor}20`,
                       color: marketplace.primaryColor,
                       borderColor: `${marketplace.primaryColor}40`
@@ -503,7 +503,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   <Button
                     size="lg"
                     asChild
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                    className="hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-5 h-5 mr-2" />
@@ -522,7 +522,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                       <Share2 className="w-5 h-5 mr-2" />
                       Share
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       size="lg"
@@ -566,49 +566,51 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                           whileHover={{ y: -5 }}
                           className="group"
                         >
-                          <Link 
+                          <Link
                             href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/collection/${collection.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block"
                           >
                             <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300">
-                            <div className="relative aspect-square">
-                              <Image
-                                src={collection.image}
-                                alt={collection.name}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              <div className="absolute top-3 left-3">
-                                <Badge 
-                                  className="text-xs"
-                                  style={{ 
-                                    backgroundColor: `${marketplace.primaryColor}90`,
-                                    color: 'white'
-                                  }}
-                                >
-                                  #{index + 1}
-                                </Badge>
+                              <div className="relative aspect-square">
+                                <Image
+                                  src={collection.image}
+                                  alt={collection.name}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="absolute top-3 left-3">
+                                  <Badge
+                                    className="text-xs"
+                                    style={{
+                                      backgroundColor: `${marketplace.primaryColor}90`,
+                                      color: 'white'
+                                    }}
+                                  >
+                                    #{index + 1}
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                            <CardContent className="p-3 sm:p-4">
-                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">
-                                {collection.name}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                                {collection.description}
-                              </p>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">
+                                      {collection.name}
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                                      {collection.description}
+                                    </p>
+                                  </div>
+                                  {/* <span className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                                   {collection.price} {collection.currency}
-                                </span>
-                                <Button size="sm" className="h-8 w-8 p-0" style={{ backgroundColor: marketplace.primaryColor }}>
-                                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
+                                </span> */}
+                                  <Button size="sm" className="h-8 w-8 p-0" style={{ backgroundColor: marketplace.primaryColor }}>
+                                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
                           </Link>
                         </motion.div>
                       ))}
@@ -716,7 +718,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                         </thead>
                         <tbody>
                           {sortedCollections.map((collection, index) => (
-                            <Link 
+                            <Link
                               href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/collection/${collection.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -763,9 +765,8 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                                   </div>
                                 </td>
                                 <td className="py-2 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
-                                  <div className={`flex items-center gap-1 text-xs sm:text-sm ${
-                                    (collection.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                                  }`}>
+                                  <div className={`flex items-center gap-1 text-xs sm:text-sm ${(collection.floorChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
                                     {(collection.floorChange || 0) >= 0 ? (
                                       <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                                     ) : (
@@ -838,7 +839,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                     ×
                   </Button>
                 </div>
-                
+
                 <div className="mb-6">
                   <div className="bg-white p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 inline-block">
                     {/* QR Code Placeholder - In a real app, you'd use a QR code library */}
