@@ -91,6 +91,7 @@ export interface NFT {
   tokenId: string
   assetId?: number
   creatorId?: string
+  creatorAddress?: string
   price?: number
   metadata: Record<string, any>
   createdAt: Date
@@ -1279,7 +1280,11 @@ export class FirebaseService {
   }
 
   static async updateNFT(id: string, updates: Partial<NFT>): Promise<void> {
-    return nftsCollection.update(id, updates)
+    // Filter out undefined values to prevent Firestore errors
+    const filteredUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== undefined)
+    )
+    return nftsCollection.update(id, filteredUpdates)
   }
 
   // Legacy merchant methods removed - use unified methods above

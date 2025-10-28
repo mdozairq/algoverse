@@ -29,6 +29,7 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       price: nftData.price || 0,
       collectionId: nftData.collectionId || "",
       creatorId: nftData.merchantId || "",
+      creatorAddress: nftData.userAddress || "",
       marketplaceId: nftData.marketplaceId || "",
       status: "draft",
       metadata: {
@@ -39,10 +40,12 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
         category: nftData.category || "",
         traits: nftData.traits || [],
         royaltyFee: nftData.royaltyFee || 0,
-        properties: nftData.properties || {}
+        properties: nftData.properties || {},
       },
       isEnabled: true,
-      allowSwap: false
+      allowSwap: false,
+      maxSupply: nftData.maxSupply || 1,
+      availableSupply: nftData.maxSupply || 1
     })
 
     return NextResponse.json({

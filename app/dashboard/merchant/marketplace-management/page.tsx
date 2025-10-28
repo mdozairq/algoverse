@@ -955,7 +955,8 @@ export default function MarketplaceManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nftId,
-          signedTransaction // already base64
+          signedTransaction, // already base64
+          userAddress
         }),
       })
 

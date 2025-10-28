@@ -69,7 +69,7 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       nftId: mintData.nftId,
       userAddress: mintData.userAddress,
       metadata,
-      totalSupply: 1 // NFTs are typically unique, so total supply is 1
+      totalSupply: mintData.totalSupply || 1 // NFTs are typically unique, so total supply is 1
     }
 
     const { transaction, transactionId } = await WalletMintService.createMintTransaction(mintParams)
@@ -132,7 +132,7 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
       const newAvailableSupply = currentNft?.availableSupply !== undefined ? 
         Math.max(0, currentNft.availableSupply - 1) : undefined
 
-      await FirebaseService.updateNFT(submitData.nftId, {
+      const updateData: any = {
         assetId: result.assetId,
         transactionId: result.transactionId,
         status: "minted",
@@ -140,9 +140,15 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
         ownerAddress: submitData.userAddress,
         listedForSale: true,
         forSale: true,
-        availableSupply: newAvailableSupply,
         mintedAt: new Date()
-      })
+      }
+
+      // Only include availableSupply if it's defined
+      if (newAvailableSupply !== undefined) {
+        updateData.availableSupply = newAvailableSupply
+      }
+
+      await FirebaseService.updateNFT(submitData.nftId, updateData)
 
       // Update collection available supply
       if (currentNft?.collectionId) {
