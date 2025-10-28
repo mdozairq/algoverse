@@ -1229,12 +1229,12 @@ export default function MarketplacePage() {
                 </Card>
 
                 {/* Analytics Section */}
-                <motion.section
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="space-y-6"
-                >
+                  <motion.section
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="space-y-6"
+                  >
                   <Card
                     className="card-theme"
                     style={{
@@ -1463,8 +1463,8 @@ export default function MarketplacePage() {
                       </div>
                     </div>
 
-                    {/* Create NFT Section */}
-                    {marketplace.allowCreate && (
+                      {/* Create NFT Section */}
+                      {marketplace.allowCreate && (
                       <motion.section
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1482,7 +1482,7 @@ export default function MarketplacePage() {
                               <div className="flex items-center gap-6">
                                 <div 
                                   className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
-                                  style={{
+                            style={{
                                     background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
                                   }}
                                 >
@@ -1504,9 +1504,9 @@ export default function MarketplacePage() {
                                   style={{
                                     background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`,
                                     borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
-                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/create`)}
-                                >
+                            }}
+                            onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/create`)}
+                          >
                                   <Plus className="w-6 h-6 mr-3" />
                                   Start Creating
                                 </Button>
@@ -1524,36 +1524,36 @@ export default function MarketplacePage() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="relative">
+                            <div className="relative hidden lg:block">
                               <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                              <div 
+                                className="absolute inset-0 opacity-20"
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
                                 <div 
-                                  className="absolute inset-0 opacity-20"
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
                                   style={{
                                     background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
                                   }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div 
-                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
-                                    }}
-                                  >
+                                >
                                     <Plus className="w-20 h-20 text-white" />
-                                  </div>
                                 </div>
-                                {/* Animated background elements */}
-                                {template?.configuration.theme.cardStyle === 'elevated' && (
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                                    className="absolute -top-12 -right-12 w-48 h-48 opacity-10"
-                                    style={{
-                                      background: `conic-gradient(from 0deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
-                                    }}
-                                  />
-                                )}
                               </div>
+                                {/* Animated background elements */}
+                              {template?.configuration.theme.cardStyle === 'elevated' && (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    className="absolute -top-12 -right-12 w-48 h-48 opacity-10"
+                                  style={{
+                                    background: `conic-gradient(from 0deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                  }}
+                                />
+                              )}
+                            </div>
                             </div>
                           </div>
                         </div>
@@ -1561,13 +1561,13 @@ export default function MarketplacePage() {
                     )}
 
                     {/* Mint NFTs Section */}
-                    {marketplace.allowMint && (
+                      {marketplace.allowMint && (
                       <motion.section
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.4 }}
                         className="py-16 px-6 rounded-3xl"
-                        style={{
+                            style={{
                           backgroundColor: `${marketplace.secondaryColor}05`,
                           borderColor: `${marketplace.secondaryColor}20`,
                           borderWidth: '1px'
@@ -1575,48 +1575,48 @@ export default function MarketplacePage() {
                       >
                         <div className="max-w-6xl mx-auto">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                            <div className="relative order-2 lg:order-1">
+                            <div className="relative order-2 lg:order-1 hidden lg:block">
                               <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                              <div 
+                                className="absolute inset-0 opacity-20"
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
                                 <div 
-                                  className="absolute inset-0 opacity-20"
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
                                   style={{
                                     background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
                                   }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div 
-                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
-                                    }}
-                                  >
+                                >
                                     <Zap className="w-20 h-20 text-white" />
-                                  </div>
                                 </div>
-                                {/* Animated sparkles */}
-                                {template?.configuration.theme.cardStyle === 'elevated' && (
-                                  <>
-                                    <motion.div
-                                      animate={{ 
-                                        scale: [1, 1.2, 1],
-                                        opacity: [0.3, 0.8, 0.3]
-                                      }}
-                                      transition={{ duration: 2, repeat: Infinity }}
-                                      className="absolute top-12 right-12 w-6 h-6 rounded-full"
-                                      style={{ background: marketplace.secondaryColor }}
-                                    />
-                                    <motion.div
-                                      animate={{ 
-                                        scale: [1, 1.3, 1],
-                                        opacity: [0.2, 0.7, 0.2]
-                                      }}
-                                      transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
-                                      className="absolute bottom-16 left-16 w-4 h-4 rounded-full"
-                                      style={{ background: marketplace.primaryColor }}
-                                    />
-                                  </>
-                                )}
                               </div>
+                                {/* Animated sparkles */}
+                              {template?.configuration.theme.cardStyle === 'elevated' && (
+                                <>
+                                  <motion.div
+                                    animate={{ 
+                                      scale: [1, 1.2, 1],
+                                      opacity: [0.3, 0.8, 0.3]
+                                    }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                      className="absolute top-12 right-12 w-6 h-6 rounded-full"
+                                    style={{ background: marketplace.secondaryColor }}
+                                  />
+                                  <motion.div
+                                    animate={{ 
+                                      scale: [1, 1.3, 1],
+                                      opacity: [0.2, 0.7, 0.2]
+                                    }}
+                                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                                      className="absolute bottom-16 left-16 w-4 h-4 rounded-full"
+                                    style={{ background: marketplace.primaryColor }}
+                                  />
+                                </>
+                              )}
+                            </div>
                             </div>
                             <div className="space-y-8 order-1 lg:order-2">
                               <div className="flex items-center gap-6">
@@ -1638,18 +1638,18 @@ export default function MarketplacePage() {
                                 Get your NFTs immediately with our fast and secure minting process.
                               </p>
                               <div className="flex flex-col sm:flex-row gap-4">
-                                <Button 
+                              <Button 
                                   size="lg"
                                   className="w-full sm:w-auto text-lg px-8 py-6"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`,
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`,
                                     borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
+                                }}
                                   onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/mint`)}
-                                >
+                              >
                                   <Zap className="w-6 h-6 mr-3" />
-                                  Mint Now
-                                </Button>
+                                Mint Now
+                              </Button>
                                 <Button 
                                   variant="outline" 
                                   size="lg"
@@ -1670,7 +1670,7 @@ export default function MarketplacePage() {
                     )}
 
                     {/* Swap NFTs Section */}
-                    {marketplace.allowSwap && (
+                      {marketplace.allowSwap && (
                       <motion.section
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1688,7 +1688,7 @@ export default function MarketplacePage() {
                               <div className="flex items-center gap-6">
                                 <div 
                                   className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
-                                  style={{
+                            style={{
                                     background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
                                   }}
                                 >
@@ -1710,9 +1710,9 @@ export default function MarketplacePage() {
                                   style={{
                                     background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`,
                                     borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
-                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/swap`)}
-                                >
+                            }}
+                            onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/swap`)}
+                          >
                                   <ArrowLeftRight className="w-6 h-6 mr-3" />
                                   Start Swapping
                                 </Button>
@@ -1730,35 +1730,35 @@ export default function MarketplacePage() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="relative">
+                            <div className="relative hidden lg:block">
                               <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                              <div 
+                                className="absolute inset-0 opacity-20"
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
                                 <div 
-                                  className="absolute inset-0 opacity-20"
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
                                   style={{
                                     background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
                                   }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div 
-                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
-                                    }}
-                                  >
+                                >
                                     <ArrowLeftRight className="w-20 h-20 text-white" />
-                                  </div>
                                 </div>
-                                {/* Animated arrows */}
-                                {template?.configuration.theme.cardStyle === 'elevated' && (
-                                  <motion.div
-                                    animate={{ x: [-24, 24, -24] }}
-                                    transition={{ duration: 3, repeat: Infinity }}
-                                    className="absolute top-20 left-20"
-                                  >
-                                    <ArrowLeftRight className="w-10 h-10 opacity-30" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
-                                  </motion.div>
-                                )}
                               </div>
+                                {/* Animated arrows */}
+                              {template?.configuration.theme.cardStyle === 'elevated' && (
+                                <motion.div
+                                    animate={{ x: [-24, 24, -24] }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                    className="absolute top-20 left-20"
+                                >
+                                    <ArrowLeftRight className="w-10 h-10 opacity-30" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
+                                </motion.div>
+                              )}
+                            </div>
                             </div>
                           </div>
                         </div>
@@ -1766,13 +1766,13 @@ export default function MarketplacePage() {
                     )}
 
                     {/* Trade NFTs Section */}
-                    {marketplace.allowTrading && (
+                      {marketplace.allowTrading && (
                       <motion.section
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.6 }}
                         className="py-16 px-6 rounded-3xl"
-                        style={{
+                            style={{
                           backgroundColor: `${marketplace.secondaryColor}05`,
                           borderColor: `${marketplace.secondaryColor}20`,
                           borderWidth: '1px'
@@ -1780,7 +1780,7 @@ export default function MarketplacePage() {
                       >
                         <div className="max-w-6xl mx-auto">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                            <div className="relative order-2 lg:order-1">
+                            <div className="relative order-2 lg:order-1 hidden lg:block">
                               <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
                                 <div 
                                   className="absolute inset-0 opacity-20"
@@ -1841,23 +1841,23 @@ export default function MarketplacePage() {
                                 Track price movements and make informed trading decisions.
                               </p>
                               <div className="flex flex-col sm:flex-row gap-4">
-                                <Button 
+                              <Button 
                                   size="lg"
                                   className="w-full sm:w-auto text-lg px-8 py-6"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`,
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`,
                                     borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
+                                }}
                                   onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/trade`)}
-                                >
+                              >
                                   <TrendingUp className="w-6 h-6 mr-3" />
-                                  Start Trading
-                                </Button>
+                                Start Trading
+                              </Button>
                                 <Button 
                                   variant="outline" 
                                   size="lg"
                                   className="w-full sm:w-auto text-lg px-8 py-6"
-                                  style={{
+                    style={{
                                     borderColor: `${marketplace.primaryColor}40`,
                                     color: marketplace.primaryColor,
                                     borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
@@ -1865,13 +1865,13 @@ export default function MarketplacePage() {
                                 >
                                   View Analytics
                                 </Button>
-                              </div>
-                            </div>
-                          </div>
+                        </div>
+                        </div>
+                      </div>
                         </div>
                       </motion.section>
                     )}
-                  </div>
+                        </div>
                 )}
 
                 {/* About Marketplace Section */}
@@ -2026,22 +2026,22 @@ export default function MarketplacePage() {
                   transition={{ duration: 0.6, delay: 0.8 }}
                   className="space-y-6"
                 >
-                  <Card 
+                <Card
                     className="card-theme overflow-hidden"
-                    style={{
+                  style={{
                       background: template?.configuration.theme.cardStyle === 'elevated' 
                         ? `linear-gradient(135deg, ${marketplace.primaryColor}08, ${marketplace.secondaryColor}08)`
                         : `linear-gradient(135deg, ${marketplace.primaryColor}05, ${marketplace.secondaryColor}05)`,
                       borderColor: `${marketplace.primaryColor}20`,
                       borderRadius: template?.configuration.theme.borderRadius === 'large' ? '20px' : 
                                    template?.configuration.theme.borderRadius === 'medium' ? '12px' : '8px'
-                    }}
-                  >
-                    <CardHeader>
+                  }}
+                >
+                  <CardHeader>
                       <div className="flex items-center gap-3">
                         <div 
                           className="w-12 h-12 rounded-full flex items-center justify-center"
-                          style={{
+                        style={{
                             background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
                           }}
                         >
@@ -2082,8 +2082,8 @@ export default function MarketplacePage() {
                           <p className="text-sm text-muted-foreground">
                             Carbon-negative blockchain with minimal environmental impact
                           </p>
-                        </div>
                       </div>
+                        </div>
                       
                       {/* Additional Algorand Features */}
                       <div className="mt-6 pt-6 border-t border-border">
@@ -2091,23 +2091,23 @@ export default function MarketplacePage() {
                           <div className="text-center">
                             <div className="text-2xl font-bold text-foreground mb-1">4s</div>
                             <div className="text-xs text-muted-foreground">Block Time</div>
-                          </div>
+                        </div>
                           <div className="text-center">
                             <div className="text-2xl font-bold text-foreground mb-1">1000+</div>
                             <div className="text-xs text-muted-foreground">TPS</div>
-                          </div>
+                      </div>
                           <div className="text-center">
                             <div className="text-2xl font-bold text-foreground mb-1">$0.001</div>
                             <div className="text-xs text-muted-foreground">Avg Fee</div>
-                          </div>
+                        </div>
                           <div className="text-center">
                             <div className="text-2xl font-bold text-foreground mb-1">24/7</div>
                             <div className="text-xs text-muted-foreground">Uptime</div>
-                          </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CardContent>
+                </Card>
                 </motion.section>
 
                 {/* Collections Table */}
