@@ -184,6 +184,7 @@ interface Marketplace {
   template: string
   primaryColor: string
   secondaryColor: string
+  accentColor?: string
   paymentMethod: string
   walletAddress: string
   status: "draft" | "pending" | "approved" | "rejected"
@@ -191,6 +192,7 @@ interface Marketplace {
   allowSwap: boolean
   allowMint?: boolean
   allowTrading?: boolean
+  allowCreate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -1078,7 +1080,7 @@ export default function MarketplacePage() {
 
         {/* Main Content - Details Page Layout with Magic Eden Style */}
         <main
-          className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300"
+          className="min-h-screen bg-background text-foreground transition-colors duration-300"
         >
           <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
             <div className="grid gap-4 sm:gap-6 lg:gap-8">
@@ -1227,214 +1229,890 @@ export default function MarketplacePage() {
                 </Card>
 
                 {/* Analytics Section */}
-                <Card
-                  className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-300"
-                  style={{
-                    backgroundColor: isDarkMode
-                      ? (template?.configuration.theme.backgroundColor || '#1f2937')
-                      : (template?.configuration.theme.backgroundColor || '#ffffff'),
-                    borderColor: `${marketplace.primaryColor}20`
-                  }}
+                <motion.section
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="space-y-6"
                 >
-                  <CardHeader>
-                    <CardTitle
-                      className="text-lg sm:text-xl text-gray-900 dark:text-gray-100"
-                      style={{
-                        color: isDarkMode
-                          ? (template?.configuration.theme.textColor || '#f9fafb')
-                          : (template?.configuration.theme.textColor || '#000000')
-                      }}
-                    >
-                      Marketplace Analytics
-                    </CardTitle>
-                    <CardDescription
-                      className="text-gray-600 dark:text-gray-400"
-                      style={{
-                        color: isDarkMode
-                          ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                          : `${template?.configuration.theme.textColor || '#000000'}80`
-                      }}
-                    >
-                      Key metrics and performance data
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
+                  <Card
+                    className="card-theme"
+                    style={{
+                      backgroundColor: isDarkMode
+                        ? (template?.configuration.theme.backgroundColor || '#1f2937')
+                        : (template?.configuration.theme.backgroundColor || '#ffffff'),
+                      borderColor: `${marketplace.primaryColor}20`
+                    }}
+                  >
+                    <CardHeader>
+                      <CardTitle
+                        className="text-lg sm:text-xl text-foreground"
                         style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
+                          color: isDarkMode
+                            ? (template?.configuration.theme.textColor || '#f9fafb')
+                            : (template?.configuration.theme.textColor || '#000000')
                         }}
                       >
+                        Marketplace Analytics
+                      </CardTitle>
+                      <CardDescription
+                        className="text-muted-foreground"
+                        style={{
+                          color: isDarkMode
+                            ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                            : `${template?.configuration.theme.textColor || '#000000'}80`
+                        }}
+                      >
+                        Key metrics and performance data
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
                         <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
+                          className="text-center p-3 sm:p-4 rounded-lg"
                           style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
+                            backgroundColor: `${marketplace.primaryColor}10`,
+                            borderColor: `${marketplace.primaryColor}20`
                           }}
                         >
-                          {collections.length}
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.length}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            Total Collections
+                          </div>
                         </div>
                         <div
-                          className="text-xs sm:text-sm"
+                          className="text-center p-3 sm:p-4 rounded-lg"
                           style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
+                            backgroundColor: `${marketplace.secondaryColor}10`,
+                            borderColor: `${marketplace.secondaryColor}20`
                           }}
                         >
-                          Total Collections
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.reduce((sum, collection) => sum + (collection.nftCount || 0), 0)}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            Total NFTs
+                          </div>
+                        </div>
+                        <div
+                          className="text-center p-3 sm:p-4 rounded-lg"
+                          style={{
+                            backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}10`,
+                            borderColor: `${marketplace.accentColor || marketplace.primaryColor}20`
+                          }}
+                        >
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.filter(c => c.inStock).length}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            Available
+                          </div>
+                        </div>
+                        <div
+                          className="text-center p-3 sm:p-4 rounded-lg"
+                          style={{
+                            backgroundColor: `${marketplace.primaryColor}10`,
+                            borderColor: `${marketplace.primaryColor}20`
+                          }}
+                        >
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.filter(c => c.allowSwap).length}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            Swappable
+                          </div>
+                        </div>
+                        <div
+                          className="text-center p-3 sm:p-4 rounded-lg"
+                          style={{
+                            backgroundColor: `${marketplace.secondaryColor}10`,
+                            borderColor: `${marketplace.secondaryColor}20`
+                          }}
+                        >
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.filter(c => c.type === 'nft').length}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            NFT Collections
+                          </div>
+                        </div>
+                        <div
+                          className="text-center p-3 sm:p-4 rounded-lg"
+                          style={{
+                            backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}10`,
+                            borderColor: `${marketplace.accentColor || marketplace.primaryColor}20`
+                          }}
+                        >
+                          <div
+                            className="text-lg sm:text-2xl font-bold mb-1"
+                            style={{
+                              color: isDarkMode
+                                ? (template?.configuration.theme.textColor || '#f9fafb')
+                                : (template?.configuration.theme.textColor || '#000000')
+                            }}
+                          >
+                            {collections.length > 0 ? (collections.reduce((sum, c) => sum + c.rating, 0) / collections.length).toFixed(1) : '0.0'}
+                          </div>
+                          <div
+                            className="text-xs sm:text-sm"
+                            style={{
+                              color: isDarkMode
+                                ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                                : `${template?.configuration.theme.textColor || '#000000'}80`
+                            }}
+                          >
+                            Avg Rating
+                          </div>
                         </div>
                       </div>
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
-                      >
-                        <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
-                          }}
-                        >
-                          {collections.length}
-                        </div>
-                        <div
-                          className="text-xs sm:text-sm"
-                          style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
-                          }}
-                        >
-                          Collections
-                        </div>
+                    </CardContent>
+                  </Card>
+                </motion.section>
+
+                {/* Dynamic Feature Sections */}
+                {(marketplace.allowCreate || marketplace.allowMint || marketplace.allowSwap || marketplace.allowTrading) && (
+                  <div className="space-y-12">
+                    {/* Section Divider */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border" />
                       </div>
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
-                      >
-                        <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
+                      <div className="relative flex justify-center">
+                        <div 
+                          className="px-4 py-2 rounded-full text-sm font-medium"
                           style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
+                            backgroundColor: `${marketplace.primaryColor}10`,
+                            color: marketplace.primaryColor,
+                            border: `1px solid ${marketplace.primaryColor}20`
                           }}
                         >
-                          {collections.reduce((sum, collection) => sum + (collection.nftCount || 0), 0)}
-                        </div>
-                        <div
-                          className="text-xs sm:text-sm"
-                          style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
-                          }}
-                        >
-                          Total NFTs
-                        </div>
-                      </div>
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
-                      >
-                        <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
-                          }}
-                        >
-                          {collections.filter(c => c.inStock).length}
-                        </div>
-                        <div
-                          className="text-xs sm:text-sm"
-                          style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
-                          }}
-                        >
-                          Available
-                        </div>
-                      </div>
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
-                      >
-                        <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
-                          }}
-                        >
-                          {collections.filter(c => c.allowSwap).length}
-                        </div>
-                        <div
-                          className="text-xs sm:text-sm"
-                          style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
-                          }}
-                        >
-                          Swappable
-                        </div>
-                      </div>
-                      <div
-                        className="text-center p-3 sm:p-4 rounded-lg"
-                        style={{
-                          backgroundColor: `${marketplace.primaryColor}10`,
-                          borderColor: `${marketplace.primaryColor}20`
-                        }}
-                      >
-                        <div
-                          className="text-lg sm:text-2xl font-bold mb-1"
-                          style={{
-                            color: isDarkMode
-                              ? (template?.configuration.theme.textColor || '#f9fafb')
-                              : (template?.configuration.theme.textColor || '#000000')
-                          }}
-                        >
-                          {collections.filter(c => c.type === 'nft').length}
-                        </div>
-                        <div
-                          className="text-xs sm:text-sm"
-                          style={{
-                            color: isDarkMode
-                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
-                              : `${template?.configuration.theme.textColor || '#000000'}80`
-                          }}
-                        >
-                          NFT Collections
+                          Marketplace Features
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    {/* Create NFT Section */}
+                    {marketplace.allowCreate && (
+                      <motion.section
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="py-16 px-6 rounded-3xl"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}05`,
+                          borderColor: `${marketplace.primaryColor}20`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <div className="max-w-6xl mx-auto">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div className="space-y-8">
+                              <div className="flex items-center gap-6">
+                                <div 
+                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                >
+                                  <Plus className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                  <h2 className="text-4xl font-bold text-foreground mb-2">Create NFT</h2>
+                                  <p className="text-xl text-muted-foreground">Design and mint your own unique NFTs</p>
+                                </div>
+                              </div>
+                              <p className="text-lg text-muted-foreground leading-relaxed">
+                                Design and mint your own unique NFTs on the Algorand blockchain. Create digital art, 
+                                collectibles, or utility tokens with our easy-to-use creation tools.
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/create`)}
+                                >
+                                  <Plus className="w-6 h-6 mr-3" />
+                                  Start Creating
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    borderColor: `${marketplace.primaryColor}40`,
+                                    color: marketplace.primaryColor,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                >
+                                  Learn More
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="relative">
+                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                                <div 
+                                  className="absolute inset-0 opacity-20"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div 
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                    }}
+                                  >
+                                    <Plus className="w-20 h-20 text-white" />
+                                  </div>
+                                </div>
+                                {/* Animated background elements */}
+                                {template?.configuration.theme.cardStyle === 'elevated' && (
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    className="absolute -top-12 -right-12 w-48 h-48 opacity-10"
+                                    style={{
+                                      background: `conic-gradient(from 0deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Mint NFTs Section */}
+                    {marketplace.allowMint && (
+                      <motion.section
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                        className="py-16 px-6 rounded-3xl"
+                        style={{
+                          backgroundColor: `${marketplace.secondaryColor}05`,
+                          borderColor: `${marketplace.secondaryColor}20`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <div className="max-w-6xl mx-auto">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div className="relative order-2 lg:order-1">
+                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                                <div 
+                                  className="absolute inset-0 opacity-20"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                  }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div 
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                    }}
+                                  >
+                                    <Zap className="w-20 h-20 text-white" />
+                                  </div>
+                                </div>
+                                {/* Animated sparkles */}
+                                {template?.configuration.theme.cardStyle === 'elevated' && (
+                                  <>
+                                    <motion.div
+                                      animate={{ 
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.3, 0.8, 0.3]
+                                      }}
+                                      transition={{ duration: 2, repeat: Infinity }}
+                                      className="absolute top-12 right-12 w-6 h-6 rounded-full"
+                                      style={{ background: marketplace.secondaryColor }}
+                                    />
+                                    <motion.div
+                                      animate={{ 
+                                        scale: [1, 1.3, 1],
+                                        opacity: [0.2, 0.7, 0.2]
+                                      }}
+                                      transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                                      className="absolute bottom-16 left-16 w-4 h-4 rounded-full"
+                                      style={{ background: marketplace.primaryColor }}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-8 order-1 lg:order-2">
+                              <div className="flex items-center gap-6">
+                                <div 
+                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                                  }}
+                                >
+                                  <Zap className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                  <h2 className="text-4xl font-bold text-foreground mb-2">Mint NFTs</h2>
+                                  <p className="text-xl text-muted-foreground">Mint from existing collections instantly</p>
+                                </div>
+                              </div>
+                              <p className="text-lg text-muted-foreground leading-relaxed">
+                                Mint from existing collections with instant blockchain verification. 
+                                Get your NFTs immediately with our fast and secure minting process.
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/mint`)}
+                                >
+                                  <Zap className="w-6 h-6 mr-3" />
+                                  Mint Now
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    borderColor: `${marketplace.secondaryColor}40`,
+                                    color: marketplace.secondaryColor,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                >
+                                  View Collections
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Swap NFTs Section */}
+                    {marketplace.allowSwap && (
+                      <motion.section
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.5 }}
+                        className="py-16 px-6 rounded-3xl"
+                        style={{
+                          backgroundColor: `${marketplace.primaryColor}05`,
+                          borderColor: `${marketplace.primaryColor}20`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <div className="max-w-6xl mx-auto">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div className="space-y-8">
+                              <div className="flex items-center gap-6">
+                                <div 
+                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                >
+                                  <ArrowLeftRight className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                  <h2 className="text-4xl font-bold text-foreground mb-2">Swap NFTs</h2>
+                                  <p className="text-xl text-muted-foreground">Trade NFTs with other collectors</p>
+                                </div>
+                              </div>
+                              <p className="text-lg text-muted-foreground leading-relaxed">
+                                Trade your NFTs with other collectors in a secure environment. 
+                                Create swap proposals and negotiate deals directly with other users.
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/swap`)}
+                                >
+                                  <ArrowLeftRight className="w-6 h-6 mr-3" />
+                                  Start Swapping
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    borderColor: `${marketplace.accentColor || marketplace.primaryColor}40`,
+                                    color: marketplace.accentColor || marketplace.primaryColor,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                >
+                                  View Offers
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="relative">
+                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                                <div 
+                                  className="absolute inset-0 opacity-20"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div 
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                    }}
+                                  >
+                                    <ArrowLeftRight className="w-20 h-20 text-white" />
+                                  </div>
+                                </div>
+                                {/* Animated arrows */}
+                                {template?.configuration.theme.cardStyle === 'elevated' && (
+                                  <motion.div
+                                    animate={{ x: [-24, 24, -24] }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                    className="absolute top-20 left-20"
+                                  >
+                                    <ArrowLeftRight className="w-10 h-10 opacity-30" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
+                                  </motion.div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Trade NFTs Section */}
+                    {marketplace.allowTrading && (
+                      <motion.section
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.6 }}
+                        className="py-16 px-6 rounded-3xl"
+                        style={{
+                          backgroundColor: `${marketplace.secondaryColor}05`,
+                          borderColor: `${marketplace.secondaryColor}20`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <div className="max-w-6xl mx-auto">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div className="relative order-2 lg:order-1">
+                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                                <div 
+                                  className="absolute inset-0 opacity-20"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`
+                                  }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div 
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`
+                                    }}
+                                  >
+                                    <TrendingUp className="w-20 h-20 text-white" />
+                                  </div>
+                                </div>
+                                {/* Animated chart lines */}
+                                {template?.configuration.theme.cardStyle === 'elevated' && (
+                                  <motion.div
+                                    animate={{ 
+                                      pathLength: [0, 1, 0],
+                                      opacity: [0, 1, 0]
+                                    }}
+                                    transition={{ duration: 4, repeat: Infinity }}
+                                    className="absolute bottom-12 left-12 w-32 h-20"
+                                  >
+                                    <svg viewBox="0 0 128 80" className="w-full h-full">
+                                      <motion.path
+                                        d="M8 64 L32 48 L48 56 L64 32 L80 40 L96 24 L112 16"
+                                        stroke={marketplace.primaryColor}
+                                        strokeWidth="4"
+                                        fill="none"
+                                        opacity="0.6"
+                                      />
+                                    </svg>
+                                  </motion.div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-8 order-1 lg:order-2">
+                              <div className="flex items-center gap-6">
+                                <div 
+                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`
+                                  }}
+                                >
+                                  <TrendingUp className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                  <h2 className="text-4xl font-bold text-foreground mb-2">Trade NFTs</h2>
+                                  <p className="text-xl text-muted-foreground">Buy and sell with real-time data</p>
+                                </div>
+                              </div>
+                              <p className="text-lg text-muted-foreground leading-relaxed">
+                                Buy and sell NFTs with real-time market data and analytics. 
+                                Track price movements and make informed trading decisions.
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.accentColor || marketplace.secondaryColor})`,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/trade`)}
+                                >
+                                  <TrendingUp className="w-6 h-6 mr-3" />
+                                  Start Trading
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    borderColor: `${marketplace.primaryColor}40`,
+                                    color: marketplace.primaryColor,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                >
+                                  View Analytics
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.section>
+                    )}
+                  </div>
+                )}
+
+                {/* About Marketplace Section */}
+                <motion.section
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.7 }}
+                  className="space-y-6"
+                >
+                  <Card 
+                    className="card-theme overflow-hidden"
+                    style={{
+                      background: template?.configuration.theme.cardStyle === 'elevated' 
+                        ? `linear-gradient(135deg, ${marketplace.secondaryColor}08, ${marketplace.primaryColor}08)`
+                        : `linear-gradient(135deg, ${marketplace.secondaryColor}05, ${marketplace.primaryColor}05)`,
+                      borderColor: `${marketplace.secondaryColor}20`,
+                      borderRadius: template?.configuration.theme.borderRadius === 'large' ? '20px' : 
+                                   template?.configuration.theme.borderRadius === 'medium' ? '12px' : '8px'
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-12 h-12 rounded-full flex items-center justify-center"
+                          style={{
+                            background: `linear-gradient(135deg, ${marketplace.secondaryColor}, ${marketplace.primaryColor})`
+                          }}
+                        >
+                          <Store className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl text-foreground">About {marketplace.businessName}</CardTitle>
+                          <CardDescription className="text-muted-foreground">
+                            Discover more about our marketplace and mission
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Marketplace Info */}
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="font-semibold text-foreground mb-2">Marketplace Overview</h3>
+                            <p className="text-muted-foreground leading-relaxed">
+                              {marketplace.description}
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${marketplace.primaryColor}20` }}
+                              >
+                                <Tag className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
+                              </div>
+                              <div>
+                                <div className="font-medium text-foreground">Category</div>
+                                <div className="text-sm text-muted-foreground capitalize">{marketplace.category}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${marketplace.secondaryColor}20` }}
+                              >
+                                <Layout className="w-4 h-4" style={{ color: marketplace.secondaryColor }} />
+                              </div>
+                              <div>
+                                <div className="font-medium text-foreground">Template</div>
+                                <div className="text-sm text-muted-foreground capitalize">{marketplace.template}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}20` }}
+                              >
+                                <Wallet className="w-4 h-4" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
+                              </div>
+                              <div>
+                                <div className="font-medium text-foreground">Payment Method</div>
+                                <div className="text-sm text-muted-foreground">{marketplace.paymentMethod}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Features Enabled */}
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-foreground mb-2">Available Features</h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            {marketplace.allowCreate && (
+                              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
+                                <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
+                                <span className="text-sm font-medium text-foreground">Create NFTs</span>
+                              </div>
+                            )}
+                            {marketplace.allowMint && (
+                              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.secondaryColor}10` }}>
+                                <CheckCircle className="w-4 h-4" style={{ color: marketplace.secondaryColor }} />
+                                <span className="text-sm font-medium text-foreground">Mint NFTs</span>
+                              </div>
+                            )}
+                            {marketplace.allowSwap && (
+                              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}10` }}>
+                                <CheckCircle className="w-4 h-4" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
+                                <span className="text-sm font-medium text-foreground">Swap NFTs</span>
+                              </div>
+                            )}
+                            {marketplace.allowTrading && (
+                              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
+                                <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
+                                <span className="text-sm font-medium text-foreground">Trade NFTs</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Website Link */}
+                          {marketplace.website && (
+                            <div className="pt-4 border-t border-border">
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                style={{
+                                  borderColor: `${marketplace.primaryColor}40`,
+                                  color: marketplace.primaryColor,
+                                  borderRadius: template?.configuration.theme.borderRadius === 'large' ? '12px' : '8px'
+                                }}
+                                asChild
+                              >
+                                <Link href={marketplace.website} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Visit Official Website
+                                </Link>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.section>
+
+                {/* Algorand Blockchain Information Section */}
+                <motion.section
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                  className="space-y-6"
+                >
+                  <Card 
+                    className="card-theme overflow-hidden"
+                    style={{
+                      background: template?.configuration.theme.cardStyle === 'elevated' 
+                        ? `linear-gradient(135deg, ${marketplace.primaryColor}08, ${marketplace.secondaryColor}08)`
+                        : `linear-gradient(135deg, ${marketplace.primaryColor}05, ${marketplace.secondaryColor}05)`,
+                      borderColor: `${marketplace.primaryColor}20`,
+                      borderRadius: template?.configuration.theme.borderRadius === 'large' ? '20px' : 
+                                   template?.configuration.theme.borderRadius === 'medium' ? '12px' : '8px'
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-12 h-12 rounded-full flex items-center justify-center"
+                          style={{
+                            background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                          }}
+                        >
+                          <Shield className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl text-foreground">Powered by Algorand</CardTitle>
+                          <CardDescription className="text-muted-foreground">
+                            Secure, fast, and sustainable blockchain technology
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Security */}
+                        <div className="text-center p-4 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
+                          <Shield className="w-8 h-8 mx-auto mb-3" style={{ color: marketplace.primaryColor }} />
+                          <h3 className="font-semibold text-foreground mb-2">Secure</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Pure Proof-of-Stake consensus ensures maximum security with minimal energy consumption
+                          </p>
+                        </div>
+                        
+                        {/* Speed */}
+                        <div className="text-center p-4 rounded-lg" style={{ backgroundColor: `${marketplace.secondaryColor}10` }}>
+                          <Zap className="w-8 h-8 mx-auto mb-3" style={{ color: marketplace.secondaryColor }} />
+                          <h3 className="font-semibold text-foreground mb-2">Fast</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Finality in under 4 seconds with instant transaction confirmation
+                          </p>
+                        </div>
+                        
+                        {/* Sustainable */}
+                        <div className="text-center p-4 rounded-lg" style={{ backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}10` }}>
+                          <Globe className="w-8 h-8 mx-auto mb-3" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
+                          <h3 className="font-semibold text-foreground mb-2">Sustainable</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Carbon-negative blockchain with minimal environmental impact
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Algorand Features */}
+                      <div className="mt-6 pt-6 border-t border-border">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-foreground mb-1">4s</div>
+                            <div className="text-xs text-muted-foreground">Block Time</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-foreground mb-1">1000+</div>
+                            <div className="text-xs text-muted-foreground">TPS</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-foreground mb-1">$0.001</div>
+                            <div className="text-xs text-muted-foreground">Avg Fee</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-foreground mb-1">24/7</div>
+                            <div className="text-xs text-muted-foreground">Uptime</div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.section>
 
                 {/* Collections Table */}
                 <Card
-                  className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-300"
+                  className="card-theme"
                   style={{
                     backgroundColor: isDarkMode
                       ? (template?.configuration.theme.backgroundColor || '#1f2937')
@@ -1446,7 +2124,7 @@ export default function MarketplacePage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                       <div>
                         <CardTitle
-                          className="text-lg sm:text-xl text-gray-900 dark:text-gray-100"
+                          className="text-lg sm:text-xl text-foreground"
                           style={{
                             color: isDarkMode
                               ? (template?.configuration.theme.textColor || '#f9fafb')
@@ -1456,7 +2134,7 @@ export default function MarketplacePage() {
                           Collections
                         </CardTitle>
                         <CardDescription
-                          className="text-sm text-gray-600 dark:text-gray-400"
+                          className="text-sm text-muted-foreground"
                           style={{
                             color: isDarkMode
                               ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
@@ -1878,7 +2556,7 @@ export default function MarketplacePage() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="border-t border-gray-200 dark:border-gray-700 py-12 mt-16"
+            className="border-t border-border py-12 mt-16"
             style={{ backgroundColor: template?.configuration.theme.backgroundColor || "#F9FAFB" }}
           >
             <div className="container mx-auto px-4 lg:px-6">
@@ -1906,7 +2584,7 @@ export default function MarketplacePage() {
                     )}
                     <h3 className="font-bold text-xl">{marketplace.businessName}</h3>
                   </div>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+                  <p className="text-muted-foreground mb-6 max-w-md">
                     {marketplace.description}
                   </p>
                   <div className="flex gap-3">
@@ -1936,18 +2614,18 @@ export default function MarketplacePage() {
 
                 {/* Quick Links */}
                 <div>
-                  <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Quick Links</h4>
+                  <h4 className="font-semibold mb-4 text-foreground">Quick Links</h4>
                   <div className="space-y-3">
-                    <Link href="#collections" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#collections" className="block text-muted-foreground hover:text-foreground transition-colors">
                       Collections
                     </Link>
-                    <Link href="#about" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#about" className="block text-muted-foreground hover:text-foreground transition-colors">
                       About Us
                     </Link>
-                    <Link href="#contact" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#contact" className="block text-muted-foreground hover:text-foreground transition-colors">
                       Contact
                     </Link>
-                    <Link href="#support" className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#support" className="block text-muted-foreground hover:text-foreground transition-colors">
                       Support
                     </Link>
                   </div>
@@ -1955,8 +2633,8 @@ export default function MarketplacePage() {
 
                 {/* Contact Info */}
                 <div>
-                  <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Contact Info</h4>
-                  <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                  <h4 className="font-semibold mb-4 text-foreground">Contact Info</h4>
+                  <div className="space-y-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4" />
                       <span>info@{marketplace.businessName.toLowerCase().replace(/\s+/g, '')}.com</span>
@@ -1982,19 +2660,19 @@ export default function MarketplacePage() {
               </div>
 
               {/* Bottom Section */}
-              <div className="border-t border-gray-200 dark:border-gray-700 mt-8 pt-8">
+              <div className="border-t border-border mt-8 pt-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     <p>&copy; 2024 {marketplace.businessName}. All rights reserved.</p>
                   </div>
                   <div className="flex items-center gap-6 text-sm">
-                    <Link href="#privacy" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                       Privacy Policy
                     </Link>
-                    <Link href="#terms" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#terms" className="text-muted-foreground hover:text-foreground transition-colors">
                       Terms of Service
                     </Link>
-                    <Link href="#cookies" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <Link href="#cookies" className="text-muted-foreground hover:text-foreground transition-colors">
                       Cookie Policy
                     </Link>
                   </div>
