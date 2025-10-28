@@ -67,7 +67,7 @@ export default function Header({
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 bg-white dark:bg-gray-800/80 backdrop-blur-sm ${className}`}
+      className={`border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-sm ${className}`}
     >
       <div className="container-responsive py-4 sm:py-6 flex items-center justify-between">
         <motion.div
@@ -78,7 +78,7 @@ export default function Header({
         >
           <Link href="/">
             <motion.span 
-              className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white"
+              className="text-xl sm:text-2xl font-black tracking-tight text-foreground"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -109,7 +109,7 @@ export default function Header({
             >
               <Link href={item.href}>
                 <motion.span
-                  className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   whileHover={{ 
                     scale: 1.05,
                     y: -2,
@@ -142,9 +142,9 @@ export default function Header({
                 rotate: -5,
                 transition: { type: "spring", stiffness: 400, damping: 17 }
               }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              className="p-2 hover:bg-accent rounded-full transition-colors"
             >
-              <Search className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Search className="w-5 h-5 text-muted-foreground" />
             </motion.button>
           )}
           {showThemeToggle && (
@@ -175,7 +175,7 @@ export default function Header({
                     <Button
                       variant="outline"
                       onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                      className="border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 flex items-center gap-2"
+                      className="border-border text-muted-foreground hover:bg-accent hover:text-foreground rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-background flex items-center gap-2"
                     >
                       <Wallet className="w-4 h-4" />
                       {user?.walletAddress ? formatAddress(user.walletAddress) : "Wallet"}
@@ -190,12 +190,12 @@ export default function Header({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+                      className="absolute right-0 top-full mt-2 w-64 bg-popover border border-border rounded-lg shadow-lg z-50"
                     >
                       {/* Wallet Address Display */}
-                      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Wallet Address</p>
-                        <p className="font-mono text-sm break-all text-gray-900 dark:text-gray-100">
+                      <div className="px-3 py-2 border-b border-border">
+                        <p className="text-xs text-muted-foreground mb-1">Wallet Address</p>
+                        <p className="font-mono text-sm break-all text-foreground">
                           {user?.walletAddress || "No address"}
                         </p>
                       </div>
@@ -205,13 +205,13 @@ export default function Header({
                         <Link 
                           href="/dashboard/user" 
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="flex items-center px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                         >
                           <User className="w-4 h-4 mr-2" />
                           Go to Dashboard
                         </Link>
                         
-                        <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        <div className="border-t border-border my-1"></div>
                         
                         <button
                           onClick={() => {
@@ -248,7 +248,7 @@ export default function Header({
                     >
                       <Button
                         variant="outline"
-                        className="border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 flex items-center gap-2"
+                        className="border-gray-200 dark:border-gray-600 text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700 hover:hover:text-foreground rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-background flex items-center gap-2"
                       >
                         <Wallet className="w-4 h-4" />
                         Connect Wallet
@@ -269,9 +269,9 @@ export default function Header({
             className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             {isMobileMenuOpen ? (
-              <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <X className="w-5 h-5 text-muted-foreground" />
             ) : (
-              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Menu className="w-5 h-5 text-muted-foreground" />
             )}
           </motion.button>
         </motion.div>
@@ -285,7 +285,7 @@ export default function Header({
           height: isMobileMenuOpen ? "auto" : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="md:hidden overflow-hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+        className="md:hidden overflow-hidden bg-background border-t border-border"
       >
         <div className="px-4 py-6 space-y-4">
           {/* Mobile Navigation Links */}
@@ -305,7 +305,7 @@ export default function Header({
                 <Link 
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-3 px-4 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="block py-3 px-4 text-base font-medium text-muted-foreground hover:hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -315,7 +315,7 @@ export default function Header({
 
           {/* Mobile Auth Buttons */}
           {showAuthButtons && (
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-4 border-t border-border">
               <div className="space-y-3">
                 {isAuthenticated && user ? (
                   <motion.div
@@ -327,7 +327,7 @@ export default function Header({
                     <Button
                       variant="outline"
                       onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                      className="w-full border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-lg py-3 text-sm font-medium bg-white dark:bg-gray-800 flex items-center justify-center gap-2"
+                      className="w-full border-gray-200 dark:border-gray-600 text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700 hover:hover:text-foreground rounded-lg py-3 text-sm font-medium bg-background flex items-center justify-center gap-2"
                     >
                       <Wallet className="w-4 h-4" />
                       {user?.walletAddress ? formatAddress(user.walletAddress) : "Wallet"}
@@ -341,12 +341,12 @@ export default function Header({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+                        className="absolute left-0 right-0 top-full mt-2 bg-background border border-border rounded-lg shadow-lg z-50"
                       >
                         {/* Wallet Address Display */}
-                        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Wallet Address</p>
-                          <p className="font-mono text-sm break-all text-gray-900 dark:text-gray-100">
+                        <div className="px-3 py-2 border-b border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Wallet Address</p>
+                          <p className="font-mono text-sm break-all text-foreground">
                             {user?.walletAddress || "No address"}
                           </p>
                         </div>
@@ -359,13 +359,13 @@ export default function Header({
                               setIsUserMenuOpen(false)
                               setIsMobileMenuOpen(false)
                             }}
-                            className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            className="flex items-center px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                           >
                             <User className="w-4 h-4 mr-2" />
                             Go to Dashboard
                           </Link>
                           
-                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                          <div className="border-t border-border my-1"></div>
                           
                           <button
                             onClick={() => {
@@ -391,7 +391,7 @@ export default function Header({
                     <Link href="/auth/user" onClick={() => setIsMobileMenuOpen(false)}>
                       <Button
                         variant="outline"
-                        className="w-full border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-lg py-3 text-sm font-medium bg-white dark:bg-gray-800 flex items-center justify-center gap-2"
+                        className="w-full border-gray-200 dark:border-gray-600 text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700 hover:hover:text-foreground rounded-lg py-3 text-sm font-medium bg-background flex items-center justify-center gap-2"
                       >
                         <Wallet className="w-4 h-4" />
                         Connect Wallet

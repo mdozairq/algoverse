@@ -18,16 +18,14 @@ export function ThemeWrapper({ children }: ThemeWrapperProps) {
   }, [])
 
   if (!mounted) {
-    return <div className="min-h-screen bg-gray-50">{children}</div>
+    return <div className="min-h-screen bg-background text-foreground">{children}</div>
   }
 
   const currentTheme = theme === "system" ? systemTheme : theme
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
-        currentTheme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
-      }`}
+      className="min-h-screen bg-background text-foreground transition-colors duration-300"
       data-theme={currentTheme}
     >
       {children}

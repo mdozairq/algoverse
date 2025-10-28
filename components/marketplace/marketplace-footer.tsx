@@ -95,10 +95,10 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
           {/* Brand Section */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              <h3 className="text-lg font-bold text-foreground mb-2">
                 {marketplace.businessName}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2">
                 {marketplace.description}
               </p>
             </div>
@@ -107,7 +107,7 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: marketplace.primaryColor }}
               />
-              <span className="text-xs text-gray-500 capitalize">
+              <span className="text-xs text-muted-foreground capitalize">
                 {marketplace.category} • {marketplace.template} template
               </span>
             </div>
@@ -115,27 +115,27 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Quick Links</h4>
+            <h4 className="text-sm font-semibold text-foreground">Quick Links</h4>
             <nav className="space-y-2">
-              <Link href="#products" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="#products" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Products
               </Link>
               {marketplace.allowSwap && (
-                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/swap`} className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/swap`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                   Swap
                 </Link>
               )}
               {marketplace.allowMint && (
-                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/mint`} className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/mint`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                   Mint
                 </Link>
               )}
               {marketplace.allowTrading && (
-                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/trade`} className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/trade`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                   Trade
                 </Link>
               )}
-              <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/create`} className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/create`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Create
               </Link>
             </nav>
@@ -143,18 +143,18 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
 
           {/* Support */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Support</h4>
+            <h4 className="text-sm font-semibold text-foreground">Support</h4>
             <nav className="space-y-2">
-              <Link href="#help" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="#help" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Help Center
               </Link>
-              <Link href="#contact" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="#contact" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Contact Us
               </Link>
-              <Link href="#privacy" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="#privacy" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="#terms" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Link href="#terms" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Terms of Service
               </Link>
             </nav>
@@ -162,7 +162,7 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
 
           {/* Connect */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Connect</h4>
+            <h4 className="text-sm font-semibold text-foreground">Connect</h4>
             <div className="flex flex-col gap-3">
               {marketplace.website && (
                 <Button 
@@ -218,15 +218,15 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-200 dark:border-gray-700 mt-8 pt-6">
+        <div className="border-t border-border mt-8 pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Heart className="w-4 h-4 text-red-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 Powered by NFT Marketplace Platform
               </span>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>© 2024 {marketplace.businessName}</span>
               <span>•</span>
               <span>All rights reserved</span>

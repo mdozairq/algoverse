@@ -197,29 +197,104 @@
     min-width: 44px;
   }
 
-  /* Theme-aware select utilities */
+  /* Theme-aware form utilities */
+  .input-theme {
+    @apply border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none;
+  }
+
   .select-theme {
-    @apply border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20 focus:ring-2 focus:ring-ring focus:ring-offset-2;
+    @apply border-input bg-background text-foreground hover:bg-accent/50 focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
 
   .select-theme-filter {
-    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50;
   }
 
   .select-theme-sort {
-    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+    @apply w-40 border-input bg-background text-foreground hover:bg-accent/50;
   }
 
   .select-theme-currency {
-    @apply w-20 h-8 sm:h-10 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+    @apply w-20 h-8 sm:h-10 border-input bg-background text-foreground hover:bg-accent/50;
   }
 
   .select-theme-full {
-    @apply w-full border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20;
+    @apply w-full border-input bg-background text-foreground hover:bg-accent/50;
   }
 
   .select-theme-rounded {
-    @apply h-12 border-input bg-background text-foreground hover:bg-accent/50 dark:hover:bg-accent/20 rounded-full;
+    @apply h-12 border-input bg-background text-foreground hover:bg-accent/50 rounded-full;
+  }
+
+  /* Theme-aware button utilities */
+  .btn-theme-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .btn-theme-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .btn-theme-outline {
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .btn-theme-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  /* Theme-aware card utilities */
+  .card-theme {
+    @apply bg-card text-card-foreground border border-border rounded-lg shadow-sm;
+  }
+
+  .card-theme-header {
+    @apply text-card-foreground text-lg font-semibold;
+  }
+
+  .card-theme-content {
+    @apply text-muted-foreground text-sm;
+  }
+
+  /* Theme-aware navigation utilities */
+  .nav-theme-link {
+    @apply text-muted-foreground hover:text-foreground font-medium transition-colors;
+  }
+
+  .nav-theme-link-active {
+    @apply text-foreground font-medium;
+  }
+
+  /* Theme-aware badge utilities */
+  .badge-theme {
+    @apply bg-secondary text-secondary-foreground border border-border px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-theme-primary {
+    @apply bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-theme-outline {
+    @apply border border-border bg-background text-foreground px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Theme-aware divider utilities */
+  .divider-theme {
+    @apply border-border border-t;
+  }
+
+  /* Theme-aware skeleton utilities */
+  .skeleton-theme {
+    @apply bg-muted animate-pulse rounded;
+  }
+
+  /* Theme-aware error utilities */
+  .error-theme {
+    @apply text-destructive text-sm;
+  }
+
+  .error-theme-background {
+    @apply bg-card border border-border border-l-4 border-l-destructive p-4 rounded-r-md;
   }
 }
 

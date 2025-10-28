@@ -129,7 +129,7 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                 </div>
               )}
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold text-foreground">
                 {marketplace.businessName}
               </h1>
               <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                 </Badge>
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-gray-500">Live</span>
+                  <span className="text-xs text-muted-foreground">Live</span>
                 </div>
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
               transition={{ duration: 0.3 }}
               className="md:hidden overflow-hidden"
             >
-              <div className="py-4 space-y-4 border-t border-gray-200 mt-4">
+              <div className="py-4 space-y-4 border-t border-border mt-4">
                 <nav className="flex flex-col gap-3">
                   <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Products

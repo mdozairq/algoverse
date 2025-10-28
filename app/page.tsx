@@ -252,7 +252,7 @@ export default function HomePage() {
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-gray-900 text-white dark:bg-black"
+          className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground"
         >
           <div className="container-responsive text-center">
             <motion.h2
@@ -271,7 +271,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-base sm:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-12 max-w-2xl mx-auto px-4"
+              className="text-base sm:text-lg lg:text-xl text-primary-foreground/80 mb-8 sm:mb-12 max-w-2xl mx-auto px-4"
             >
               Join thousands of users already trading event NFTs on our platform
             </motion.p>

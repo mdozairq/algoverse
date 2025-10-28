@@ -107,16 +107,16 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <Sidebar className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:block">
-            <SidebarHeader className="border-b border-gray-200 dark:border-gray-700">
+          <Sidebar className="bg-card border-r border-border hidden md:block">
+            <SidebarHeader className="border-b border-border">
               <div className="flex items-center gap-2 px-4 py-3">
                 {role === "admin" && <Shield className="w-6 h-6 text-red-600" />}
                 {role === "merchant" && <Store className="w-6 h-6 text-blue-600" />}
                 {role === "user" && <User className="w-6 h-6 text-green-600" />}
-                <span className="text-xl font-black tracking-tight text-gray-900 dark:text-white">ALGOVERSE.</span>
+                <span className="text-xl font-black tracking-tight text-foreground">ALGOVERSE.</span>
               </div>
             </SidebarHeader>
 
@@ -127,7 +127,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                     <SidebarMenuButton asChild>
                       <Link
                         href={item.href}
-                        className="flex items-center gap-3 font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="flex items-center gap-3 font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
                       >
                         <item.icon className="w-4 h-4" />
                         <span>{item.label}</span>
@@ -138,23 +138,23 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
               </SidebarMenu>
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-gray-200 dark:border-gray-700">
+            <SidebarFooter className="border-t border-border">
               <SidebarMenu>
                 <SidebarMenuItem>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <SidebarMenuButton className="w-full text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <SidebarMenuButton className="w-full text-muted-foreground hover:text-foreground hover:bg-accent">
                         <User className="w-4 h-4" />
                         <span className="capitalize font-medium">{role} Account</span>
                       </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       side="top"
-                      className="w-[--radix-popper-anchor-width] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="w-[--radix-popper-anchor-width] bg-popover border-border"
                     >
                       {/* User Info */}
-                      <div className="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      <div className="px-2 py-1.5 border-b border-border">
+                        <div className="text-sm font-medium text-foreground">
                           {user?.email || `${role} Account`}
                         </div>
                         <div className="mt-2">
@@ -162,17 +162,17 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
                         </div>
                       </div>
                       
-                      <DropdownMenuItem className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <DropdownMenuItem className="text-muted-foreground hover:text-foreground hover:bg-accent">
                         <User className="w-4 h-4 mr-2" />
                         Profile
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <DropdownMenuItem className="text-muted-foreground hover:text-foreground hover:bg-accent">
                         <Settings className="w-4 h-4 mr-2" />
                         Settings
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={handleLogout}
-                        className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="text-muted-foreground hover:text-foreground hover:bg-accent"
                       >
                         <LogOut className="w-4 h-4 mr-2" />
                         Sign Out
@@ -185,13 +185,13 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           </Sidebar>
 
           <SidebarInset className="flex-1">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-200 dark:border-gray-700 px-4 bg-white dark:bg-gray-800">
-              <SidebarTrigger className="-ml-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white md:hidden" />
+            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-4 bg-card">
+              <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground md:hidden" />
               <div className="ml-auto flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="rounded-full text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <Bell className="w-4 h-4" />
                 </Button>

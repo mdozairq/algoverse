@@ -138,8 +138,8 @@ export default function MarketplacePage() {
                     }}
                     className="h-full"
                   >
-                    <Card className="overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full flex flex-col">
-                      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 relative">
+                    <Card className="overflow-hidden border border-border bg-card h-full flex flex-col">
+                      <div className="aspect-[4/3] bg-muted relative">
                         {(() => {
                           const bannerUrl = Array.isArray(marketplace.banner) 
                             ? marketplace.banner[0] 
@@ -158,12 +158,12 @@ export default function MarketplacePage() {
                                 background: `linear-gradient(135deg, ${marketplace.primaryColor}20, ${marketplace.secondaryColor}20)` 
                               }}
                             >
-                              <Store className="w-16 h-16 text-gray-400" />
+                              <Store className="w-16 h-16 text-muted-foreground" />
                             </div>
                           )
                         })()}
                         <div className="absolute top-2 right-2">
-                          <Badge className="bg-white/90 text-gray-800 border-gray-200">
+                          <Badge className="bg-background/90 text-foreground border-border">
                             {marketplace.template}
                           </Badge>
                         </div>
