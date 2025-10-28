@@ -151,30 +151,27 @@ export default function MarketplaceManagement() {
   const [showWalletDialog, setShowWalletDialog] = useState(false)
   const [editingMarketplace, setEditingMarketplace] = useState<Marketplace | null>(null)
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [showAddCollectionDialog, setShowAddCollectionDialog] = useState(false)
   const [showEditCollectionDialog, setShowEditCollectionDialog] = useState(false)
   const [showNFTManagementDialog, setShowNFTManagementDialog] = useState(false)
   const [selectedCollectionForNFTs, setSelectedCollectionForNFTs] = useState<Collection | null>(null)
   const [newCollection, setNewCollection] = useState({
     name: "",
     description: "",
-    price: 0,
     currency: "ALGO",
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
-    ipfsHash: "",
-    nftCount: 1 // Minimum 1 NFT required
+    ipfsHash: ""
   })
   const [editCollectionData, setEditCollectionData] = useState({
     name: "",
     description: "",
-    price: 0,
     currency: "ALGO",
     category: "",
     type: "nft" as "nft" | "event" | "merchandise",
     image: "",
-    ipfsHash: "",
-    nftCount: 1
+    ipfsHash: ""
   })
   const [newNFT, setNewNFT] = useState({
     name: "",
@@ -654,16 +651,6 @@ export default function MarketplaceManagement() {
       return
     }
 
-    // Validate that collection has at least 1 NFT
-    if (newCollection.nftCount < 1) {
-      toast({
-        title: "Error",
-        description: "Collection must have at least 1 NFT",
-        variant: "destructive",
-      })
-      return
-    }
-
     setActionLoading("add-collection")
     try {
       const response = await fetch(`/api/marketplaces/${selectedMarketplace.id}/collections`, {
@@ -687,15 +674,15 @@ export default function MarketplaceManagement() {
         setNewCollection({
           name: "",
           description: "",
-          price: 0,
           currency: "ALGO",
           category: "",
           type: "nft",
           image: "",
-          ipfsHash: "",
-          nftCount: 1
+          ipfsHash: ""
         })
+        setShowAddCollectionDialog(false)
         fetchCollections(selectedMarketplace.id)
+        
       } else {
         throw new Error("Failed to add collection")
       }
@@ -777,29 +764,17 @@ export default function MarketplaceManagement() {
     setEditCollectionData({
       name: collection.name,
       description: collection.description,
-      price: collection.price,
       currency: collection.currency,
       category: collection.category,
       type: collection.type,
       image: collection.image,
-      ipfsHash: (collection as any).ipfsHash || "",
-      nftCount: collection.nftCount
+      ipfsHash: (collection as any).ipfsHash || ""
     })
     setShowEditCollectionDialog(true)
   }
 
   const handleUpdateCollection = async () => {
     if (!editingCollection || !user) return
-
-    // Validate that collection has at least 1 NFT
-    if (editCollectionData.nftCount < 1) {
-      toast({
-        title: "Error",
-        description: "Collection must have at least 1 NFT",
-        variant: "destructive",
-      })
-      return
-    }
 
     setActionLoading("update-collection")
     try {
@@ -1331,7 +1306,7 @@ export default function MarketplaceManagement() {
                               <Download className="w-4 h-4 mr-2" />
                               Export
                             </Button>
-                            <Dialog>
+                            <Dialog open={showAddCollectionDialog} onOpenChange={setShowAddCollectionDialog}>
                               <DialogTrigger asChild>
                                 <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
                                   <Plus className="w-4 h-4 mr-2" />
@@ -1342,7 +1317,7 @@ export default function MarketplaceManagement() {
                                 <DialogHeader>
                                   <DialogTitle>Add New Collection</DialogTitle>
                                   <DialogDescription>
-                                    Add a new collection with at least 1 NFT to your marketplace
+                                    Create a new collection for your marketplace
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4">
@@ -1380,15 +1355,14 @@ export default function MarketplaceManagement() {
                                       rows={3}
                                     />
                                   </div>
-                                  <div className="grid grid-cols-4 gap-4">
+                                  <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <Label htmlFor="collectionPrice">Price</Label>
+                                      <Label htmlFor="collectionCategory">Category</Label>
                                       <Input
-                                        id="collectionPrice"
-                                        type="number"
-                                        value={newCollection.price}
-                                        onChange={(e) => setNewCollection({ ...newCollection, price: parseFloat(e.target.value) || 0 })}
-                                        placeholder="0.00"
+                                        id="collectionCategory"
+                                        value={newCollection.category}
+                                        onChange={(e) => setNewCollection({ ...newCollection, category: e.target.value })}
+                                        placeholder="Category"
                                       />
                                     </div>
                                     <div>
@@ -1403,26 +1377,6 @@ export default function MarketplaceManagement() {
                                           <SelectItem value="USD">USD</SelectItem>
                                         </SelectContent>
                                       </Select>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="collectionCategory">Category</Label>
-                                      <Input
-                                        id="collectionCategory"
-                                        value={newCollection.category}
-                                        onChange={(e) => setNewCollection({ ...newCollection, category: e.target.value })}
-                                        placeholder="Category"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="nftCount">NFT Count (Min: 1)</Label>
-                                      <Input
-                                        id="nftCount"
-                                        type="number"
-                                        min="1"
-                                        value={newCollection.nftCount}
-                                        onChange={(e) => setNewCollection({ ...newCollection, nftCount: Math.max(1, parseInt(e.target.value) || 1) })}
-                                        placeholder="1"
-                                      />
                                     </div>
                                   </div>
                                   <div>
@@ -1444,13 +1398,11 @@ export default function MarketplaceManagement() {
                                     <Button variant="outline" onClick={() => setNewCollection({
                                       name: "",
                                       description: "",
-                                      price: 0,
                                       currency: "ALGO",
                                       category: "",
                                       type: "nft",
                                       image: "",
-                                      ipfsHash: "",
-                                      nftCount: 1
+                                      ipfsHash: ""
                                     })}>
                                       Cancel
                                     </Button>
@@ -1475,7 +1427,7 @@ export default function MarketplaceManagement() {
                             <DialogHeader>
                               <DialogTitle>Edit Collection</DialogTitle>
                               <DialogDescription>
-                                Update collection details and NFT count
+                                Update collection details
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
@@ -1513,15 +1465,14 @@ export default function MarketplaceManagement() {
                                   rows={3}
                                 />
                               </div>
-                              <div className="grid grid-cols-4 gap-4">
+                              <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <Label htmlFor="editCollectionPrice">Price</Label>
+                                  <Label htmlFor="editCollectionCategory">Category</Label>
                                   <Input
-                                    id="editCollectionPrice"
-                                    type="number"
-                                    value={editCollectionData.price}
-                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, price: parseFloat(e.target.value) || 0 })}
-                                    placeholder="0.00"
+                                    id="editCollectionCategory"
+                                    value={editCollectionData.category}
+                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, category: e.target.value })}
+                                    placeholder="Category"
                                   />
                                 </div>
                                 <div>
@@ -1536,26 +1487,6 @@ export default function MarketplaceManagement() {
                                       <SelectItem value="USD">USD</SelectItem>
                                     </SelectContent>
                                   </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="editCollectionCategory">Category</Label>
-                                  <Input
-                                    id="editCollectionCategory"
-                                    value={editCollectionData.category}
-                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, category: e.target.value })}
-                                    placeholder="Category"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="editNftCount">NFT Count (Min: 1)</Label>
-                                  <Input
-                                    id="editNftCount"
-                                    type="number"
-                                    min="1"
-                                    value={editCollectionData.nftCount}
-                                    onChange={(e) => setEditCollectionData({ ...editCollectionData, nftCount: Math.max(1, parseInt(e.target.value) || 1) })}
-                                    placeholder="1"
-                                  />
                                 </div>
                               </div>
                               <div>
@@ -1694,10 +1625,8 @@ export default function MarketplaceManagement() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="name">Name</SelectItem>
-                              <SelectItem value="price">Price</SelectItem>
                               <SelectItem value="created">Created</SelectItem>
                               <SelectItem value="sales">Sales</SelectItem>
-                              <SelectItem value="nftCount">NFT Count</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1736,9 +1665,6 @@ export default function MarketplaceManagement() {
                                         Swap
                                       </Badge>
                                     )}
-                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
-                                      {collection.nftCount} NFTs
-                                    </Badge>
                                   </div>
                                 </div>
                                 <CardContent className="p-4">
@@ -1751,7 +1677,6 @@ export default function MarketplaceManagement() {
                                     </div>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-lg font-semibold">{collection.price} {collection.currency}</span>
                                         <Badge variant="outline" className="text-xs capitalize">
                                           {collection.type}
                                         </Badge>
@@ -1968,12 +1893,11 @@ export default function MarketplaceManagement() {
                                     <div>
                                       <p className="font-medium">{collection.name}</p>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        {collection.sales || 0} sales • {collection.views || 0} views • {collection.nftCount} NFTs
+                                        {collection.sales || 0} sales • {collection.views || 0} views
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold">{collection.price} {collection.currency}</p>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">
                                       Rating: {collection.rating?.toFixed(1) || 'N/A'}
                                     </p>
