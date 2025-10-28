@@ -140,7 +140,8 @@ export const PUT = requireRole(["merchant", "admin"])(async (
       'businessName', 'description', 'category', 'template', 
       'primaryColor', 'secondaryColor', 'customDomain',
       'isEnabled', 'allowSwap', 'allowMint', 'allowTrading',
-      'walletAddress', 'website', 'logo', 'banner', 'allowCreate'
+      'walletAddress', 'website', 'logo', 'banner', 'allowCreate',
+      'status'
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -156,6 +157,14 @@ export const PUT = requireRole(["merchant", "admin"])(async (
             obj[key] = color
           } else {
             console.warn(`Invalid color format for ${key}:`, color)
+          }
+        } else if (key === 'status') {
+          // Validate status values
+          const validStatuses = ['pending', 'approved', 'rejected', 'draft']
+          if (validStatuses.includes(updates[key])) {
+            obj[key] = updates[key]
+          } else {
+            console.warn(`Invalid status value:`, updates[key])
           }
         } else {
           obj[key] = updates[key]
