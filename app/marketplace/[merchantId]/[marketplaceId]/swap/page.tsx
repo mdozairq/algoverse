@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -227,6 +227,15 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   const [userAssets, setUserAssets] = useState<Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
   const [swapDirection, setSwapDirection] = useState<'ASA_TO_ALGO' | 'ALGO_TO_ASA'>('ASA_TO_ALGO')
+
+  // Ref to prevent multiple simultaneous quote requests
+  const fetchingQuoteRef = useRef(false)
+  const lastQuoteParamsRef = useRef<{
+    assetInId: number | null
+    assetOutId: number | null
+    amount: string
+    slippage: number
+  } | null>(null)
 
   const { isConnected, account, connect, disconnect } = useWallet()
   
@@ -506,13 +515,13 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     if (selectedAssetInId && walletAddress) {
       refreshBalance(selectedAssetInId, walletAddress)
     }
-  }, [selectedAssetInId, walletAddress, refreshBalance])
+  }, [selectedAssetInId, walletAddress])
 
   useEffect(() => {
     if (selectedAssetOutId && walletAddress) {
       refreshOutputBalance(selectedAssetOutId, walletAddress)
     }
-  }, [selectedAssetOutId, walletAddress, refreshOutputBalance])
+  }, [selectedAssetOutId, walletAddress])
 
   // Add this useEffect to debug balance issues
   useEffect(() => {
@@ -525,32 +534,58 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       userAssetsOutputBalance: getOutputBalance(),
       userAssets
     })
-  }, [selectedAssetInId, selectedAssetOutId, balance, outputBalance, getInputBalance, getOutputBalance, userAssets])
+  }, [selectedAssetInId, selectedAssetOutId, balance, outputBalance, userAssets])
 
   // Auto-fetch quote when both assets are selected and amount is entered
   useEffect(() => {
     const numValue = parseFloat(swapAmount)
+    const currentParams = {
+      assetInId: selectedAssetInId,
+      assetOutId: selectedAssetOutId,
+      amount: swapAmount,
+      slippage
+    }
+    
     console.log('Quote useEffect triggered:', {
       selectedAssetInId,
       selectedAssetOutId,
       swapAmount,
       numValue,
       quoteLoading,
-      userAssets: userAssets.length
+      userAssets: userAssets.length,
+      fetchingQuote: fetchingQuoteRef.current,
+      lastParams: lastQuoteParamsRef.current
     })
     
-    if (selectedAssetInId !== null && selectedAssetOutId !== null && numValue > 0 && !quoteLoading) {
+    // Check if we already have a quote for the same parameters
+    const isSameParams = lastQuoteParamsRef.current && 
+      lastQuoteParamsRef.current.assetInId === selectedAssetInId &&
+      lastQuoteParamsRef.current.assetOutId === selectedAssetOutId &&
+      lastQuoteParamsRef.current.amount === swapAmount &&
+      lastQuoteParamsRef.current.slippage === slippage
+    
+    if (selectedAssetInId !== null && selectedAssetOutId !== null && numValue > 0 && !fetchingQuoteRef.current && !isSameParams) {
       console.log('Auto-fetching quote:', selectedAssetInId, '->', selectedAssetOutId, 'amount:', numValue)
-      getQuote(selectedAssetInId, selectedAssetOutId, numValue, slippage)
+      fetchingQuoteRef.current = true
+      lastQuoteParamsRef.current = currentParams
+      getQuote(selectedAssetInId, selectedAssetOutId, numValue, slippage).finally(() => {
+        fetchingQuoteRef.current = false
+      })
     } else {
       console.log('Not fetching quote:', {
         hasInputAsset: selectedAssetInId !== null,
         hasOutputAsset: selectedAssetOutId !== null,
         hasAmount: numValue > 0,
-        notLoading: !quoteLoading
+        notFetching: !fetchingQuoteRef.current,
+        sameParams: isSameParams
       })
     }
-  }, [selectedAssetInId, selectedAssetOutId, swapAmount, slippage, getQuote, quoteLoading])
+
+    // Cleanup function
+    return () => {
+      fetchingQuoteRef.current = false
+    }
+  }, [selectedAssetInId, selectedAssetOutId, swapAmount, slippage])
 
   useEffect(() => {
     fetchAvailableNFTs()
@@ -814,6 +849,12 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                                   High price impact warning
                                 </div>
                               )}
+                              {quote.quoteType === 'router' && (
+                                <div className="mt-2 p-2 bg-orange-100 dark:bg-orange-900/30 rounded text-xs text-orange-800 dark:text-orange-200">
+                                  <Info className="w-4 h-4 inline mr-1" />
+                                  Router swap detected - this swap may require multiple transactions
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -972,14 +1013,14 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
                               disabled={(() => {
                                 const conditions = {
-                                  noInputAsset: !selectedAssetInId,
-                                  noOutputAsset: !selectedAssetOutId,
+                                  noInputAsset: selectedAssetInId === null || selectedAssetInId === undefined,
+                                  noOutputAsset: selectedAssetOutId === null || selectedAssetOutId === undefined,
                                   noQuote: !quote,
                                   noPool: !quote?.poolExists,
                                   loading: quoteLoading,
                                   notIdle: txStatus !== 'idle',
                                   noAmount: !swapAmount,
-                                  invalidAmount: parseFloat(swapAmount) <= 0,
+                                  invalidAmount: parseFloat(swapAmount) <= 0 || isNaN(parseFloat(swapAmount)),
                                   insufficientBalance: parseFloat(swapAmount) > getInputBalance()
                                 }
                                 const isDisabled = Object.values(conditions).some(Boolean)
@@ -997,9 +1038,9 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               {txStatus === 'failed' && 'Swap Failed'}
                               {txStatus === 'idle' && (
                                 quoteLoading ? 'Fetching Quote...' : 
-                                !selectedAssetInId || !selectedAssetOutId ? 'Select Assets' :
+                                selectedAssetInId === null || selectedAssetInId === undefined || selectedAssetOutId === null || selectedAssetOutId === undefined ? 'Select Assets' :
                                 !quote || !quote.poolExists ? 'No Pool Available' :
-                                !swapAmount || parseFloat(swapAmount) <= 0 ? 'Enter Amount' :
+                                !swapAmount || parseFloat(swapAmount) <= 0 || isNaN(parseFloat(swapAmount)) ? 'Enter Amount' :
                                 parseFloat(swapAmount) > getInputBalance() ? 'Insufficient Balance' :
                                 `Swap ${swapDirection === 'ASA_TO_ALGO' ? 'to ALGO' : 'to ASA'}`
                               )}

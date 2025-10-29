@@ -44,6 +44,7 @@ export interface SwapQuote {
   slippage: number
   poolExists: boolean
   swapDirection: 'ASA_TO_ALGO' | 'ALGO_TO_ASA'
+  quoteType?: 'direct' | 'router'
 }
 
 export interface SwapResult {
@@ -223,7 +224,7 @@ export class TinymanSwapService {
         const minAmountOut = amountOut * (1 - slippage)
         const swapFee = Number(quoteData.swapFee) / Math.pow(10, assetOut.decimals)
 
-        console.log('Quote details:', {
+        console.log('Direct quote details:', {
           amountOut,
           minAmountOut,
           swapFee,
@@ -248,11 +249,51 @@ export class TinymanSwapService {
           minAmountOut,
           slippage,
           poolExists: true,
-          swapDirection
+          swapDirection,
+          quoteType: 'direct'
         }
       }
 
-      throw new Error('Router swaps not yet supported')
+      if (quote.type === 'router') {
+        const quoteData = quote.data
+        const amountOut = Number(quoteData.output_amount) / Math.pow(10, assetOut.decimals)
+        const minAmountOut = amountOut * (1 - slippage)
+        const swapFee = Number(quoteData.swap_fee) / Math.pow(10, assetOut.decimals)
+        const priceImpact = Number(quoteData.price_impact)
+
+        console.log('Router quote details:', {
+          amountOut,
+          minAmountOut,
+          swapFee,
+          priceImpact,
+          poolIds: quoteData.pool_ids,
+          transactionCount: quoteData.transaction_count
+        })
+
+        return {
+          input: {
+            amount,
+            asset: assetIn,
+            amountInMicroUnits: Number(amountInMicroUnits)
+          },
+          output: {
+            amount: amountOut,
+            asset: assetOut,
+            amountInMicroUnits: Number(quoteData.output_amount)
+          },
+          fees: {
+            swapFee,
+            priceImpact
+          },
+          minAmountOut,
+          slippage,
+          poolExists: true,
+          swapDirection,
+          quoteType: 'router'
+        }
+      }
+
+      throw new Error(`Unsupported quote type: ${(quote as any).type}`)
     } catch (error: any) {
       console.error('Error getting swap quote:', error)
       throw new Error(`Failed to get swap quote: ${error.message || 'Unknown error'}`)
@@ -273,40 +314,41 @@ export class TinymanSwapService {
     }
 
     try {
-      // Fetch pool info
+      // For router swaps, we need to use the router API
+      // For now, let's try to find a direct pool first
       const poolInfo = await poolUtils.v2.getPoolInfo({
         network: this.network,
         client: this.algodClient,
         asset1ID: quote.input.asset.id,
-        asset2ID: 0
+        asset2ID: quote.output.asset.id
       })
 
-      if (!poolInfo || poolUtils.isPoolNotCreated(poolInfo)) {
-        throw new Error('Pool not found')
+      if (poolInfo && !poolUtils.isPoolNotCreated(poolInfo)) {
+        // Direct pool exists, use it
+        const swapQuote = await Swap.v2.getFixedInputSwapQuote({
+          amount: BigInt(quote.input.amountInMicroUnits),
+          assetIn: { id: quote.input.asset.id, decimals: quote.input.asset.decimals },
+          assetOut: { id: quote.output.asset.id, decimals: quote.output.asset.decimals },
+          network: this.network,
+          slippage: quote.slippage,
+          pool: poolInfo
+        })
+
+        const txGroup = await Swap.generateTxns({
+          client: this.algodClient,
+          network: this.network,
+          quote: swapQuote,
+          swapType: SwapType.FixedInput,
+          slippage: quote.slippage,
+          initiatorAddr: userAddress
+        })
+
+        return txGroup.map(stxn => stxn.txn)
+      } else {
+        // No direct pool, router swap required
+        // For now, throw an error indicating router swaps need different handling
+        throw new Error('Router swaps require a different transaction preparation method. Please use a direct pool swap.')
       }
-
-      // Get quote again to use with generateTxns
-      const swapQuote = await Swap.v2.getFixedInputSwapQuote({
-        amount: BigInt(quote.input.amountInMicroUnits),
-        assetIn: { id: quote.input.asset.id, decimals: quote.input.asset.decimals },
-        assetOut: { id: quote.output.asset.id, decimals: quote.output.asset.decimals },
-        network: this.network,
-        slippage: quote.slippage,
-        pool: poolInfo
-      })
-
-      // Generate transactions
-      const txGroup = await Swap.generateTxns({
-        client: this.algodClient,
-        network: this.network,
-        quote: swapQuote,
-        swapType: SwapType.FixedInput,
-        slippage: quote.slippage,
-        initiatorAddr: userAddress
-      })
-
-      // Convert SignerTransaction[] to Transaction[]
-      return txGroup.map(stxn => stxn.txn)
     } catch (error: any) {
       console.error('Error preparing swap transactions:', error)
       throw new Error(`Failed to prepare swap transactions: ${error.message || 'Unknown error'}`)
