@@ -214,8 +214,7 @@ export function WalletConnectButton({
   }
 
   const walletInfo = getWalletInfo()
-  console.log("walletInfo", walletInfo, account, user, isConnected)
-
+  
   if (!isAuthenticated) {
     return (
       <>

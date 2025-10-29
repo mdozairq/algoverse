@@ -110,7 +110,7 @@ export function useTinymanSwap(
     }
 
     // Validate input
-    if (!assetInId || !assetOutId || !amount || amount <= 0) {
+    if (assetInId === null || assetInId === undefined || assetOutId === null || assetOutId === undefined || !amount || amount <= 0) {
       setState(prev => ({ 
         ...prev, 
         quote: null,

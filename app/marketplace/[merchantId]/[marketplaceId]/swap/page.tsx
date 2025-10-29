@@ -332,18 +332,21 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     }
   }
 
-  // Handle amount input change with debounced quote fetching
-  const handleAmountChange = useCallback(async (value: string) => {
+  // Handle amount input change
+  const handleAmountChange = useCallback((value: string) => {
+    console.log('Amount changed:', value)
     setSwapAmount(value)
     clearError()
     
     const numValue = parseFloat(value)
-    if (selectedAssetInId && selectedAssetOutId && numValue > 0) {
-      await getQuote(selectedAssetInId, selectedAssetOutId, numValue, slippage)
-    } else {
+    console.log('Parsed value:', numValue, 'selectedAssetInId:', selectedAssetInId, 'selectedAssetOutId:', selectedAssetOutId)
+    
+    // Clear quote if amount is invalid - useEffect will handle fetching new quote
+    if (!numValue || numValue <= 0) {
+      console.log('Clearing quote - invalid amount')
       clearQuote()
     }
-  }, [selectedAssetInId, selectedAssetOutId, slippage, getQuote, clearQuote, clearError])
+  }, [clearQuote, clearError])
 
   // Get asset display name
   const getAssetDisplayName = useCallback((assetId: number | null) => {
@@ -372,6 +375,8 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   // Handle input asset selection
   const handleAssetInSelect = useCallback(async (value: string) => {
     const assetId = parseInt(value)
+    console.log('Input asset selected:', assetId, 'userAssets:', userAssets.length)
+    
     setSelectedAssetInId(assetId)
     clearQuote()
     
@@ -379,22 +384,20 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     if (assetId === 0) {
       // Input is ALGO, set output to first available ASA (excluding ALGO)
       const firstAsa = userAssets.find(asset => asset.assetId !== 0)
+      console.log('First ASA found:', firstAsa)
       if (firstAsa) {
         setSelectedAssetOutId(firstAsa.assetId)
         setSwapDirection('ALGO_TO_ASA')
+        console.log('Set output asset to:', firstAsa.assetId)
       }
     } else {
       // Input is ASA, set output to ALGO
       setSelectedAssetOutId(0)
       setSwapDirection('ASA_TO_ALGO')
+      console.log('Set output asset to ALGO (0)')
     }
     
-    if (swapAmount && parseFloat(swapAmount) > 0) {
-      const targetAssetOutId = assetId === 0 ? (userAssets.find(asset => asset.assetId !== 0)?.assetId || 0) : 0
-      if (targetAssetOutId !== null) {
-        await getQuote(assetId, targetAssetOutId, parseFloat(swapAmount), slippage)
-      }
-    }
+    // Don't get quote here - let useEffect handle it when both assets are selected
     
     if (walletAddress) {
       await refreshBalance(assetId, walletAddress)
@@ -404,17 +407,22 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   // Handle output asset selection
   const handleAssetOutSelect = useCallback(async (value: string) => {
     const assetId = parseInt(value)
+    console.log('Output asset selected:', assetId, 'selectedAssetInId:', selectedAssetInId)
+    
     setSelectedAssetOutId(assetId)
     clearQuote()
     
     // Update swap direction
     if (selectedAssetInId === 0) {
       setSwapDirection('ALGO_TO_ASA')
+      console.log('Set swap direction to ALGO_TO_ASA')
     } else {
       setSwapDirection('ASA_TO_ALGO')
+      console.log('Set swap direction to ASA_TO_ALGO')
     }
     
     if (swapAmount && parseFloat(swapAmount) > 0 && selectedAssetInId !== null) {
+      console.log('Getting quote after output asset selection:', selectedAssetInId, '->', assetId)
       await getQuote(selectedAssetInId, assetId, parseFloat(swapAmount), slippage)
     }
     
@@ -458,10 +466,24 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
 
   // Set percentage buttons
   const handlePercentageClick = useCallback((percentage: number) => {
-    if (!selectedAssetInId) return
+    console.log('Percentage clicked:', percentage, 'selectedAssetInId:', selectedAssetInId)
+    
+    if (!selectedAssetInId) {
+      console.log('No asset selected, cannot apply percentage')
+      return
+    }
     
     const currentBalance = getInputBalance()
+    console.log('Current balance:', currentBalance)
+    
+    if (currentBalance <= 0) {
+      console.log('No balance available for percentage calculation')
+      return
+    }
+    
     const amount = (currentBalance * percentage / 100).toString()
+    console.log('Calculated amount:', amount)
+    
     setSwapAmount(amount)
     handleAmountChange(amount)
   }, [selectedAssetInId, getInputBalance, handleAmountChange])
@@ -504,6 +526,31 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       userAssets
     })
   }, [selectedAssetInId, selectedAssetOutId, balance, outputBalance, getInputBalance, getOutputBalance, userAssets])
+
+  // Auto-fetch quote when both assets are selected and amount is entered
+  useEffect(() => {
+    const numValue = parseFloat(swapAmount)
+    console.log('Quote useEffect triggered:', {
+      selectedAssetInId,
+      selectedAssetOutId,
+      swapAmount,
+      numValue,
+      quoteLoading,
+      userAssets: userAssets.length
+    })
+    
+    if (selectedAssetInId !== null && selectedAssetOutId !== null && numValue > 0 && !quoteLoading) {
+      console.log('Auto-fetching quote:', selectedAssetInId, '->', selectedAssetOutId, 'amount:', numValue)
+      getQuote(selectedAssetInId, selectedAssetOutId, numValue, slippage)
+    } else {
+      console.log('Not fetching quote:', {
+        hasInputAsset: selectedAssetInId !== null,
+        hasOutputAsset: selectedAssetOutId !== null,
+        hasAmount: numValue > 0,
+        notLoading: !quoteLoading
+      })
+    }
+  }, [selectedAssetInId, selectedAssetOutId, swapAmount, slippage, getQuote, quoteLoading])
 
   useEffect(() => {
     fetchAvailableNFTs()
@@ -804,11 +851,26 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                   <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                                    {quote && quote.poolExists ? quote.output.amount.toFixed(6) : '0'}
+                                    {quoteLoading ? (
+                                      <span className="animate-pulse">...</span>
+                                    ) : quote && quote.poolExists ? (
+                                      quote.output.amount.toFixed(6)
+                                    ) : (
+                                      '0'
+                                    )}
                                   </div>
                                   <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     {getAssetDisplayName(selectedAssetOutId)}
                                   </div>
+                          {/* Debug info */}
+                          {process.env.NODE_ENV === 'development' && (
+                            <div className="text-xs text-gray-400 mt-1 space-y-1">
+                              <div>Debug: {quote ? `Quote exists, pool: ${quote.poolExists}` : 'No quote'} | Loading: {quoteLoading ? 'Yes' : 'No'}</div>
+                              <div>Assets: {selectedAssetInId} → {selectedAssetOutId} | Amount: {swapAmount}</div>
+                              <div>Balances: {getInputBalance().toFixed(4)} | {getOutputBalance().toFixed(4)}</div>
+                              <div>User Assets: {userAssets.length} | Connected: {isConnected ? 'Yes' : 'No'}</div>
+                            </div>
+                          )}
                                 </div>
                                 <Select
                                   value={selectedAssetOutId !== null ? selectedAssetOutId.toString() : undefined}
@@ -908,17 +970,22 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                           ) : (
                             <Button 
                               className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                              disabled={
-                                !selectedAssetInId || 
-                                !selectedAssetOutId || 
-                                !quote || 
-                                !quote.poolExists || 
-                                quoteLoading || 
-                                txStatus !== 'idle' || 
-                                !swapAmount || 
-                                parseFloat(swapAmount) <= 0 ||
-                                parseFloat(swapAmount) > getInputBalance()
-                              }
+                              disabled={(() => {
+                                const conditions = {
+                                  noInputAsset: !selectedAssetInId,
+                                  noOutputAsset: !selectedAssetOutId,
+                                  noQuote: !quote,
+                                  noPool: !quote?.poolExists,
+                                  loading: quoteLoading,
+                                  notIdle: txStatus !== 'idle',
+                                  noAmount: !swapAmount,
+                                  invalidAmount: parseFloat(swapAmount) <= 0,
+                                  insufficientBalance: parseFloat(swapAmount) > getInputBalance()
+                                }
+                                const isDisabled = Object.values(conditions).some(Boolean)
+                                console.log('Swap button disabled conditions:', conditions, 'isDisabled:', isDisabled)
+                                return isDisabled
+                              })()}
                               onClick={handleSwap}
                               style={getButtonStyle('primary')}
                             >
