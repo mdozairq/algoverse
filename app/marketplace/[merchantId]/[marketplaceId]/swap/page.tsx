@@ -139,7 +139,8 @@ import {
   MessageSquareHeart,
   MessageSquareLock,
   Plus,
-  History
+  History,
+  ExternalLink
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -227,6 +228,42 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   const [userAssets, setUserAssets] = useState<Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
   const [swapDirection, setSwapDirection] = useState<'ASA_TO_ALGO' | 'ALGO_TO_ASA'>('ASA_TO_ALGO')
+  
+  // Swap history state
+  const [swapHistory, setSwapHistory] = useState<Array<{
+    id: string
+    userAddress: string
+    marketplaceId: string
+    merchantId: string
+    inputAsset: {
+      id: number
+      name: string
+      unitName: string
+      amount: number
+      decimals: number
+    }
+    outputAsset: {
+      id: number
+      name: string
+      unitName: string
+      amount: number
+      decimals: number
+    }
+    swapDirection: 'ASA_TO_ALGO' | 'ALGO_TO_ASA'
+    quoteType: 'direct' | 'router'
+    fees: {
+      swapFee: number
+      priceImpact: number
+    }
+    slippage: number
+    minAmountOut: number
+    txId: string
+    status: 'pending' | 'confirmed' | 'failed'
+    confirmedAt?: Date
+    createdAt: Date
+    updatedAt?: Date
+  }>>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Ref to prevent multiple simultaneous quote requests
   const fetchingQuoteRef = useRef(false)
@@ -306,6 +343,76 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     setSwapProposals([])
   }
 
+  // Fetch swap history
+  const fetchSwapHistory = async () => {
+    if (!isConnected || !account?.address) {
+      setSwapHistory([])
+      return
+    }
+    
+    setLoadingHistory(true)
+    try {
+      const response = await fetch(`/api/swap-history?userAddress=${account.address}`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setSwapHistory(data.swapHistory || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch swap history:", error)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // Record swap history via API
+  const recordSwapHistory = async (quote: any, txId: string) => {
+    try {
+      const swapData = {
+        userAddress: account?.address,
+        marketplaceId: params.marketplaceId,
+        merchantId: params.merchantId,
+        inputAsset: {
+          id: quote.input.asset.id,
+          name: quote.input.asset.name,
+          unitName: quote.input.asset.unitName,
+          amount: quote.input.amount,
+          decimals: quote.input.asset.decimals
+        },
+        outputAsset: {
+          id: quote.output.asset.id,
+          name: quote.output.asset.name,
+          unitName: quote.output.asset.unitName,
+          amount: quote.output.amount,
+          decimals: quote.output.asset.decimals
+        },
+        swapDirection: quote.swapDirection,
+        quoteType: quote.quoteType || 'direct',
+        fees: quote.fees,
+        slippage: quote.slippage,
+        minAmountOut: quote.minAmountOut,
+        txId,
+        status: 'approved'
+      }
+
+      const response = await fetch('/api/swap-history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(swapData)
+      })
+
+      if (response.ok) {
+        console.log('Swap history recorded successfully')
+      } else {
+        console.error('Failed to record swap history')
+      }
+    } catch (error) {
+      console.error('Error recording swap history:', error)
+    }
+  }
+
   useEffect(() => {
     fetchMarketplaceData()
   }, [params.marketplaceId])
@@ -315,6 +422,7 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       fetchUserNFTs()
       fetchSwapProposals()
       fetchUserAssets()
+      fetchSwapHistory()
     }
   }, [isConnected, account])
 
@@ -479,15 +587,20 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       
       if (result) {
         console.log('Swap successful, resetting form...')
+        
+        // Record swap history
+        await recordSwapHistory(quote, result.txId)
+        
         // Reset form after successful swap
         setSwapAmount("")
         setSelectedAssetInId(null)
         setSelectedAssetOutId(null)
         clearQuote()
         
-        // Refresh assets
+        // Refresh assets and history
         if (account?.address) {
           await fetchUserAssets()
+          await fetchSwapHistory()
         }
       }
     } catch (error) {
@@ -1115,10 +1228,105 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                              <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                              <p>No swap history available yet</p>
-                            </div>
+                            {loadingHistory ? (
+                              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
+                                <p>Loading swap history...</p>
+                              </div>
+                            ) : swapHistory.length === 0 ? (
+                              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                <p>No swap history available yet</p>
+                                <p className="text-sm mt-2">Complete your first swap to see it here</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {swapHistory.map((swap) => (
+                                  <div
+                                    key={swap.id}
+                                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center">
+                                          <ArrowRightLeft className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                                        </div>
+                                        <div>
+                                          <div className="font-medium text-gray-900 dark:text-white">
+                                            {swap.inputAsset.amount.toFixed(6)} {swap.inputAsset.unitName} → {swap.outputAsset.amount.toFixed(6)} {swap.outputAsset.unitName}
+                                          </div>
+                                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                                            {new Date(swap.createdAt).toLocaleString()}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                          swap.status === 'confirmed' 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                            : swap.status === 'pending'
+                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                        }`}>
+                                          {swap.status === 'confirmed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                          {swap.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                                          {swap.status === 'failed' && <XCircle className="w-3 h-3 mr-1" />}
+                                          {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="text-gray-500 dark:text-gray-400">Price Impact:</span>
+                                        <span className={`ml-2 font-medium ${
+                                          swap.fees.priceImpact > 1 
+                                            ? 'text-red-600 dark:text-red-400' 
+                                            : 'text-gray-900 dark:text-gray-100'
+                                        }`}>
+                                          {swap.fees.priceImpact.toFixed(2)}%
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 dark:text-gray-400">Swap Fee:</span>
+                                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                                          {swap.fees.swapFee.toFixed(6)} {swap.outputAsset.unitName}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 dark:text-gray-400">Slippage:</span>
+                                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                                          {(swap.slippage * 100).toFixed(1)}%
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 dark:text-gray-400">Min Received:</span>
+                                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                                          {swap.minAmountOut.toFixed(6)} {swap.outputAsset.unitName}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                      <div className="flex items-center justify-between">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                          Transaction ID: {swap.txId.substring(0, 8)}...{swap.txId.substring(swap.txId.length - 8)}
+                                        </div>
+                                        <a
+                                          href={`https://testnet.algoexplorer.io/tx/${swap.txId}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 flex items-center gap-1"
+                                        >
+                                          View on Explorer
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </CardContent>

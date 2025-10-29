@@ -420,6 +420,40 @@ export interface MintPhase {
   updatedAt?: Date
 }
 
+export interface SwapHistory {
+  id: string
+  userAddress: string
+  marketplaceId: string
+  merchantId: string
+  inputAsset: {
+    id: number
+    name: string
+    unitName: string
+    amount: number
+    decimals: number
+  }
+  outputAsset: {
+    id: number
+    name: string
+    unitName: string
+    amount: number
+    decimals: number
+  }
+  swapDirection: 'ASA_TO_ALGO' | 'ALGO_TO_ASA'
+  quoteType: 'direct' | 'router'
+  fees: {
+    swapFee: number
+    priceImpact: number
+  }
+  slippage: number
+  minAmountOut: number
+  txId: string
+  status: 'pending' | 'confirmed' | 'failed'
+  confirmedAt?: Date
+  createdAt: Date
+  updatedAt?: Date
+}
+
 export interface LaunchpadNFT {
   id: string
   tokenId: string
@@ -1958,6 +1992,92 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error fetching user mints:', error)
       return []
+    }
+  }
+}
+
+export const swapHistoryCollection = {
+  async create(swapData: Omit<SwapHistory, "id" | "createdAt" | "updatedAt">): Promise<string> {
+    const doc = await adminDb.collection("swap_history").add({
+      ...swapData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getByUserAddress(userAddress: string): Promise<SwapHistory[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("swap_history")
+        .where("userAddress", "==", userAddress)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        ...doc.data(),
+        id: doc.id,
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate(),
+        confirmedAt: doc.data()?.confirmedAt?.toDate(),
+      })) as SwapHistory[]
+    } catch (error) {
+      console.error('Error fetching swap history:', error)
+      return []
+    }
+  },
+
+  async getByMarketplace(marketplaceId: string): Promise<SwapHistory[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("swap_history")
+        .where("marketplaceId", "==", marketplaceId)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => ({
+        ...doc.data(),
+        id: doc.id,
+        createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+        updatedAt: doc.data()?.updatedAt?.toDate(),
+        confirmedAt: doc.data()?.confirmedAt?.toDate(),
+      })) as SwapHistory[]
+    } catch (error) {
+      console.error('Error fetching marketplace swap history:', error)
+      return []
+    }
+  },
+
+  async updateStatus(id: string, status: SwapHistory['status'], confirmedAt?: Date): Promise<void> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    }
+    
+    if (confirmedAt) {
+      updateData.confirmedAt = confirmedAt
+    }
+    
+    await adminDb.collection("swap_history").doc(id).update(updateData)
+  },
+
+  async getById(id: string): Promise<SwapHistory | null> {
+    try {
+      const doc = await adminDb.collection("swap_history").doc(id).get()
+      if (doc.exists) {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          confirmedAt: data?.confirmedAt?.toDate(),
+        } as SwapHistory
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching swap history by ID:', error)
+      return null
     }
   }
 }
