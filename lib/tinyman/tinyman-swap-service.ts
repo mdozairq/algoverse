@@ -55,15 +55,23 @@ export class TinymanSwapService {
   constructor() {
     this.algodClient = getAlgodClient()
     
-    // Determine network from environment
+    // Force testnet for now (can be changed via environment variable)
     const networkEnv = process.env.NEXT_PUBLIC_ALGORAND_NETWORK || 'testnet'
-    this.network = (networkEnv === 'mainnet' ? 'mainnet' : 'testnet') as SupportedNetwork
+    // Explicitly use testnet for Tinyman swaps
+    this.network = 'testnet' as SupportedNetwork
+    
+    console.log('Tinyman Swap Service initialized for:', this.network)
   }
 
   /**
    * Get asset information from Algorand
    */
   async getAssetInfo(assetId: number): Promise<AssetInfo> {
+    // Validate assetId
+    if (assetId === undefined || assetId === null || isNaN(Number(assetId))) {
+      throw new Error(`Invalid asset ID: ${assetId}`)
+    }
+
     // ALGO (native currency)
     if (assetId === 0) {
       return {
@@ -75,9 +83,9 @@ export class TinymanSwapService {
     }
 
     try {
-      const assetInfo = await this.algodClient.getAssetByID(assetId).do()
+      const assetInfo = await this.algodClient.getAssetByID(Number(assetId)).do()
       return {
-        id: assetId,
+        id: Number(assetId),
         name: assetInfo.params.name || `ASA-${assetId}`,
         unitName: assetInfo.params.unitName || '',
         decimals: assetInfo.params.decimals || 0

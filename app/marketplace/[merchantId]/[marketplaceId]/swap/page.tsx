@@ -328,6 +328,8 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       
       console.log('Account info:', accountInfo)
       console.log('Assets:', accountInfo.assets)
+      console.log('Assets type:', typeof accountInfo.assets)
+      console.log('Assets length:', accountInfo.assets?.length)
       
       if (!accountInfo.assets || accountInfo.assets.length === 0) {
         console.log('No assets found in account')
@@ -338,19 +340,36 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       
       // Fetch asset details for each asset
       const assetsWithDetails = await Promise.all(
-        accountInfo.assets.map(async (asset) => {
+        accountInfo.assets.map(async (asset, index) => {
+          // Validate asset has required properties
+          if (!asset) {
+            console.warn(`Asset at index ${index} is null/undefined:`, asset)
+            return null
+          }
+          
+          // Check for assetId property (handle both camelCase and kebab-case)
+          const assetId = asset.assetId !== undefined ? asset.assetId : (asset as any)['asset-id']
+          
+          if (assetId === undefined || assetId === null || isNaN(Number(assetId))) {
+            console.warn(`Invalid asset at index ${index}:`, asset, 'assetId:', assetId)
+            return null
+          }
+          
+          const numericAssetId = Number(assetId)
+          
           try {
-            const assetInfo = await tinymanSwapService.getAssetInfo(asset.assetId)
-            const balance = asset.amount / Math.pow(10, assetInfo.decimals)
+            const assetInfo = await tinymanSwapService.getAssetInfo(numericAssetId)
+            const assetAmount = asset.amount || 0
+            const balance = assetAmount / Math.pow(10, assetInfo.decimals)
             return {
-              assetId: asset.assetId,
+              assetId: numericAssetId,
               name: assetInfo.name,
               unitName: assetInfo.unitName,
               balance,
               decimals: assetInfo.decimals
             }
           } catch (error) {
-            console.error(`Error fetching asset ${asset.assetId}:`, error)
+            console.error(`Error fetching asset ${numericAssetId}:`, error)
             return null
           }
         })
@@ -564,6 +583,9 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
                               <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Tinyman Swap</span>
+                              {/* <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
+                                TESTNET
+                              </Badge> */}
                             </div>
                             <div className="flex items-center gap-2">
                               <Cog className="w-4 h-4 text-gray-400" />
@@ -582,22 +604,34 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               )}
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                              <div className="flex items-center justify-between mb-2">
-                                <Input
-                                  type="number"
-                                  placeholder="0.0"
-                                  value={swapAmount}
-                                  onChange={(e) => handleAmountChange(e.target.value)}
-                                  className="text-3xl font-bold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                  disabled={!isConnected}
-                                />
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <Input
+                                    type="number"
+                                    placeholder="0.0"
+                                    value={swapAmount}
+                                    onChange={(e) => handleAmountChange(e.target.value)}
+                                    className="text-4xl font-bold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield] h-16"
+                                    disabled={!isConnected}
+                                  />
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    {selectedAssetId && assetInfo ? (assetInfo.unitName || assetInfo.name) : 'Select asset'}
+                                  </div>
+                                </div>
                                 <Select
                                   value={selectedAssetId ? selectedAssetId.toString() : undefined}
                                   onValueChange={(value) => handleAssetSelect(parseInt(value))}
                                   disabled={!isConnected || (userAssets.length === 0 && !loadingAssets)}
                                 >
-                                  <SelectTrigger className="w-[140px] border-0 bg-transparent">
-                                    <SelectValue placeholder={isConnected ? (loadingAssets ? "Loading..." : userAssets.length === 0 ? "No assets" : "Select asset") : "Connect wallet"} />
+                                  <SelectTrigger className="w-[140px] border-0 bg-transparent px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                                    <SelectValue placeholder={isConnected ? (loadingAssets ? "Loading..." : userAssets.length === 0 ? "No assets" : "Select") : "Connect"}>
+                                      {selectedAssetId && assetInfo ? (
+                                        <div className="flex items-center gap-2">
+                                          <Coins className="w-4 h-4" />
+                                          <span className="font-medium">{assetInfo.unitName || assetInfo.name}</span>
+                                        </div>
+                                      ) : null}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
                                     {loadingAssets ? (
@@ -623,19 +657,6 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {selectedAssetId && assetInfo && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                  <div 
-                                    className="w-4 h-4 rounded-full flex items-center justify-center"
-                                    style={{ backgroundColor: marketplace?.primaryColor || '#8B5CF6' }}
-                                  >
-                                    <span className="text-xs font-bold text-white">
-                                      {assetInfo.unitName?.[0]?.toUpperCase() || 'A'}
-                                    </span>
-                                  </div>
-                                  {assetInfo.name}
-                                </div>
-                              )}
                               {isConnected && userAssets.length === 0 && !loadingAssets && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                   No assets found in your wallet. You need assets to swap.

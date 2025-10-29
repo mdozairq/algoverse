@@ -141,6 +141,8 @@ export class WalletMintService {
   }> {
     try {
       const accountInfo = await algodClient.accountInformation(address).do()
+      console.log('Account info:', accountInfo);
+      
       
       return {
         address,
