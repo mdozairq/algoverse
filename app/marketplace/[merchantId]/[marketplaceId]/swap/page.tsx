@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useTinymanSwap } from "@/hooks/use-tinyman-swap"
+import { WalletMintService } from "@/lib/algorand/wallet-mint-service"
+import { tinymanSwapService } from "@/lib/tinyman/tinyman-swap-service"
 import { 
   ArrowLeft, 
   ArrowRightLeft, 
@@ -216,7 +219,30 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   const [filterBy, setFilterBy] = useState("all")
   const [sortBy, setSortBy] = useState("rarity")
 
+  // Tinyman swap state
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
+  const [swapAmount, setSwapAmount] = useState<string>("")
+  const [slippage, setSlippage] = useState<number>(0.01)
+  const [userAssets, setUserAssets] = useState<Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>>([])
+  const [loadingAssets, setLoadingAssets] = useState(false)
+
   const { isConnected, account, connect, disconnect } = useWallet()
+  
+  // Use Tinyman swap hook
+  const walletAddress = account?.address || null
+  const {
+    quote,
+    loading: quoteLoading,
+    error: swapError,
+    txStatus,
+    assetInfo,
+    balance,
+    getQuote,
+    executeSwap,
+    clearQuote,
+    clearError,
+    refreshBalance
+  } = useTinymanSwap(params.merchantId, walletAddress)
 
   const fetchMarketplaceData = async () => {
     setLoading(true)
@@ -235,10 +261,10 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   }
 
   const fetchUserNFTs = async () => {
-    if (!isConnected || !account) return
+    if (!isConnected || !account?.address) return
     
     try {
-      const response = await fetch(`/api/user/nfts?address=${account}`)
+      const response = await fetch(`/api/user/nfts?address=${account.address}`)
       const data = await response.json()
       
       if (response.ok) {
@@ -263,10 +289,10 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   }
 
   const fetchSwapProposals = async () => {
-    if (!isConnected || !account) return
+    if (!isConnected || !account?.address) return
     
     try {
-      const response = await fetch(`/api/swap/proposals?user=${account}`)
+      const response = await fetch(`/api/swap/proposals?user=${account.address}`)
       const data = await response.json()
       
       if (response.ok) {
@@ -285,22 +311,143 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     if (isConnected && account) {
       fetchUserNFTs()
       fetchSwapProposals()
+      fetchUserAssets()
     }
   }, [isConnected, account])
+
+  // Fetch user's assets for swap
+  const fetchUserAssets = async () => {
+    if (!account?.address) {
+      setUserAssets([])
+      return
+    }
+    
+    setLoadingAssets(true)
+    try {
+      const accountInfo = await WalletMintService.getAccountInfo(account.address)
+      
+      console.log('Account info:', accountInfo)
+      console.log('Assets:', accountInfo.assets)
+      
+      if (!accountInfo.assets || accountInfo.assets.length === 0) {
+        console.log('No assets found in account')
+        setUserAssets([])
+        setLoadingAssets(false)
+        return
+      }
+      
+      // Fetch asset details for each asset
+      const assetsWithDetails = await Promise.all(
+        accountInfo.assets.map(async (asset) => {
+          try {
+            const assetInfo = await tinymanSwapService.getAssetInfo(asset.assetId)
+            const balance = asset.amount / Math.pow(10, assetInfo.decimals)
+            return {
+              assetId: asset.assetId,
+              name: assetInfo.name,
+              unitName: assetInfo.unitName,
+              balance,
+              decimals: assetInfo.decimals
+            }
+          } catch (error) {
+            console.error(`Error fetching asset ${asset.assetId}:`, error)
+            return null
+          }
+        })
+      )
+      
+      const validAssets = assetsWithDetails.filter(Boolean) as Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>
+      console.log('Valid assets:', validAssets)
+      setUserAssets(validAssets)
+    } catch (error) {
+      console.error("Failed to fetch user assets:", error)
+      setUserAssets([])
+    } finally {
+      setLoadingAssets(false)
+    }
+  }
+
+  // Handle amount input change with debounced quote fetching
+  const handleAmountChange = useCallback(async (value: string) => {
+    setSwapAmount(value)
+    clearError()
+    
+    const numValue = parseFloat(value)
+    if (selectedAssetId && numValue > 0) {
+      await getQuote(selectedAssetId, numValue, slippage)
+    } else {
+      clearQuote()
+    }
+  }, [selectedAssetId, slippage, getQuote, clearQuote, clearError])
+
+  // Handle asset selection
+  const handleAssetSelect = useCallback(async (assetId: number) => {
+    setSelectedAssetId(assetId)
+    clearQuote()
+    
+    if (swapAmount && parseFloat(swapAmount) > 0) {
+      await getQuote(assetId, parseFloat(swapAmount), slippage)
+    }
+    
+    if (walletAddress) {
+      await refreshBalance(assetId, walletAddress)
+    }
+  }, [swapAmount, slippage, walletAddress, getQuote, clearQuote, refreshBalance])
+
+  // Handle slippage change
+  const handleSlippageChange = useCallback(async (newSlippage: number) => {
+    setSlippage(newSlippage)
+    
+    if (selectedAssetId && swapAmount && parseFloat(swapAmount) > 0) {
+      await getQuote(selectedAssetId, parseFloat(swapAmount), newSlippage)
+    }
+  }, [selectedAssetId, swapAmount, getQuote])
+
+  // Handle swap execution
+  const handleSwap = useCallback(async () => {
+    if (!quote || !isConnected) return
+    
+    try {
+      const result = await executeSwap(quote)
+      
+      if (result) {
+        // Reset form after successful swap
+        setSwapAmount("")
+        setSelectedAssetId(null)
+        clearQuote()
+        
+        // Refresh assets
+        if (account?.address) {
+          await fetchUserAssets()
+        }
+      }
+    } catch (error) {
+      console.error("Swap error:", error)
+    }
+  }, [quote, isConnected, executeSwap, account, clearQuote])
+
+  // Set percentage buttons
+  const handlePercentageClick = useCallback((percentage: number) => {
+    if (!selectedAssetId || !balance) return
+    
+    const amount = (balance * percentage / 100).toString()
+    setSwapAmount(amount)
+    handleAmountChange(amount)
+  }, [selectedAssetId, balance, handleAmountChange])
 
   useEffect(() => {
     fetchAvailableNFTs()
   }, [params.marketplaceId])
 
   const handleCreateSwap = async () => {
-    if (!selectedNFT || !requestedNFT || !isConnected) return
+    if (!selectedNFT || !requestedNFT || !isConnected || !account?.address) return
 
     try {
       const response = await fetch("/api/swap/proposals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fromUser: account,
+          fromUser: account.address,
           toUser: requestedNFT.owner,
           offeredNFTId: selectedNFT.id,
           requestedNFTId: requestedNFT.id,
@@ -412,124 +559,282 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                         style={getCardStyle()}
                       >
                         <CardContent className="p-4 sm:p-6 lg:p-8">
-                          {/* Auto Settings */}
+                          {/* Settings */}
                           <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Auto</span>
+                              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Tinyman Swap</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Cog className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm text-gray-400">Settings</span>
+                              <span className="text-sm text-gray-400">Slippage: {(slippage * 100).toFixed(1)}%</span>
                             </div>
                           </div>
 
                           {/* Pay Section */}
                           <div className="mb-6">
-                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">Pay</Label>
+                            <div className="flex items-center justify-between mb-3">
+                              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Pay</Label>
+                              {selectedAssetId && balance > 0 && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  Balance: {balance.toFixed(6)} {assetInfo?.unitName || 'ASA'}
+                                </span>
+                              )}
+                            </div>
                             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">0</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">$0</div>
-                              <div className="flex items-center justify-between">
-                                <Button 
-                                  variant="outline" 
-                                  style={getButtonStyle('outline')}
+                              <div className="flex items-center justify-between mb-2">
+                                <Input
+                                  type="number"
+                                  placeholder="0.0"
+                                  value={swapAmount}
+                                  onChange={(e) => handleAmountChange(e.target.value)}
+                                  className="text-3xl font-bold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                  disabled={!isConnected}
+                                />
+                                <Select
+                                  value={selectedAssetId ? selectedAssetId.toString() : undefined}
+                                  onValueChange={(value) => handleAssetSelect(parseInt(value))}
+                                  disabled={!isConnected || (userAssets.length === 0 && !loadingAssets)}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <div 
-                                      className="w-6 h-6 rounded-full flex items-center justify-center"
-                                      style={{ backgroundColor: marketplace?.primaryColor || '#8B5CF6' }}
-                                    >
-                                      <span className="text-xs font-bold text-white">S</span>
-                                    </div>
-                                    <span>SOL</span>
-                                    <ChevronRight className="w-4 h-4" />
-                                  </div>
-                                </Button>
+                                  <SelectTrigger className="w-[140px] border-0 bg-transparent">
+                                    <SelectValue placeholder={isConnected ? (loadingAssets ? "Loading..." : userAssets.length === 0 ? "No assets" : "Select asset") : "Connect wallet"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {loadingAssets ? (
+                                      <div className="px-2 py-1.5 text-sm text-gray-500 text-center">
+                                        Loading assets...
+                                      </div>
+                                    ) : userAssets.length === 0 ? (
+                                      <div className="px-2 py-1.5 text-sm text-gray-500 text-center">
+                                        No assets found
+                                      </div>
+                                    ) : (
+                                      userAssets.map((asset) => (
+                                        <SelectItem key={asset.assetId} value={asset.assetId.toString()}>
+                                          <div className="flex items-center justify-between w-full">
+                                            <span>{asset.unitName || asset.name}</span>
+                                            <span className="text-xs text-gray-500 ml-2">
+                                              {asset.balance.toFixed(4)}
+                                            </span>
+                                          </div>
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
+                              {selectedAssetId && assetInfo && (
+                                <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded-full flex items-center justify-center"
+                                    style={{ backgroundColor: marketplace?.primaryColor || '#8B5CF6' }}
+                                  >
+                                    <span className="text-xs font-bold text-white">
+                                      {assetInfo.unitName?.[0]?.toUpperCase() || 'A'}
+                                    </span>
+                                  </div>
+                                  {assetInfo.name}
+                                </div>
+                              )}
+                              {isConnected && userAssets.length === 0 && !loadingAssets && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                  No assets found in your wallet. You need assets to swap.
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           {/* Percentage Buttons */}
-                          <div className="flex items-center gap-2 mb-6 flex-wrap">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="flex-1 sm:flex-none"
-                              style={getButtonStyle('outline')}
-                            >
-                              <ArrowRightLeft className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="flex-1 sm:flex-none"
-                              style={getButtonStyle('outline')}
-                            >
-                              25%
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="flex-1 sm:flex-none"
-                              style={getButtonStyle('outline')}
-                            >
-                              50%
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="flex-1 sm:flex-none"
-                              style={getButtonStyle('outline')}
-                            >
-                              100%
-                            </Button>
-                          </div>
+                          {selectedAssetId && balance > 0 && (
+                            <div className="flex items-center gap-2 mb-6 flex-wrap">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1 sm:flex-none"
+                                style={getButtonStyle('outline')}
+                                onClick={() => handlePercentageClick(25)}
+                              >
+                                25%
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1 sm:flex-none"
+                                style={getButtonStyle('outline')}
+                                onClick={() => handlePercentageClick(50)}
+                              >
+                                50%
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1 sm:flex-none"
+                                style={getButtonStyle('outline')}
+                                onClick={() => handlePercentageClick(75)}
+                              >
+                                75%
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1 sm:flex-none"
+                                style={getButtonStyle('outline')}
+                                onClick={() => handlePercentageClick(100)}
+                              >
+                                100%
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Quote Display */}
+                          {quote && quote.poolExists && (
+                            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">You will receive</span>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    {quote.output.amount.toFixed(6)}
+                                  </div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">ALGO</div>
+                                </div>
+                              </div>
+                              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                                <div className="flex justify-between">
+                                  <span>Minimum received:</span>
+                                  <span>{quote.minAmountOut.toFixed(6)} ALGO</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Price impact:</span>
+                                  <span className={quote.fees.priceImpact > 1 ? 'text-red-600 dark:text-red-400' : ''}>
+                                    {quote.fees.priceImpact.toFixed(2)}%
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Swap fee:</span>
+                                  <span>{quote.fees.swapFee.toFixed(6)} ALGO</span>
+                                </div>
+                              </div>
+                              {quote.fees.priceImpact > 1 && (
+                                <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                                  High price impact warning
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Error Display */}
+                          {swapError && (
+                            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                              <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                                <AlertCircle className="w-4 h-4" />
+                                <span className="text-sm">{swapError}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Pool Not Found */}
+                          {quote && !quote.poolExists && (
+                            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                              <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                                <Info className="w-4 h-4" />
+                                <span className="text-sm">No liquidity pool found for this asset. Cannot swap.</span>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Receive Section */}
                           <div className="mb-6">
                             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">Receive</Label>
                             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">0</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">$0</div>
                               <div className="flex items-center justify-between">
-                                <Button 
-                                  variant="outline" 
-                                  className="bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-500"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    <span>Select</span>
-                                    <ChevronRight className="w-4 h-4" />
+                                <div>
+                                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                                    {quote && quote.poolExists ? quote.output.amount.toFixed(6) : '0'}
                                   </div>
-                                </Button>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">ALGO</div>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                                  <Coins className="w-4 h-4" />
+                                  <span className="font-medium">ALGO</span>
+                                </div>
                               </div>
                             </div>
                           </div>
 
+                          {/* Slippage Settings */}
+                          <div className="mb-6">
+                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                              Slippage Tolerance
+                            </Label>
+                            <div className="flex gap-2">
+                              <Button
+                                variant={slippage === 0.005 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleSlippageChange(0.005)}
+                                style={slippage === 0.005 ? getButtonStyle('primary') : getButtonStyle('outline')}
+                              >
+                                0.5%
+                              </Button>
+                              <Button
+                                variant={slippage === 0.01 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleSlippageChange(0.01)}
+                                style={slippage === 0.01 ? getButtonStyle('primary') : getButtonStyle('outline')}
+                              >
+                                1%
+                              </Button>
+                              <Button
+                                variant={slippage === 0.03 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleSlippageChange(0.03)}
+                                style={slippage === 0.03 ? getButtonStyle('primary') : getButtonStyle('outline')}
+                              >
+                                3%
+                              </Button>
+                            </div>
+                          </div>
+
                           {/* Swap Button */}
-                          <Button 
-                            className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4"
-                            disabled={!isConnected}
-                            style={getButtonStyle('primary')}
-                          >
-                            {isConnected ? 'Swap' : 'Log in to swap'}
-                          </Button>
+                          {!isConnected ? (
+                            <Button 
+                              className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4"
+                              onClick={() => connect()}
+                              style={getButtonStyle('primary')}
+                            >
+                              <Wallet className="w-4 h-4 mr-2" />
+                              Connect Wallet to Swap
+                            </Button>
+                          ) : (
+                            <Button 
+                              className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={!quote || !quote.poolExists || quoteLoading || txStatus !== 'idle' || !swapAmount || parseFloat(swapAmount) <= 0}
+                              onClick={handleSwap}
+                              style={getButtonStyle('primary')}
+                            >
+                              {txStatus === 'preparing' && 'Preparing...'}
+                              {txStatus === 'signing' && 'Signing Transaction...'}
+                              {txStatus === 'submitting' && 'Submitting...'}
+                              {txStatus === 'confirming' && 'Waiting for Confirmation...'}
+                              {txStatus === 'confirmed' && 'Swap Confirmed ✓'}
+                              {txStatus === 'failed' && 'Swap Failed'}
+                              {txStatus === 'idle' && (quoteLoading ? 'Fetching Quote...' : 'Swap to ALGO')}
+                            </Button>
+                          )}
 
                           {/* Info Text */}
                           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                            Swap services are available through{" "}
-                            <span className="underline cursor-pointer hover:text-pink-500">third party API partners</span>
+                            Powered by{" "}
+                            <a 
+                              href="https://tinyman.org" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="underline cursor-pointer hover:text-pink-500"
+                            >
+                              Tinyman
+                            </a>
+                            {" "}AMM Protocol
                           </p>
-
-                          {/* Select Receiving Address Button */}
-                          <Button 
-                            variant="outline" 
-                            className="w-full mt-4 bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/30"
-                            style={getButtonStyle('outline')}
-                          >
-                            Select Receiving Address
-                          </Button>
                         </CardContent>
                       </Card>
                     </div>
