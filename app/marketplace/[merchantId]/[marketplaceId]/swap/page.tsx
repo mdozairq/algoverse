@@ -220,11 +220,13 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   const [sortBy, setSortBy] = useState("rarity")
 
   // Tinyman swap state
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
+  const [selectedAssetInId, setSelectedAssetInId] = useState<number | null>(null)
+  const [selectedAssetOutId, setSelectedAssetOutId] = useState<number | null>(null)
   const [swapAmount, setSwapAmount] = useState<string>("")
   const [slippage, setSlippage] = useState<number>(0.01)
   const [userAssets, setUserAssets] = useState<Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
+  const [swapDirection, setSwapDirection] = useState<'ASA_TO_ALGO' | 'ALGO_TO_ASA'>('ASA_TO_ALGO')
 
   const { isConnected, account, connect, disconnect } = useWallet()
   
@@ -237,11 +239,13 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     txStatus,
     assetInfo,
     balance,
+    outputBalance,
     getQuote,
     executeSwap,
     clearQuote,
     clearError,
-    refreshBalance
+    refreshBalance,
+    refreshOutputBalance
   } = useTinymanSwap(params.merchantId, walletAddress)
 
   const fetchMarketplaceData = async () => {
@@ -289,18 +293,8 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
   }
 
   const fetchSwapProposals = async () => {
-    if (!isConnected || !account?.address) return
-    
-    try {
-      const response = await fetch(`/api/swap/proposals?user=${account.address}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setSwapProposals(data.proposals || [])
-      }
-    } catch (error) {
-      console.error("Failed to fetch swap proposals:", error)
-    }
+    // NFT swap proposals not implemented - focusing on Tinyman swaps
+    setSwapProposals([])
   }
 
   useEffect(() => {
@@ -315,7 +309,7 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     }
   }, [isConnected, account])
 
-  // Fetch user's assets for swap
+  // Fetch user's assets for swap using Tinyman service
   const fetchUserAssets = async () => {
     if (!account?.address) {
       setUserAssets([])
@@ -324,60 +318,12 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     
     setLoadingAssets(true)
     try {
-      const accountInfo = await WalletMintService.getAccountInfo(account.address)
+      console.log('Fetching user assets for address:', account.address)
       
-      console.log('Account info:', accountInfo)
-      console.log('Assets:', accountInfo.assets)
-      console.log('Assets type:', typeof accountInfo.assets)
-      console.log('Assets length:', accountInfo.assets?.length)
-      
-      if (!accountInfo.assets || accountInfo.assets.length === 0) {
-        console.log('No assets found in account')
-        setUserAssets([])
-        setLoadingAssets(false)
-        return
-      }
-      
-      // Fetch asset details for each asset
-      const assetsWithDetails = await Promise.all(
-        accountInfo.assets.map(async (asset, index) => {
-          // Validate asset has required properties
-          if (!asset) {
-            console.warn(`Asset at index ${index} is null/undefined:`, asset)
-            return null
-          }
-          
-          // Check for assetId property (handle both camelCase and kebab-case)
-          const assetId = asset.assetId !== undefined ? asset.assetId : (asset as any)['asset-id']
-          
-          if (assetId === undefined || assetId === null || isNaN(Number(assetId))) {
-            console.warn(`Invalid asset at index ${index}:`, asset, 'assetId:', assetId)
-            return null
-          }
-          
-          const numericAssetId = Number(assetId)
-          
-          try {
-            const assetInfo = await tinymanSwapService.getAssetInfo(numericAssetId)
-            const assetAmount = asset.amount || 0
-            const balance = assetAmount / Math.pow(10, assetInfo.decimals)
-            return {
-              assetId: numericAssetId,
-              name: assetInfo.name,
-              unitName: assetInfo.unitName,
-              balance,
-              decimals: assetInfo.decimals
-            }
-          } catch (error) {
-            console.error(`Error fetching asset ${numericAssetId}:`, error)
-            return null
-          }
-        })
-      )
-      
-      const validAssets = assetsWithDetails.filter(Boolean) as Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>
-      console.log('Valid assets:', validAssets)
-      setUserAssets(validAssets)
+      // Use the efficient getUserAssets method
+      const assets = await tinymanSwapService.getUserAssets(account.address)
+      console.log('Final assets list:', assets)
+      setUserAssets(assets)
     } catch (error) {
       console.error("Failed to fetch user assets:", error)
       setUserAssets([])
@@ -392,39 +338,103 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     clearError()
     
     const numValue = parseFloat(value)
-    if (selectedAssetId && numValue > 0) {
-      await getQuote(selectedAssetId, numValue, slippage)
+    if (selectedAssetInId && selectedAssetOutId && numValue > 0) {
+      await getQuote(selectedAssetInId, selectedAssetOutId, numValue, slippage)
     } else {
       clearQuote()
     }
-  }, [selectedAssetId, slippage, getQuote, clearQuote, clearError])
+  }, [selectedAssetInId, selectedAssetOutId, slippage, getQuote, clearQuote, clearError])
 
-  // Handle asset selection
-  const handleAssetSelect = useCallback(async (assetId: number) => {
-    setSelectedAssetId(assetId)
+  // Get asset display name
+  const getAssetDisplayName = useCallback((assetId: number | null) => {
+    if (assetId === null) return "Select"
+    if (assetId === 0) return "ALGO"
+    
+    const asset = userAssets.find(a => a.assetId === assetId)
+    return asset ? (asset.unitName || asset.name) : "Select"
+  }, [userAssets])
+
+  // Add these helper functions to get balances from userAssets
+  const getAssetBalance = useCallback((assetId: number | null): number => {
+    if (assetId === null) return 0
+    const asset = userAssets.find(a => a.assetId === assetId)
+    return asset ? asset.balance : 0
+  }, [userAssets])
+
+  const getInputBalance = useCallback(() => {
+    return getAssetBalance(selectedAssetInId)
+  }, [selectedAssetInId, getAssetBalance])
+
+  const getOutputBalance = useCallback(() => {
+    return getAssetBalance(selectedAssetOutId)
+  }, [selectedAssetOutId, getAssetBalance])
+
+  // Handle input asset selection
+  const handleAssetInSelect = useCallback(async (value: string) => {
+    const assetId = parseInt(value)
+    setSelectedAssetInId(assetId)
     clearQuote()
     
+    // Auto-set output asset to ALGO if input is ASA, or to first available ASA if input is ALGO
+    if (assetId === 0) {
+      // Input is ALGO, set output to first available ASA (excluding ALGO)
+      const firstAsa = userAssets.find(asset => asset.assetId !== 0)
+      if (firstAsa) {
+        setSelectedAssetOutId(firstAsa.assetId)
+        setSwapDirection('ALGO_TO_ASA')
+      }
+    } else {
+      // Input is ASA, set output to ALGO
+      setSelectedAssetOutId(0)
+      setSwapDirection('ASA_TO_ALGO')
+    }
+    
     if (swapAmount && parseFloat(swapAmount) > 0) {
-      await getQuote(assetId, parseFloat(swapAmount), slippage)
+      const targetAssetOutId = assetId === 0 ? (userAssets.find(asset => asset.assetId !== 0)?.assetId || 0) : 0
+      if (targetAssetOutId !== null) {
+        await getQuote(assetId, targetAssetOutId, parseFloat(swapAmount), slippage)
+      }
     }
     
     if (walletAddress) {
       await refreshBalance(assetId, walletAddress)
     }
-  }, [swapAmount, slippage, walletAddress, getQuote, clearQuote, refreshBalance])
+  }, [swapAmount, slippage, walletAddress, getQuote, clearQuote, refreshBalance, userAssets])
+
+  // Handle output asset selection
+  const handleAssetOutSelect = useCallback(async (value: string) => {
+    const assetId = parseInt(value)
+    setSelectedAssetOutId(assetId)
+    clearQuote()
+    
+    // Update swap direction
+    if (selectedAssetInId === 0) {
+      setSwapDirection('ALGO_TO_ASA')
+    } else {
+      setSwapDirection('ASA_TO_ALGO')
+    }
+    
+    if (swapAmount && parseFloat(swapAmount) > 0 && selectedAssetInId !== null) {
+      await getQuote(selectedAssetInId, assetId, parseFloat(swapAmount), slippage)
+    }
+    
+    if (walletAddress) {
+      await refreshOutputBalance(assetId, walletAddress)
+    }
+  }, [swapAmount, slippage, walletAddress, getQuote, clearQuote, refreshOutputBalance, selectedAssetInId])
 
   // Handle slippage change
   const handleSlippageChange = useCallback(async (newSlippage: number) => {
     setSlippage(newSlippage)
     
-    if (selectedAssetId && swapAmount && parseFloat(swapAmount) > 0) {
-      await getQuote(selectedAssetId, parseFloat(swapAmount), newSlippage)
+    if (selectedAssetInId && selectedAssetOutId && swapAmount && parseFloat(swapAmount) > 0) {
+      await getQuote(selectedAssetInId, selectedAssetOutId, parseFloat(swapAmount), newSlippage)
     }
-  }, [selectedAssetId, swapAmount, getQuote])
+  }, [selectedAssetInId, selectedAssetOutId, swapAmount, getQuote])
 
   // Handle swap execution
   const handleSwap = useCallback(async () => {
-    if (!quote || !isConnected) return
+    if (!quote || !isConnected || !selectedAssetInId || !selectedAssetOutId || !swapAmount) return
     
     try {
       const result = await executeSwap(quote)
@@ -432,7 +442,8 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
       if (result) {
         // Reset form after successful swap
         setSwapAmount("")
-        setSelectedAssetId(null)
+        setSelectedAssetInId(null)
+        setSelectedAssetOutId(null)
         clearQuote()
         
         // Refresh assets
@@ -443,76 +454,74 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     } catch (error) {
       console.error("Swap error:", error)
     }
-  }, [quote, isConnected, executeSwap, account, clearQuote])
+  }, [quote, isConnected, executeSwap, account, clearQuote, selectedAssetInId, selectedAssetOutId, swapAmount])
 
   // Set percentage buttons
   const handlePercentageClick = useCallback((percentage: number) => {
-    if (!selectedAssetId || !balance) return
+    if (!selectedAssetInId) return
     
-    const amount = (balance * percentage / 100).toString()
+    const currentBalance = getInputBalance()
+    const amount = (currentBalance * percentage / 100).toString()
     setSwapAmount(amount)
     handleAmountChange(amount)
-  }, [selectedAssetId, balance, handleAmountChange])
+  }, [selectedAssetInId, getInputBalance, handleAmountChange])
+
+  // Calculate conversion rate
+  const getConversionRate = useCallback(() => {
+    if (!quote || !quote.poolExists || quote.input.amount <= 0) return null
+    
+    const rate = quote.output.amount / quote.input.amount
+    return {
+      rate,
+      display: `1 ${quote.input.asset.unitName || quote.input.asset.name} = ${rate.toFixed(6)} ${quote.output.asset.unitName || quote.output.asset.name}`
+    }
+  }, [quote])
+
+  const conversionRate = getConversionRate()
+
+  // Refresh hook balances when assets are selected
+  useEffect(() => {
+    if (selectedAssetInId && walletAddress) {
+      refreshBalance(selectedAssetInId, walletAddress)
+    }
+  }, [selectedAssetInId, walletAddress, refreshBalance])
+
+  useEffect(() => {
+    if (selectedAssetOutId && walletAddress) {
+      refreshOutputBalance(selectedAssetOutId, walletAddress)
+    }
+  }, [selectedAssetOutId, walletAddress, refreshOutputBalance])
+
+  // Add this useEffect to debug balance issues
+  useEffect(() => {
+    console.log('Current balances:', {
+      selectedAssetInId,
+      selectedAssetOutId,
+      hookBalance: balance,
+      hookOutputBalance: outputBalance,
+      userAssetsBalance: getInputBalance(),
+      userAssetsOutputBalance: getOutputBalance(),
+      userAssets
+    })
+  }, [selectedAssetInId, selectedAssetOutId, balance, outputBalance, getInputBalance, getOutputBalance, userAssets])
 
   useEffect(() => {
     fetchAvailableNFTs()
   }, [params.marketplaceId])
 
   const handleCreateSwap = async () => {
-    if (!selectedNFT || !requestedNFT || !isConnected || !account?.address) return
-
-    try {
-      const response = await fetch("/api/swap/proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fromUser: account.address,
-          toUser: requestedNFT.owner,
-          offeredNFTId: selectedNFT.id,
-          requestedNFTId: requestedNFT.id,
-          marketplaceId: params.marketplaceId
-        }),
-      })
-
-      if (response.ok) {
-        setShowSwapDialog(false)
-        setSelectedNFT(null)
-        setRequestedNFT(null)
-        fetchSwapProposals()
-      }
-    } catch (error) {
-      console.error("Failed to create swap proposal:", error)
-    }
+    // NFT swap proposals not implemented - focusing on Tinyman swaps
+    console.log("NFT swap proposals not implemented")
   }
 
   const handleAcceptSwap = async (proposalId: string) => {
-    try {
-      const response = await fetch(`/api/swap/proposals/${proposalId}/accept`, {
-        method: "POST",
-      })
-
-      if (response.ok) {
-        fetchSwapProposals()
-        fetchUserNFTs()
-        fetchAvailableNFTs()
-      }
-    } catch (error) {
-      console.error("Failed to accept swap:", error)
-    }
+    // NFT swap proposals not implemented - focusing on Tinyman swaps
+    console.log("NFT swap proposals not implemented")
   }
 
   const handleRejectSwap = async (proposalId: string) => {
-    try {
-      const response = await fetch(`/api/swap/proposals/${proposalId}/reject`, {
-        method: "POST",
-      })
-
-      if (response.ok) {
-        fetchSwapProposals()
-      }
-    } catch (error) {
-      console.error("Failed to reject swap:", error)
-    }
+    // NFT swap proposals not implemented - focusing on Tinyman swaps
+    console.log("NFT swap proposals not implemented")
   }
 
   const filteredNFTs = availableNFTs.filter(nft => {
@@ -564,10 +573,9 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                 </FadeIn>
 
                 <Tabs defaultValue="swap" className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="swap">Swap</TabsTrigger>
                     <TabsTrigger value="history">History</TabsTrigger>
-                    <TabsTrigger value="proposals">Proposals</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="swap" className="space-y-6">
@@ -583,9 +591,6 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
                               <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Tinyman Swap</span>
-                              {/* <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
-                                TESTNET
-                              </Badge> */}
                             </div>
                             <div className="flex items-center gap-2">
                               <Cog className="w-4 h-4 text-gray-400" />
@@ -593,13 +598,13 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                             </div>
                           </div>
 
-                          {/* Pay Section */}
+                          {/* Input Section */}
                           <div className="mb-6">
                             <div className="flex items-center justify-between mb-3">
-                              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Pay</Label>
-                              {selectedAssetId && balance > 0 && (
+                              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">From</Label>
+                              {selectedAssetInId !== null && (
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  Balance: {balance.toFixed(6)} {assetInfo?.unitName || 'ASA'}
+                                  Balance: {getInputBalance().toFixed(6)} {getAssetDisplayName(selectedAssetInId)}
                                 </span>
                               )}
                             </div>
@@ -614,23 +619,25 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                                     className="text-4xl font-bold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield] h-16"
                                     disabled={!isConnected}
                                   />
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    {selectedAssetId && assetInfo ? (assetInfo.unitName || assetInfo.name) : 'Select asset'}
+                                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {getAssetDisplayName(selectedAssetInId)}
                                   </div>
                                 </div>
                                 <Select
-                                  value={selectedAssetId ? selectedAssetId.toString() : undefined}
-                                  onValueChange={(value) => handleAssetSelect(parseInt(value))}
+                                  value={selectedAssetInId !== null ? selectedAssetInId.toString() : undefined}
+                                  onValueChange={handleAssetInSelect}
                                   disabled={!isConnected || (userAssets.length === 0 && !loadingAssets)}
                                 >
-                                  <SelectTrigger className="w-[140px] border-0 bg-transparent px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                                  <SelectTrigger className="w-[140px] border-0 bg-transparent px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg text-gray-900 dark:text-gray-100">
                                     <SelectValue placeholder={isConnected ? (loadingAssets ? "Loading..." : userAssets.length === 0 ? "No assets" : "Select") : "Connect"}>
-                                      {selectedAssetId && assetInfo ? (
+                                      {selectedAssetInId !== null && (
                                         <div className="flex items-center gap-2">
-                                          <Coins className="w-4 h-4" />
-                                          <span className="font-medium">{assetInfo.unitName || assetInfo.name}</span>
+                                          <Coins className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                                          <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                            {getAssetDisplayName(selectedAssetInId)}
+                                          </span>
                                         </div>
-                                      ) : null}
+                                      )}
                                     </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
@@ -646,7 +653,7 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                                       userAssets.map((asset) => (
                                         <SelectItem key={asset.assetId} value={asset.assetId.toString()}>
                                           <div className="flex items-center justify-between w-full">
-                                            <span>{asset.unitName || asset.name}</span>
+                                            <span className="truncate">{asset.unitName || asset.name}</span>
                                             <span className="text-xs text-gray-500 ml-2">
                                               {asset.balance.toFixed(4)}
                                             </span>
@@ -666,7 +673,7 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                           </div>
 
                           {/* Percentage Buttons */}
-                          {selectedAssetId && balance > 0 && (
+                          {selectedAssetInId !== null && getInputBalance() > 0 && (
                             <div className="flex items-center gap-2 mb-6 flex-wrap">
                               <Button 
                                 variant="outline" 
@@ -707,32 +714,51 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                             </div>
                           )}
 
+                          {/* Conversion Rate Display - Always show when available */}
+                          {conversionRate && (
+                            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Conversion Rate</span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                  {conversionRate.display}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Quote Display */}
                           {quote && quote.poolExists && (
                             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center justify-between mb-3">
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">You will receive</span>
                                 <div className="text-right">
                                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
                                     {quote.output.amount.toFixed(6)}
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">ALGO</div>
+                                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {quote.output.asset.unitName || quote.output.asset.name}
+                                  </div>
                                 </div>
                               </div>
+                              
                               <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                                 <div className="flex justify-between">
                                   <span>Minimum received:</span>
-                                  <span>{quote.minAmountOut.toFixed(6)} ALGO</span>
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {quote.minAmountOut.toFixed(6)} {quote.output.asset.unitName || quote.output.asset.name}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Price impact:</span>
-                                  <span className={quote.fees.priceImpact > 1 ? 'text-red-600 dark:text-red-400' : ''}>
+                                  <span className={`font-medium ${quote.fees.priceImpact > 1 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
                                     {quote.fees.priceImpact.toFixed(2)}%
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Swap fee:</span>
-                                  <span>{quote.fees.swapFee.toFixed(6)} ALGO</span>
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {quote.fees.swapFee.toFixed(6)} {quote.output.asset.unitName || quote.output.asset.name}
+                                  </span>
                                 </div>
                               </div>
                               {quote.fees.priceImpact > 1 && (
@@ -764,21 +790,74 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                             </div>
                           )}
 
-                          {/* Receive Section */}
+                          {/* Output Section */}
                           <div className="mb-6">
-                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">Receive</Label>
+                            <div className="flex items-center justify-between mb-3">
+                              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">To</Label>
+                              {selectedAssetOutId !== null && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  Balance: {getOutputBalance().toFixed(6)} {getAssetDisplayName(selectedAssetOutId)}
+                                </span>
+                              )}
+                            </div>
                             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                               <div className="flex items-center justify-between">
-                                <div>
+                                <div className="flex-1">
                                   <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                                     {quote && quote.poolExists ? quote.output.amount.toFixed(6) : '0'}
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">ALGO</div>
+                                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {getAssetDisplayName(selectedAssetOutId)}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
-                                  <Coins className="w-4 h-4" />
-                                  <span className="font-medium">ALGO</span>
-                                </div>
+                                <Select
+                                  value={selectedAssetOutId !== null ? selectedAssetOutId.toString() : undefined}
+                                  onValueChange={handleAssetOutSelect}
+                                  disabled={!isConnected || (userAssets.length === 0 && !loadingAssets)}
+                                >
+                                  <SelectTrigger className="w-[140px] border-0 bg-transparent px-3 py-2 bg-gray-100 dark:bg-gray-600 rounded-lg text-gray-900 dark:text-gray-100">
+                                    <SelectValue placeholder={isConnected ? (loadingAssets ? "Loading..." : userAssets.length === 0 ? "No assets" : "Select") : "Connect"}>
+                                      {selectedAssetOutId !== null && (
+                                        <div className="flex items-center gap-2">
+                                          <Coins className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                                          <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                            {getAssetDisplayName(selectedAssetOutId)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {loadingAssets ? (
+                                      <div className="px-2 py-1.5 text-sm text-gray-500 text-center">
+                                        Loading assets...
+                                      </div>
+                                    ) : userAssets.length === 0 ? (
+                                      <div className="px-2 py-1.5 text-sm text-gray-500 text-center">
+                                        No assets found
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <SelectItem value="0">
+                                          <div className="flex items-center gap-2">
+                                            <Coins className="w-4 h-4" />
+                                            <span>ALGO</span>
+                                          </div>
+                                        </SelectItem>
+                                        {userAssets.filter(asset => asset.assetId !== 0).map((asset) => (
+                                          <SelectItem key={asset.assetId} value={asset.assetId.toString()}>
+                                            <div className="flex items-center justify-between w-full">
+                                              <span className="truncate">{asset.unitName || asset.name}</span>
+                                              <span className="text-xs text-gray-500 ml-2">
+                                                {asset.balance.toFixed(4)}
+                                              </span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </>
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                           </div>
@@ -829,7 +908,17 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                           ) : (
                             <Button 
                               className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                              disabled={!quote || !quote.poolExists || quoteLoading || txStatus !== 'idle' || !swapAmount || parseFloat(swapAmount) <= 0}
+                              disabled={
+                                !selectedAssetInId || 
+                                !selectedAssetOutId || 
+                                !quote || 
+                                !quote.poolExists || 
+                                quoteLoading || 
+                                txStatus !== 'idle' || 
+                                !swapAmount || 
+                                parseFloat(swapAmount) <= 0 ||
+                                parseFloat(swapAmount) > getInputBalance()
+                              }
                               onClick={handleSwap}
                               style={getButtonStyle('primary')}
                             >
@@ -839,7 +928,14 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               {txStatus === 'confirming' && 'Waiting for Confirmation...'}
                               {txStatus === 'confirmed' && 'Swap Confirmed ✓'}
                               {txStatus === 'failed' && 'Swap Failed'}
-                              {txStatus === 'idle' && (quoteLoading ? 'Fetching Quote...' : 'Swap to ALGO')}
+                              {txStatus === 'idle' && (
+                                quoteLoading ? 'Fetching Quote...' : 
+                                !selectedAssetInId || !selectedAssetOutId ? 'Select Assets' :
+                                !quote || !quote.poolExists ? 'No Pool Available' :
+                                !swapAmount || parseFloat(swapAmount) <= 0 ? 'Enter Amount' :
+                                parseFloat(swapAmount) > getInputBalance() ? 'Insufficient Balance' :
+                                `Swap ${swapDirection === 'ASA_TO_ALGO' ? 'to ALGO' : 'to ASA'}`
+                              )}
                             </Button>
                           )}
 
@@ -890,137 +986,6 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                               <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
                               <p>No swap history available yet</p>
                             </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="proposals" className="space-y-6">
-                    <Card style={getCardStyle()}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <ArrowRightLeft className="w-5 h-5" />
-                          Swap Proposals
-                        </CardTitle>
-                        <CardDescription>
-                          Manage your incoming and outgoing swap proposals
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {!isConnected ? (
-                          <div className="flex flex-col items-center justify-center py-12">
-                            <Wallet className="w-16 h-16 text-gray-400 mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                              Connect Your Wallet
-                            </h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                              Connect your wallet to view swap proposals
-                            </p>
-                            <WalletConnectButton />
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {swapProposals.length === 0 ? (
-                              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <ArrowRightLeft className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                <p>No active swap proposals</p>
-                              </div>
-                            ) : (
-                              swapProposals.map((proposal, index) => (
-                                <motion.div
-                                  key={proposal.id}
-                                  initial={{ opacity: 0, y: 20 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                                >
-                                  <Card>
-                                    <CardContent className="p-6">
-                                      <div className="flex flex-col lg:flex-row gap-6">
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-4">
-                                            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                                              <Image
-                                                src={proposal.offeredNFT.image}
-                                                alt={proposal.offeredNFT.name}
-                                                fill
-                                                className="object-cover"
-                                              />
-                                            </div>
-                                            <div>
-                                              <h4 className="font-semibold text-gray-900 dark:text-white">
-                                                {proposal.offeredNFT.name}
-                                              </h4>
-                                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                Offered by {proposal.fromUser.slice(0, 6)}...{proposal.fromUser.slice(-4)}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center justify-center">
-                                          <ArrowRightLeft className="w-6 h-6 text-gray-400" />
-                                        </div>
-                                        
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-4">
-                                            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                                              <Image
-                                                src={proposal.requestedNFT.image}
-                                                alt={proposal.requestedNFT.name}
-                                                fill
-                                                className="object-cover"
-                                              />
-                                            </div>
-                                            <div>
-                                              <h4 className="font-semibold text-gray-900 dark:text-white">
-                                                {proposal.requestedNFT.name}
-                                              </h4>
-                                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                Requested NFT
-                                              </p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        <div className="flex flex-col gap-2">
-                                          <Badge 
-                                            className={`text-xs ${
-                                              proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                              proposal.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                              proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                              'bg-gray-100 text-gray-800'
-                                            }`}
-                                          >
-                                            {proposal.status}
-                                          </Badge>
-                                          {proposal.status === 'pending' && (
-                                            <div className="flex gap-2">
-                                              <Button
-                                                size="sm"
-                                                onClick={() => handleAcceptSwap(proposal.id)}
-                                                className="bg-green-600 hover:bg-green-700"
-                                              >
-                                                <CheckCircle2 className="w-4 h-4 mr-1" />
-                                                Accept
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => handleRejectSwap(proposal.id)}
-                                              >
-                                                <XCircle className="w-4 h-4 mr-1" />
-                                                Reject
-                                              </Button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                </motion.div>
-                              ))
-                            )}
                           </div>
                         )}
                       </CardContent>

@@ -9,7 +9,12 @@
  */
 
 import algosdk from 'algosdk'
-import { Swap, type SupportedNetwork, poolUtils, SwapType } from '@tinymanorg/tinyman-js-sdk'
+import { 
+  Swap, 
+  type SupportedNetwork, 
+  poolUtils, 
+  SwapType
+} from '@tinymanorg/tinyman-js-sdk'
 import { getAlgodClient } from '@/lib/algorand/config'
 import { Buffer } from 'buffer'
 
@@ -38,6 +43,7 @@ export interface SwapQuote {
   minAmountOut: number
   slippage: number
   poolExists: boolean
+  swapDirection: 'ASA_TO_ALGO' | 'ALGO_TO_ASA'
 }
 
 export interface SwapResult {
@@ -64,7 +70,7 @@ export class TinymanSwapService {
   }
 
   /**
-   * Get asset information from Algorand
+   * Get asset information from Algorand using Tinyman SDK
    */
   async getAssetInfo(assetId: number): Promise<AssetInfo> {
     // Validate assetId
@@ -84,6 +90,7 @@ export class TinymanSwapService {
 
     try {
       const assetInfo = await this.algodClient.getAssetByID(Number(assetId)).do()
+      
       return {
         id: Number(assetId),
         name: assetInfo.params.name || `ASA-${assetId}`,
@@ -99,15 +106,25 @@ export class TinymanSwapService {
   /**
    * Check if a pool exists for the given asset pair
    */
-  async checkPoolExists(assetInId: number, assetOutId: number = 0): Promise<boolean> {
+  async checkPoolExists(assetInId: number, assetOutId: number): Promise<boolean> {
     try {
+      // Ensure consistent ordering (smaller ID first)
+      const asset1ID = Math.min(assetInId, assetOutId)
+      const asset2ID = Math.max(assetInId, assetOutId)
+      
+      console.log(`Checking pool existence for assets: ${asset1ID} and ${asset2ID}`)
+      
       const poolInfo = await poolUtils.v2.getPoolInfo({
         network: this.network,
         client: this.algodClient,
-        asset1ID: assetInId,
-        asset2ID: assetOutId
+        asset1ID,
+        asset2ID
       })
-      return poolInfo !== null && !poolUtils.isPoolNotCreated(poolInfo)
+      
+      const poolExists = poolInfo !== null && !poolUtils.isPoolNotCreated(poolInfo)
+      console.log(`Pool exists: ${poolExists}`, poolInfo)
+      
+      return poolExists
     } catch (error) {
       console.error('Error checking pool existence:', error)
       return false
@@ -115,13 +132,15 @@ export class TinymanSwapService {
   }
 
   /**
-   * Get swap quote for converting ASA to ALGO
-   * @param assetInId - The ASA ID to swap from
+   * Get swap quote for converting between assets
+   * @param assetInId - The asset ID to swap from (0 for ALGO)
+   * @param assetOutId - The asset ID to swap to (0 for ALGO)
    * @param amount - Amount in human-readable format (e.g., 100.5)
    * @param slippage - Slippage tolerance (default 0.01 = 1%)
    */
   async getSwapQuote(
     assetInId: number,
+    assetOutId: number,
     amount: number,
     slippage: number = 0.01
   ): Promise<SwapQuote> {
@@ -129,23 +148,39 @@ export class TinymanSwapService {
       throw new Error('Amount must be greater than 0')
     }
 
+    console.log(`Getting swap quote: ${assetInId} -> ${assetOutId}, amount: ${amount}, slippage: ${slippage}`)
+
+    // Determine swap direction
+    const swapDirection = assetInId === 0 ? 'ALGO_TO_ASA' : 'ASA_TO_ALGO'
+
     // Get asset information
     const assetIn = await this.getAssetInfo(assetInId)
-    const assetOut = await this.getAssetInfo(0) // ALGO
+    const assetOut = await this.getAssetInfo(assetOutId)
+
+    console.log('Asset info:', { assetIn, assetOut })
 
     // Convert amount to micro-units (accounting for decimals)
     const amountInMicroUnits = BigInt(Math.floor(amount * Math.pow(10, assetIn.decimals)))
+    console.log('Amount in micro-units:', amountInMicroUnits.toString())
 
     try {
-      // Fetch pool info
+      // Fetch pool info - ensure consistent ordering (smaller ID first)
+      const asset1ID = Math.min(assetInId, assetOutId)
+      const asset2ID = Math.max(assetInId, assetOutId)
+      
+      console.log(`Looking up pool for assets: ${asset1ID} and ${asset2ID}`)
+      
       const poolInfo = await poolUtils.v2.getPoolInfo({
         network: this.network,
         client: this.algodClient,
-        asset1ID: assetInId,
-        asset2ID: 0
+        asset1ID,
+        asset2ID
       })
 
+      console.log('Pool info:', poolInfo)
+
       if (!poolInfo || poolUtils.isPoolNotCreated(poolInfo)) {
+        console.log('Pool not found or not created')
         return {
           input: {
             amount,
@@ -163,25 +198,37 @@ export class TinymanSwapService {
           },
           minAmountOut: 0,
           slippage,
-          poolExists: false
+          poolExists: false,
+          swapDirection
         }
       }
+
+      console.log('Pool found, getting quote...')
 
       // Get quote with fixed input using Swap.v2 API
       const quote = await Swap.v2.getFixedInputSwapQuote({
         amount: amountInMicroUnits,
         assetIn: { id: assetInId, decimals: assetIn.decimals },
-        assetOut: { id: 0, decimals: assetOut.decimals },
+        assetOut: { id: assetOutId, decimals: assetOut.decimals },
         network: this.network,
         slippage,
         pool: poolInfo
       })
+
+      console.log('Quote received:', quote)
 
       if (quote.type === 'direct') {
         const quoteData = quote.data.quote
         const amountOut = Number(quoteData.assetOutAmount) / Math.pow(10, assetOut.decimals)
         const minAmountOut = amountOut * (1 - slippage)
         const swapFee = Number(quoteData.swapFee) / Math.pow(10, assetOut.decimals)
+
+        console.log('Quote details:', {
+          amountOut,
+          minAmountOut,
+          swapFee,
+          priceImpact: quoteData.priceImpact
+        })
 
         return {
           input: {
@@ -200,7 +247,8 @@ export class TinymanSwapService {
           },
           minAmountOut,
           slippage,
-          poolExists: true
+          poolExists: true,
+          swapDirection
         }
       }
 
@@ -241,7 +289,7 @@ export class TinymanSwapService {
       const swapQuote = await Swap.v2.getFixedInputSwapQuote({
         amount: BigInt(quote.input.amountInMicroUnits),
         assetIn: { id: quote.input.asset.id, decimals: quote.input.asset.decimals },
-        assetOut: { id: 0, decimals: 6 },
+        assetOut: { id: quote.output.asset.id, decimals: quote.output.asset.decimals },
         network: this.network,
         slippage: quote.slippage,
         pool: poolInfo
@@ -296,7 +344,7 @@ export class TinymanSwapService {
       const swapQuote = await Swap.v2.getFixedInputSwapQuote({
         amount: BigInt(quote.input.amountInMicroUnits),
         assetIn: { id: quote.input.asset.id, decimals: quote.input.asset.decimals },
-        assetOut: { id: 0, decimals: 6 },
+        assetOut: { id: quote.output.asset.id, decimals: quote.output.asset.decimals },
         network: this.network,
         slippage: quote.slippage,
         pool: poolInfo
@@ -341,25 +389,100 @@ export class TinymanSwapService {
    */
   async getAssetBalance(address: string, assetId: number): Promise<number> {
     try {
+      console.log(`Getting balance for address: ${address}, asset: ${assetId}`)
+      
+      const accountInfo = await this.algodClient.accountInformation(address).do()
+      console.log('Account info:', accountInfo)
+      
       if (assetId === 0) {
         // ALGO balance
-        const accountInfo = await this.algodClient.accountInformation(address).do()
-        return Number(accountInfo.amount)
+        const balance = Number(accountInfo.amount) / Math.pow(10, 6) // Convert from microAlgos to ALGO
+        console.log(`ALGO balance: ${balance}`)
+        return balance
       } else {
         // ASA balance
-        const accountInfo = await this.algodClient.accountInformation(address).do()
-        const asset = accountInfo.assets?.find((a: any) => a['asset-id'] === assetId)
+        const asset = accountInfo.assets?.find((a: any) => {
+          const aId = a['asset-id'] !== undefined ? a['asset-id'] : a.assetId
+          return aId === assetId
+        })
         
         if (!asset) {
+          console.log(`Asset ${assetId} not found in account`)
           return 0
         }
 
         const assetInfo = await this.getAssetInfo(assetId)
-        return Number(asset.amount) / Math.pow(10, assetInfo.decimals)
+        const balance = Number(asset.amount) / Math.pow(10, assetInfo.decimals)
+        console.log(`Asset ${assetId} balance: ${balance}`)
+        return balance
       }
     } catch (error) {
       console.error('Error getting asset balance:', error)
       return 0
+    }
+  }
+
+  /**
+   * Get all user assets with balances
+   * @param address - User's Algorand address
+   */
+  async getUserAssets(address: string): Promise<Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }>> {
+    try {
+      console.log(`Getting all assets for address: ${address}`)
+      
+      const accountInfo = await this.algodClient.accountInformation(address).do()
+      console.log('Account info:', accountInfo)
+      
+      const assets: Array<{ assetId: number; name: string; unitName: string; balance: number; decimals: number }> = []
+      
+      // Add ALGO if balance > 0
+      const algoBalance = Number(accountInfo.amount) / Math.pow(10, 6)
+      if (algoBalance > 0) {
+        assets.push({
+          assetId: 0,
+          name: 'Algorand',
+          unitName: 'ALGO',
+          balance: algoBalance,
+          decimals: 6
+        })
+      }
+      
+      // Process other assets
+      if (accountInfo.assets && accountInfo.assets.length > 0) {
+        for (const asset of accountInfo.assets) {
+          // Handle both property name formats
+          const assetId = (asset as any)['asset-id'] !== undefined ? (asset as any)['asset-id'] : (asset as any).assetId
+          
+          if (!asset || assetId === undefined || assetId === null) {
+            console.warn('Invalid asset:', asset)
+            continue
+          }
+          
+          try {
+            const numericAssetId = Number(assetId)
+            const assetInfo = await this.getAssetInfo(numericAssetId)
+            const balance = Number(asset.amount) / Math.pow(10, assetInfo.decimals)
+            
+            if (balance > 0) {
+              assets.push({
+                assetId: numericAssetId,
+                name: assetInfo.name,
+                unitName: assetInfo.unitName,
+                balance,
+                decimals: assetInfo.decimals
+              })
+            }
+          } catch (error) {
+            console.error(`Error processing asset ${assetId}:`, error)
+          }
+        }
+      }
+      
+      console.log('Final assets list:', assets)
+      return assets
+    } catch (error) {
+      console.error('Error getting user assets:', error)
+      return []
     }
   }
 

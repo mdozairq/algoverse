@@ -18,6 +18,7 @@ export interface SwapState {
   txStatus: 'idle' | 'preparing' | 'signing' | 'submitting' | 'confirming' | 'confirmed' | 'failed'
   assetInfo: AssetInfo | null
   balance: number
+  outputBalance: number
 }
 
 export interface UseTinymanSwapReturn {
@@ -28,13 +29,15 @@ export interface UseTinymanSwapReturn {
   txStatus: SwapState['txStatus']
   assetInfo: AssetInfo | null
   balance: number
+  outputBalance: number
   
   // Actions
-  getQuote: (assetId: number, amount: number, slippage?: number) => Promise<SwapQuote | null>
+  getQuote: (assetInId: number, assetOutId: number, amount: number, slippage?: number) => Promise<SwapQuote | null>
   executeSwap: (quote: SwapQuote) => Promise<SwapResult | null>
   clearQuote: () => void
   clearError: () => void
   refreshBalance: (assetId: number, address: string) => Promise<void>
+  refreshOutputBalance: (assetId: number, address: string) => Promise<void>
 }
 
 export function useTinymanSwap(
@@ -47,7 +50,8 @@ export function useTinymanSwap(
     error: null,
     txStatus: 'idle',
     assetInfo: null,
-    balance: 0
+    balance: 0,
+    outputBalance: 0
   })
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -80,10 +84,23 @@ export function useTinymanSwap(
   }, [])
 
   /**
+   * Refresh output asset balance
+   */
+  const refreshOutputBalance = useCallback(async (assetId: number, address: string) => {
+    try {
+      const balance = await tinymanSwapService.getAssetBalance(address, assetId)
+      setState(prev => ({ ...prev, outputBalance: balance }))
+    } catch (error: any) {
+      console.error('Error refreshing output balance:', error)
+    }
+  }, [])
+
+  /**
    * Get swap quote with debouncing
    */
   const getQuote = useCallback(async (
-    assetId: number,
+    assetInId: number,
+    assetOutId: number,
     amount: number,
     slippage: number = 0.01
   ): Promise<SwapQuote | null> => {
@@ -93,7 +110,7 @@ export function useTinymanSwap(
     }
 
     // Validate input
-    if (!assetId || !amount || amount <= 0) {
+    if (!assetInId || !assetOutId || !amount || amount <= 0) {
       setState(prev => ({ 
         ...prev, 
         quote: null,
@@ -104,7 +121,7 @@ export function useTinymanSwap(
     }
 
     // Store current asset ID
-    currentAssetIdRef.current = assetId
+    currentAssetIdRef.current = assetInId
 
     // Set loading state
     setState(prev => ({ ...prev, loading: true, error: null }))
@@ -114,7 +131,7 @@ export function useTinymanSwap(
       debounceTimerRef.current = setTimeout(async () => {
         try {
           // Check if assetId changed during debounce
-          if (currentAssetIdRef.current !== assetId) {
+          if (currentAssetIdRef.current !== assetInId) {
             setState(prev => ({ ...prev, loading: false }))
             resolve(null)
             return
@@ -122,16 +139,16 @@ export function useTinymanSwap(
 
           // Fetch asset info if not already loaded
           let assetInfo = state.assetInfo
-          if (!assetInfo || assetInfo.id !== assetId) {
-            assetInfo = await tinymanSwapService.getAssetInfo(assetId)
+          if (!assetInfo || assetInfo.id !== assetInId) {
+            assetInfo = await tinymanSwapService.getAssetInfo(assetInId)
             setState(prev => ({ ...prev, assetInfo }))
           }
 
           // Get quote
-          const quote = await tinymanSwapService.getSwapQuote(assetId, amount, slippage)
+          const quote = await tinymanSwapService.getSwapQuote(assetInId, assetOutId, amount, slippage)
 
           // Check if assetId still matches (user might have changed it)
-          if (currentAssetIdRef.current === assetId) {
+          if (currentAssetIdRef.current === assetInId) {
             setState(prev => ({ 
               ...prev, 
               quote, 
@@ -146,7 +163,7 @@ export function useTinymanSwap(
           }
         } catch (error: any) {
           // Only update state if this is still the current request
-          if (currentAssetIdRef.current === assetId) {
+          if (currentAssetIdRef.current === assetInId) {
             setState(prev => ({ 
               ...prev, 
               error: error.message || 'Failed to get swap quote',
@@ -270,13 +287,15 @@ export function useTinymanSwap(
     txStatus: state.txStatus,
     assetInfo: state.assetInfo,
     balance: state.balance,
+    outputBalance: state.outputBalance,
     
     // Actions
     getQuote,
     executeSwap,
     clearQuote,
     clearError,
-    refreshBalance
+    refreshBalance,
+    refreshOutputBalance
   }
 }
 
