@@ -451,12 +451,34 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
 
   // Handle swap execution
   const handleSwap = useCallback(async () => {
-    if (!quote || !isConnected || !selectedAssetInId || !selectedAssetOutId || !swapAmount) return
+    console.log('Swap button clicked!', {
+      quote: !!quote,
+      isConnected,
+      selectedAssetInId,
+      selectedAssetOutId,
+      swapAmount,
+      txStatus
+    })
+    
+    if (!quote || !isConnected || selectedAssetInId === null || selectedAssetInId === undefined || selectedAssetOutId === null || selectedAssetOutId === undefined || !swapAmount) {
+      console.log('Swap validation failed:', {
+        noQuote: !quote,
+        notConnected: !isConnected,
+        noInputAsset: selectedAssetInId === null || selectedAssetInId === undefined,
+        noOutputAsset: selectedAssetOutId === null || selectedAssetOutId === undefined,
+        noAmount: !swapAmount
+      })
+      return
+    }
     
     try {
+      console.log('Starting swap execution...')
+      console.log('Calling executeSwap with quote:', quote)
       const result = await executeSwap(quote)
+      console.log('Swap result:', result)
       
       if (result) {
+        console.log('Swap successful, resetting form...')
         // Reset form after successful swap
         setSwapAmount("")
         setSelectedAssetInId(null)
@@ -471,7 +493,7 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
     } catch (error) {
       console.error("Swap error:", error)
     }
-  }, [quote, isConnected, executeSwap, account, clearQuote, selectedAssetInId, selectedAssetOutId, swapAmount])
+  }, [quote, isConnected, executeSwap, account, clearQuote, selectedAssetInId, selectedAssetOutId, swapAmount, txStatus])
 
   // Set percentage buttons
   const handlePercentageClick = useCallback((percentage: number) => {
@@ -1027,7 +1049,10 @@ export default function SwapPage({ params }: { params: { merchantId: string; mar
                                 console.log('Swap button disabled conditions:', conditions, 'isDisabled:', isDisabled)
                                 return isDisabled
                               })()}
-                              onClick={handleSwap}
+                              onClick={(e) => {
+                                console.log('Button clicked!', e)
+                                handleSwap()
+                              }}
                               style={getButtonStyle('primary')}
                             >
                               {txStatus === 'preparing' && 'Preparing...'}

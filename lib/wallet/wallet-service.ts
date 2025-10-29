@@ -413,6 +413,88 @@ export class WalletService {
 
     try {
       const peraWallet = getPeraWalletInstance()
+      
+      console.log('Signing transaction group with Pera Wallet Connect:', {
+        transactionCount: transactions.length
+      })
+      
+      // Decode all transactions
+      const decodedTransactions = transactions.map(transaction => {
+        const txnBytes = Buffer.from(transaction, 'base64')
+        return algosdk.decodeUnsignedTransaction(txnBytes)
+      })
+      
+      console.log('Decoded transactions:', decodedTransactions.length)
+      
+      // Create transaction group - Pera Wallet expects SignerTransaction[][]
+      const transactionGroup = [decodedTransactions.map(txn => ({
+        txn: txn,
+        signers: [this.state.account?.address].filter(Boolean) as string[]
+      }))]
+      
+      console.log('Sending transaction group to Pera Wallet:', transactionGroup)
+      
+      // Sign the entire group at once
+      const signedTxns = await peraWallet.signTransaction(transactionGroup)
+      
+      console.log('Pera Wallet response:', signedTxns)
+      console.log('signedTxns type:', typeof signedTxns)
+      console.log('signedTxns isArray:', Array.isArray(signedTxns))
+      console.log('signedTxns length:', signedTxns?.length)
+      
+      if (signedTxns && Array.isArray(signedTxns) && signedTxns.length > 0) {
+        // Convert back to base64 strings
+        const convertedTxns = signedTxns.map((signedTxn: any, index: number) => {
+          console.log(`Processing transaction ${index}:`, {
+            type: typeof signedTxn,
+            isUint8Array: signedTxn instanceof Uint8Array,
+            length: signedTxn?.length,
+            hasBlob: !!signedTxn?.blob,
+            hasTxn: !!signedTxn?.txn
+          })
+          
+          if (typeof signedTxn === 'string') {
+            return signedTxn
+          } else if (signedTxn && signedTxn.blob) {
+            return Buffer.from(signedTxn.blob).toString('base64')
+          } else if (signedTxn && signedTxn.txn) {
+            // Handle transaction object format
+            const txnBytes = algosdk.encodeUnsignedTransaction(signedTxn.txn)
+            return Buffer.from(txnBytes).toString('base64')
+          } else if (signedTxn instanceof Uint8Array) {
+            // Handle Uint8Array format (signed transaction bytes)
+            console.log('Converting Uint8Array to base64:', signedTxn.length, 'bytes')
+            return Buffer.from(signedTxn).toString('base64')
+          } else {
+            console.error('Unexpected signed transaction format:', signedTxn)
+            return null
+          }
+        }).filter((txn): txn is string => txn !== null)
+        
+        console.log('Converted transactions:', {
+          originalCount: signedTxns.length,
+          convertedCount: convertedTxns.length,
+          convertedTxns: convertedTxns.map(txn => txn.substring(0, 20) + '...')
+        })
+        
+        return convertedTxns
+      } else {
+        throw new Error('No valid signed transactions received')
+      }
+    } catch (error) {
+      console.error('Error signing transaction group with Pera Wallet Connect:', error)
+      throw error
+    }
+  }
+
+  // Fallback method for individual transaction signing
+  public async signTransactionsIndividually(transactions: string[]): Promise<string[]> {
+    if (!this.state.isConnected || !this.state.account) {
+      throw new Error('Wallet not connected')
+    }
+
+    try {
+      const peraWallet = getPeraWalletInstance()
       const signedTransactions: string[] = []
       
       // Sign each transaction individually

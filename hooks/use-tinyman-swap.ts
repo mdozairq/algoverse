@@ -213,6 +213,14 @@ export function useTinymanSwap(
       // Step 3: Sign transactions using wallet service
       const signedTxns = await walletService.signTransactions(unsignedTxns)
 
+      console.log('Signed transactions received:', {
+        signedTxns,
+        length: signedTxns?.length,
+        isArray: Array.isArray(signedTxns),
+        firstTxn: signedTxns?.[0],
+        allValid: signedTxns?.every(txn => txn && typeof txn === 'string')
+      })
+
       if (!signedTxns || signedTxns.length === 0) {
         throw new Error('Transaction signing failed or was cancelled')
       }

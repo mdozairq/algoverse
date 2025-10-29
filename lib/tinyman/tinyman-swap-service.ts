@@ -371,48 +371,35 @@ export class TinymanSwapService {
       const signedTxnsBytes = signedTxns.map(txn => new Uint8Array(Buffer.from(txn, 'base64')))
 
       // Fetch pool info
+      console.log('Executing swap with assets:', {
+        inputAssetId: quote.input.asset.id,
+        outputAssetId: quote.output.asset.id,
+        inputAssetName: quote.input.asset.name,
+        outputAssetName: quote.output.asset.name
+      })
+      
       const poolInfo = await poolUtils.v2.getPoolInfo({
         network: this.network,
         client: this.algodClient,
         asset1ID: quote.input.asset.id,
-        asset2ID: 0
+        asset2ID: quote.output.asset.id
       })
 
       if (!poolInfo || poolUtils.isPoolNotCreated(poolInfo)) {
         throw new Error('Pool not found')
       }
 
-      // Get quote again
-      const swapQuote = await Swap.v2.getFixedInputSwapQuote({
-        amount: BigInt(quote.input.amountInMicroUnits),
-        assetIn: { id: quote.input.asset.id, decimals: quote.input.asset.decimals },
-        assetOut: { id: quote.output.asset.id, decimals: quote.output.asset.decimals },
-        network: this.network,
-        slippage: quote.slippage,
-        pool: poolInfo
-      })
-
-      // Generate transactions for execution
-      const txGroup = await Swap.generateTxns({
-        client: this.algodClient,
-        network: this.network,
-        quote: swapQuote,
-        swapType: SwapType.FixedInput,
-        slippage: quote.slippage,
-        initiatorAddr: userAddress
-      })
-
-      // Execute swap
-      const result = await Swap.execute({
-        client: this.algodClient,
-        contractVersion: 'v2',
-        quote: swapQuote,
-        txGroup,
-        signedTxns: signedTxnsBytes
-      })
+      console.log('Submitting signed transactions directly to Algorand network:', signedTxnsBytes.length, 'transactions')
+      
+      // Send signed transactions directly to the Algorand network
+      // This avoids regenerating transactions and potential fee/signing mismatches
+      const result = await this.algodClient.sendRawTransaction(signedTxnsBytes).do()
+      const txId = result.txid
+      
+      console.log('Transaction submitted, txId:', txId)
 
       return {
-        txId: result.txnID,
+        txId: txId,
         inputAmount: quote.input.amount,
         outputAmount: quote.output.amount,
         inputAsset: quote.input.asset.unitName || quote.input.asset.name,
