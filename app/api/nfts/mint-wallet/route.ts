@@ -48,6 +48,7 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       attributes: nft.metadata?.traits || []
     }
 
+
     // Check account balance first
     const balanceCheck = await WalletMintService.checkAccountBalance(mintData.userAddress)
     
@@ -69,8 +70,8 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       nftId: mintData.nftId,
       userAddress: mintData.userAddress,
       metadata,
-      totalSupply: mintData.totalSupply || 1, // NFTs are typically unique, so total supply is 1
-      royaltyPercentage: mintData.royaltyPercentage || 5, // Default 5% royalty
+      totalSupply: nft.maxSupply || mintData.totalSupply || 1, // NFTs are typically unique, so total supply is 1
+      royaltyPercentage: nft.metadata?.royaltyFee || 5, // Default 5% royalty
       royaltyRecipient: mintData.royaltyRecipient || mintData.userAddress // Default to creator
     }
 
