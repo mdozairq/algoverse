@@ -141,21 +141,16 @@ export class WalletMintService {
   }> {
     try {
       const accountInfo = await algodClient.accountInformation(address).do()
-      console.log('Account info:', accountInfo);
-      console.log('Raw assets:', accountInfo.assets);
       
       const mappedAssets = accountInfo.assets?.map((asset: any) => {
-        console.log('Processing asset:', asset);
         const assetId = asset['asset-id'];
         const amount = Number(asset.amount);
-        console.log('Mapped assetId:', assetId, 'amount:', amount);
         return {
           assetId: Number(assetId),
           amount: amount
         };
       }) || [];
       
-      console.log('Mapped assets:', mappedAssets);
       
       return {
         address,
