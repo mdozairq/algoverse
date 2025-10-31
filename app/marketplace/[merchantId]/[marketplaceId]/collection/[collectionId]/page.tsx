@@ -1209,7 +1209,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 </div>
               ) : assetData ? (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Asset Activity</h3>
                     {nfts.find(nft => nft.assetId)?.assetId && (
                       <Button
@@ -1220,7 +1220,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             window.open(`https://testnet.explorer.perawallet.app/asset/${assetId}`, '_blank')
                           }
                         }}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 w-full sm:w-auto"
                       >
                         <ExternalLink className="w-4 h-4" />
                         View on Pera Explorer
@@ -1236,40 +1236,40 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                     <CardContent className="space-y-4">
                       {assetData.asset && (
                         <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Asset ID</span>
-                              <span className="font-semibold text-gray-900 dark:text-white font-mono">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Asset ID</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm sm:text-base break-all sm:break-normal text-left sm:text-right">
                                 {assetData.asset.index || assetData.asset.id}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Name</span>
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Name</span>
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base break-words sm:break-normal text-left sm:text-right">
                                 {assetData.asset.params?.name || 'N/A'}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Unit Name</span>
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Unit Name</span>
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base break-words sm:break-normal text-left sm:text-right">
                                 {assetData.asset.params?.unitName || 'N/A'}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Total Supply</span>
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Total Supply</span>
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base text-left sm:text-right">
                                 {assetData.asset.params?.total ? (assetData.asset.params.total / Math.pow(10, assetData.asset.params.decimals || 0)).toLocaleString() : 'N/A'}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Decimals</span>
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Decimals</span>
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base text-left sm:text-right">
                                 {assetData.asset.params?.decimals || 0}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Creator</span>
-                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Creator</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-xs sm:text-sm break-all sm:break-normal text-left sm:text-right">
                                 {assetData.asset.params?.creator ? 
                                   (() => {
                                     const addr = String(assetData.asset.params.creator);
@@ -1281,9 +1281,9 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                 }
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Manager</span>
-                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Manager</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-xs sm:text-sm break-all sm:break-normal text-left sm:text-right">
                                 {assetData.asset.params?.manager ? 
                                   (() => {
                                     const addr = String(assetData.asset.params.manager);
@@ -1295,9 +1295,9 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                 }
                               </span>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                              <span className="font-medium text-gray-600 dark:text-gray-400">Reserve</span>
-                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Reserve</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-xs sm:text-sm break-all sm:break-normal text-left sm:text-right">
                                 {assetData.asset.params?.reserve ? 
                                   (() => {
                                     const addr = String(assetData.asset.params.reserve);
@@ -1313,19 +1313,22 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                           
                           {assetData.asset.params?.url && (
                             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-gray-600 dark:text-gray-400">Metadata URL</span>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                                <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Metadata URL</span>
                                 <a 
                                   href={assetData.asset.params.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                  className="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-xs sm:text-sm break-all sm:break-words max-w-full sm:max-w-md"
+                                  title={assetData.asset.params.url}
                                 >
-                                  {assetData.asset.params.url.length > 50 ? 
-                                    `${assetData.asset.params.url.slice(0, 50)}...` : 
-                                    assetData.asset.params.url
-                                  }
-                                  <ExternalLink className="w-3 h-3" />
+                                  <span className="truncate">
+                                    {assetData.asset.params.url.length > 50 ? 
+                                      `${assetData.asset.params.url.slice(0, 50)}...` : 
+                                      assetData.asset.params.url
+                                    }
+                                  </span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               </div>
                             </div>
@@ -1341,10 +1344,10 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                           </h4>
                           <div className="space-y-3 max-h-96 overflow-y-auto">
                             {assetData.transactions.slice(0, 50).map((tx: any, index: number) => (
-                              <div key={tx.id || index} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                <div className="flex items-start justify-between gap-4">
+                              <div key={tx.id || index} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
                                       <Badge 
                                         variant="outline" 
                                         className="text-xs"
@@ -1357,55 +1360,57 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                         {tx.type?.toUpperCase() || 'TRANSACTION'}
                                       </Badge>
                                       {tx.amount && (
-                                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">
                                           {tx.amount.toLocaleString()}
                                         </span>
                                       )}
                                     </div>
                                     
-                                    <div className="space-y-1 text-xs">
+                                    <div className="space-y-1.5 text-xs">
                                       {tx.id && (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-600 dark:text-gray-400">ID:</span>
-                                          <code className="font-mono text-gray-900 dark:text-white">
-                                            {tx.id.length > 20 ? `${tx.id.slice(0, 10)}...${tx.id.slice(-10)}` : tx.id}
-                                          </code>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-5 px-2"
-                                            onClick={() => {
-                                              const explorerUrl = `https://testnet.algo.surf/tx/${tx.id}`
-                                              window.open(explorerUrl, '_blank')
-                                            }}
-                                          >
-                                            <ExternalLink className="w-3 h-3" />
-                                          </Button>
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400 min-w-[40px]">ID:</span>
+                                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <code className="font-mono text-gray-900 dark:text-white break-all sm:break-normal">
+                                              {tx.id.length > 20 ? `${tx.id.slice(0, 10)}...${tx.id.slice(-10)}` : tx.id}
+                                            </code>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 px-2 flex-shrink-0"
+                                              onClick={() => {
+                                                const explorerUrl = `https://testnet.algo.surf/tx/${tx.id}`
+                                                window.open(explorerUrl, '_blank')
+                                              }}
+                                            >
+                                              <ExternalLink className="w-3 h-3" />
+                                            </Button>
+                                          </div>
                                         </div>
                                       )}
                                       
                                       {tx.sender && (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-600 dark:text-gray-400">From:</span>
-                                          <code className="font-mono text-gray-900 dark:text-white">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400 min-w-[50px]">From:</span>
+                                          <code className="font-mono text-gray-900 dark:text-white break-all sm:break-normal text-xs">
                                             {tx.sender.length > 20 ? `${tx.sender.slice(0, 8)}...${tx.sender.slice(-8)}` : tx.sender}
                                           </code>
                                         </div>
                                       )}
                                       
                                       {tx.receiver && (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-600 dark:text-gray-400">To:</span>
-                                          <code className="font-mono text-gray-900 dark:text-white">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400 min-w-[50px]">To:</span>
+                                          <code className="font-mono text-gray-900 dark:text-white break-all sm:break-normal text-xs">
                                             {tx.receiver.length > 20 ? `${tx.receiver.slice(0, 8)}...${tx.receiver.slice(-8)}` : tx.receiver}
                                           </code>
                                         </div>
                                       )}
                                       
                                       {tx.fee && (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-600 dark:text-gray-400">Fee:</span>
-                                          <span className="text-gray-900 dark:text-white">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400 min-w-[50px]">Fee:</span>
+                                          <span className="text-gray-900 dark:text-white text-xs">
                                             {(tx.fee / 1000000).toFixed(6)} ALGO
                                           </span>
                                         </div>
@@ -1413,7 +1418,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                     </div>
                                   </div>
                                   
-                                  <div className="text-right flex-shrink-0">
+                                  <div className="text-left sm:text-right flex-shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-700 sm:border-0">
                                     {tx.round && (
                                       <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                                         Round {tx.round.toLocaleString()}
