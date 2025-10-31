@@ -260,13 +260,17 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
   }, [isConnected, account, connect, disconnect])
 
-  // Fetch asset data from Pera Wallet explorer when NFT with assetId is available
+  // Fetch asset data from Pera Wallet explorer for the selected NFT
   useEffect(() => {
     const fetchAssetData = async () => {
-      // Try to get assetId from first NFT with assetId, or use collection-level assetId if available
-      const assetIdToFetch = nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
+      // Get assetId from the selected NFT, or fallback to first NFT with assetId, or collection-level assetId
+      const selectedNFT = nfts[selectedNFTIndex]
+      const assetIdToFetch = selectedNFT?.assetId || nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
       
       if (!assetIdToFetch) {
+        setAssetData(null)
+        setAssetError(null)
+        setAssetLoading(false)
         return
       }
 
@@ -299,7 +303,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     if (nfts.length > 0 || collection) {
       fetchAssetData()
     }
-  }, [nfts, collection])
+  }, [nfts, collection, selectedNFTIndex])
 
   // Remove auto-refresh on visibility change to prevent constant refreshing
 
@@ -1194,36 +1198,51 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 <div className="text-center py-8">
                 <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error Loading Activity</h3>
+                  {nfts[selectedNFTIndex] && (
+                    <p className="text-gray-600 dark:text-gray-400 mb-2">
+                      Selected NFT: <span className="font-semibold">{nfts[selectedNFTIndex].metadata?.name || `NFT #${nfts[selectedNFTIndex].tokenId}`}</span>
+                    </p>
+                  )}
                   <p className="text-gray-600 dark:text-gray-400 mb-4">{assetError}</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const assetIdToFetch = nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
-                      if (assetIdToFetch) {
-                        window.open(`https://testnet.explorer.perawallet.app/asset/${assetIdToFetch}`, '_blank')
-                      }
-                    }}
-                  >
-                    View on Pera Explorer
-                  </Button>
+                  {(nfts[selectedNFTIndex]?.assetId || nfts.find(nft => nft.assetId)?.assetId || collection?.assetId) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const assetIdToFetch = nfts[selectedNFTIndex]?.assetId || nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
+                        if (assetIdToFetch) {
+                          window.open(`https://testnet.algo.surf/asset/${assetIdToFetch}`, '_blank')
+                        }
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      View on Algo Surf
+                    </Button>
+                  )}
                 </div>
               ) : assetData ? (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Asset Activity</h3>
-                    {nfts.find(nft => nft.assetId)?.assetId && (
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Asset Activity</h3>
+                      {nfts[selectedNFTIndex] && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          Showing activity for: <span className="font-semibold">{nfts[selectedNFTIndex].metadata?.name || `NFT #${nfts[selectedNFTIndex].tokenId}`}</span>
+                        </p>
+                      )}
+                    </div>
+                    {(assetData.asset?.index || assetData.asset?.id) && (
                       <Button
                         variant="outline"
                         onClick={() => {
-                          const assetId = nfts.find(nft => nft.assetId)?.assetId
+                          const assetId = assetData.asset.index || assetData.asset.id
                           if (assetId) {
-                            window.open(`https://testnet.explorer.perawallet.app/asset/${assetId}`, '_blank')
+                            window.open(`https://testnet.algo.surf/asset/${assetId}`, '_blank')
                           }
                         }}
                         className="flex items-center gap-2 w-full sm:w-auto"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        View on Pera Explorer
+                        View on Algo Surf
                       </Button>
                     )}
                   </div>
@@ -1459,9 +1478,15 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                 <div className="text-center py-8">
                   <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Asset Data Available</h3>
+                  {nfts[selectedNFTIndex] ? (
                 <p className="text-gray-600 dark:text-gray-400">
-                    This collection doesn't have any minted NFTs yet. Activity will appear once NFTs are minted.
+                      The selected NFT <span className="font-semibold">{nfts[selectedNFTIndex].metadata?.name || `#${nfts[selectedNFTIndex].tokenId}`}</span> has not been minted on the blockchain yet. Activity will appear once this NFT is minted.
                 </p>
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-400">
+                      This collection doesn't have any minted NFTs yet. Activity will appear once NFTs are minted.
+                    </p>
+                  )}
               </div>
               )}
             </div>
@@ -1507,11 +1532,11 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                         </span>
                       </div>
                       {/* Asset ID from Nodely API */}
-                      {assetData?.asset && (
-                        <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-600 dark:text-gray-400">Blockchain Asset ID</span>
+                      {assetData?.asset && nfts[selectedNFTIndex] && (
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                          <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Selected NFT Asset ID</span>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                            <span className="font-semibold text-gray-900 dark:text-white font-mono text-xs sm:text-sm">
                               {assetData.asset.index || assetData.asset.id}
                             </span>
                             {(assetData.asset.index || assetData.asset.id) && (
@@ -1528,6 +1553,27 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Selected NFT Info */}
+                      {nfts[selectedNFTIndex] && (
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                          <span className="font-medium text-gray-600 dark:text-gray-400 text-sm sm:text-base">Selected NFT</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+                              {nfts[selectedNFTIndex].metadata?.name || `NFT #${nfts[selectedNFTIndex].tokenId}`}
+                            </span>
+                            {nfts[selectedNFTIndex].assetId && (
+                              <Badge variant="outline" className="text-xs">
+                                Minted
+                              </Badge>
+                            )}
+                            {!nfts[selectedNFTIndex].assetId && (
+                              <Badge variant="outline" className="text-xs text-gray-500">
+                                Not Minted
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -1566,8 +1612,15 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                   {/* Blockchain Asset Details from Nodely API */}
                   {assetData?.asset && (
                     <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Blockchain Asset Details</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Blockchain Asset Details</h3>
+                          {nfts[selectedNFTIndex] && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              Details for: <span className="font-semibold">{nfts[selectedNFTIndex].metadata?.name || `NFT #${nfts[selectedNFTIndex].tokenId}`}</span>
+                            </p>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                           <Info className="w-4 h-4" />
                           <span>Data from Algorand Indexer API</span>
