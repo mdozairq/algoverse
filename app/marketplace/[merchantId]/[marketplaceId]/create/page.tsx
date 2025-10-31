@@ -398,7 +398,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           nftImages: uploadedNFTImages,
           creatorAddress: account,
           source: "public",
-          isEnabled: true
+          isEnabled: true,
+          status: "approved"
         }),
       })
 
@@ -575,7 +576,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nftId,
-          signedTransaction
+          signedTransaction,
+          userAddress
         }),
       })
 
