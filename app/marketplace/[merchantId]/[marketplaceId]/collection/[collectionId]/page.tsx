@@ -445,7 +445,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     }
   })
 
-  // NFT Operations - Create and Mint NFT using proper APIs
+  // NFT Operations - Buy NFT that already has assetId (already minted)
   const handleBuyNFT = async (nft: NFT) => {
     if (!isAuthenticated) {
       toast({
@@ -461,6 +461,26 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
         title: "Wallet Required",
         description: "Please connect your wallet to buy NFTs",
         variant: "destructive",
+      })
+      return
+    }
+
+    // Check if NFT has assetId (must be minted before purchase)
+    if (!nft.assetId) {
+      toast({
+        title: "NFT Not Ready",
+        description: "This NFT has not been minted on the blockchain yet. Cannot purchase.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Check if NFT is available for purchase
+    if (!nft.forSale || !nft.price) {
+      toast({
+        title: "Not For Sale",
+        description: "This NFT is not currently available for purchase.",
+        variant: "destructive"
       })
       return
     }
@@ -486,75 +506,76 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     }
 
     try {
-      // Step 1: Create NFT using NFT create API (like marketplace create page)
+      // Step 1: Create buy transaction group
       toast({
-        title: "Creating NFT",
-        description: `Creating ${nft.metadata.name} NFT...`,
+        title: "Preparing Purchase",
+        description: `Creating purchase transaction for ${nft.metadata?.name || nft.name}...`,
       })
 
-      
-
-      const nftId = nft.id
-      
-      // Step 2: Create mint transaction using mint-wallet API (like marketplace create page)
-      toast({
-        title: "Preparing Mint Transaction",
-        description: "Creating blockchain transaction for your NFT...",
-      })
-
-      const mintResponse = await fetch('/api/nfts/mint-wallet', {
+      const buyResponse = await fetch('/api/nfts/buy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nftId: nftId,
-          userAddress: account.address
+          nftId: nft.id,
+          buyerWalletAddress: account.address
         })
       })
 
-      if (!mintResponse.ok) {
-        const errorData = await mintResponse.json()
-        throw new Error(errorData.error || 'Failed to create mint transaction')
+      if (!buyResponse.ok) {
+        const errorData = await buyResponse.json()
+        throw new Error(errorData.error || 'Failed to create buy transaction')
       }
 
-      const mintData = await mintResponse.json()
+      const buyData = await buyResponse.json()
       
-      // Step 3: Sign transaction using transactionSigner (same as marketplace create)
+      // Step 2: Sign transactions - Pera Wallet needs the complete transaction group
+      // The wallet will automatically sign only the transactions that belong to the buyer
       toast({
-        title: "Signing Transaction",
-        description: "Please sign the NFT minting transaction in your wallet.",
+        title: "Signing Transactions",
+        description: buyData.needsOptIn 
+          ? "Please sign the transactions in your wallet. This includes opt-in, payment, and transfer transactions."
+          : "Please sign the payment and transfer transactions in your wallet.",
       })
       
-      const signedTransaction = await transactionSigner.signTransaction(mintData.transaction.txn, account.address)
+      // Send the complete transaction group to the wallet (it will sign only buyer's transactions)
+      // Pera Wallet returns the complete group with buyer transactions signed
+      const signedTransactions = await transactionSigner.signTransactions(buyData.transactions, account.address)
       
-      // Step 4: Submit signed transaction using mint-wallet PUT endpoint
+      // Step 3: Submit signed transactions
       toast({
         title: "Submitting Transaction",
-        description: "Submitting NFT minting transaction to the blockchain...",
+        description: "Submitting purchase transaction to the blockchain...",
       })
       
-      const submitResponse = await fetch('/api/nfts/mint-wallet', {
+      // Send the complete signed transaction array (Pera Wallet returns all transactions in the group)
+      // Buyer transactions are signed, seller transactions are unsigned and will be signed server-side if in escrow
+      const submitResponse = await fetch('/api/nfts/buy', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nftId: nftId,
-          signedTransaction: signedTransaction
+          nftId: nft.id,
+          signedTransactions: signedTransactions, // Complete group from Pera Wallet
+          buyerWalletAddress: account.address,
+          transactionGroup: buyData.transactions, // Original unsigned group for reference
+          buyerTransactionIndices: buyData.buyerTransactionIndices,
+          sellerTransactionIndices: buyData.sellerTransactionIndices
         })
       })
 
       if (!submitResponse.ok) {
         const errorData = await submitResponse.json()
-        throw new Error(errorData.error || 'Failed to submit mint transaction')
+        throw new Error(errorData.error || 'Failed to submit buy transaction')
       }
 
       const result = await submitResponse.json()
       
       toast({
-        title: "NFT Minted Successfully!",
-        description: `Successfully minted ${nft.metadata.name}. Asset ID: ${result.assetId}. Check your wallet!`,
+        title: "Purchase Successful!",
+        description: `Successfully purchased ${nft.metadata?.name || nft.name}. Transaction: ${result.transactionId.slice(0, 8)}...`,
       })
 
       // Refresh collection data to get updated supply information
@@ -563,8 +584,8 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
     } catch (error: any) {
       console.error('Buy NFT error:', error)
       toast({
-        title: "NFT Creation Failed",
-        description: error.message || "Failed to create NFT. Please try again.",
+        title: "Purchase Failed",
+        description: error.message || "Failed to purchase NFT. Please try again.",
         variant: "destructive",
       })
     }
@@ -867,7 +888,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                                     ) : (
                                       <>
                                         <Zap className="w-5 h-5 mr-2" />
-                                        {!isConnected ? 'Connect to Mint' : nfts[selectedNFTIndex]?.status === 'draft' && collection?.allowMint ? 'Mint This NFT' : 'Buy This NFT'}
+                                        {!isConnected ? 'Connect to Mint' :  'Mint This NFT'}
                                       </>
                                     )}
                                   </Button>
