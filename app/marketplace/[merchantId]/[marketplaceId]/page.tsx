@@ -1967,6 +1967,14 @@ export default function MarketplacePage() {
                         <div className="space-y-4">
                           <h3 className="font-semibold text-foreground mb-2">Available Features</h3>
                           <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
+                                  <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
+                                  <span className="text-sm font-medium text-foreground">Mint NFTs</span>
+                            </div>
+                            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
+                                  <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
+                                  <span className="text-sm font-medium text-foreground">Buy NFTs</span>
+                            </div>
                             {marketplace.allowCreate && (
                               <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
                                 <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
