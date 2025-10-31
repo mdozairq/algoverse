@@ -198,6 +198,7 @@ interface Collection {
   createdAt: Date
   updatedAt: Date
   allowMint: boolean
+  assetId?: number
 }
 
 interface NFT {
@@ -241,6 +242,9 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   const [selectedNFTIndex, setSelectedNFTIndex] = useState(0)
   const [sliderDirection, setSliderDirection] = useState<'next' | 'prev' | null>(null)
   const [activeTab, setActiveTab] = useState('items')
+  const [assetData, setAssetData] = useState<any>(null)
+  const [assetLoading, setAssetLoading] = useState(false)
+  const [assetError, setAssetError] = useState<string | null>(null)
 
   const { isConnected, account, connect, disconnect } = useWallet()
   const { user, isAuthenticated } = useAuth()
@@ -255,6 +259,47 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   useEffect(() => {
     transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
   }, [isConnected, account, connect, disconnect])
+
+  // Fetch asset data from Pera Wallet explorer when NFT with assetId is available
+  useEffect(() => {
+    const fetchAssetData = async () => {
+      // Try to get assetId from first NFT with assetId, or use collection-level assetId if available
+      const assetIdToFetch = nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
+      
+      if (!assetIdToFetch) {
+        return
+      }
+
+      setAssetLoading(true)
+      setAssetError(null)
+      
+      try {
+        // Fetch from our proxy API route to avoid CORS issues
+        const response = await fetch(`/api/pera-explorer/asset/${assetIdToFetch}`)
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch asset data: ${response.statusText}`)
+        }
+        
+        const result = await response.json()
+        if (result.success && result.data) {
+          setAssetData(result.data)
+        } else {
+          throw new Error(result.error || "Invalid response format")
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch asset data from Pera Wallet explorer:", error)
+        setAssetError(error.message || "Failed to fetch asset data")
+      } finally {
+        setAssetLoading(false)
+      }
+    }
+
+    if (nfts.length > 0 || collection) {
+      fetchAssetData()
+    }
+  }, [nfts, collection])
 
   // Remove auto-refresh on visibility change to prevent constant refreshing
 
@@ -1140,13 +1185,280 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
           {/* Activity Tab */}
           {activeTab === 'activity' && (
             <div className="py-8">
-              <div className="text-center">
+              {assetLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-400">Loading activity data...</p>
+                </div>
+              ) : assetError ? (
+                <div className="text-center py-8">
                 <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Activity Coming Soon</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error Loading Activity</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">{assetError}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const assetIdToFetch = nfts.find(nft => nft.assetId)?.assetId || collection?.assetId
+                      if (assetIdToFetch) {
+                        window.open(`https://testnet.explorer.perawallet.app/asset/${assetIdToFetch}`, '_blank')
+                      }
+                    }}
+                  >
+                    View on Pera Explorer
+                  </Button>
+                </div>
+              ) : assetData ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Asset Activity</h3>
+                    {nfts.find(nft => nft.assetId)?.assetId && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const assetId = nfts.find(nft => nft.assetId)?.assetId
+                          if (assetId) {
+                            window.open(`https://testnet.explorer.perawallet.app/asset/${assetId}`, '_blank')
+                          }
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        View on Pera Explorer
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Asset Overview */}
+                  <Card className="border-2">
+                    <CardHeader>
+                      <CardTitle>Asset Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {assetData.asset && (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Asset ID</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono">
+                                {assetData.asset.index || assetData.asset.id}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Name</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {assetData.asset.params?.name || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Unit Name</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {assetData.asset.params?.unitName || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Total Supply</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {assetData.asset.params?.total ? (assetData.asset.params.total / Math.pow(10, assetData.asset.params.decimals || 0)).toLocaleString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Decimals</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {assetData.asset.params?.decimals || 0}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Creator</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                                {assetData.asset.params?.creator ? 
+                                  (() => {
+                                    const addr = String(assetData.asset.params.creator);
+                                    return addr.length > 10 ? 
+                                      `${addr.slice(0, 6)}...${addr.slice(-4)}` : 
+                                      addr;
+                                  })() : 
+                                  'N/A'
+                                }
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Manager</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                                {assetData.asset.params?.manager ? 
+                                  (() => {
+                                    const addr = String(assetData.asset.params.manager);
+                                    return addr.length > 10 ? 
+                                      `${addr.slice(0, 6)}...${addr.slice(-4)}` : 
+                                      addr;
+                                  })() : 
+                                  'N/A'
+                                }
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Reserve</span>
+                              <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                                {assetData.asset.params?.reserve ? 
+                                  (() => {
+                                    const addr = String(assetData.asset.params.reserve);
+                                    return addr.length > 10 ? 
+                                      `${addr.slice(0, 6)}...${addr.slice(-4)}` : 
+                                      addr;
+                                  })() : 
+                                  'N/A'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {assetData.asset.params?.url && (
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Metadata URL</span>
+                                <a 
+                                  href={assetData.asset.params.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                >
+                                  {assetData.asset.params.url.length > 50 ? 
+                                    `${assetData.asset.params.url.slice(0, 50)}...` : 
+                                    assetData.asset.params.url
+                                  }
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      
+                      {/* Transactions/Activity History */}
+                      {assetData.transactions && assetData.transactions.length > 0 ? (
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Recent Transactions ({assetData.transactions.length})
+                          </h4>
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {assetData.transactions.slice(0, 50).map((tx: any, index: number) => (
+                              <div key={tx.id || index} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs"
+                                        style={{
+                                          backgroundColor: marketplace.primaryColor + '20',
+                                          borderColor: marketplace.primaryColor,
+                                          color: marketplace.primaryColor
+                                        }}
+                                      >
+                                        {tx.type?.toUpperCase() || 'TRANSACTION'}
+                                      </Badge>
+                                      {tx.amount && (
+                                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                          {tx.amount.toLocaleString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="space-y-1 text-xs">
+                                      {tx.id && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400">ID:</span>
+                                          <code className="font-mono text-gray-900 dark:text-white">
+                                            {tx.id.length > 20 ? `${tx.id.slice(0, 10)}...${tx.id.slice(-10)}` : tx.id}
+                                          </code>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 px-2"
+                                            onClick={() => {
+                                              const explorerUrl = `https://testnet.algo.surf/tx/${tx.id}`
+                                              window.open(explorerUrl, '_blank')
+                                            }}
+                                          >
+                                            <ExternalLink className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                      
+                                      {tx.sender && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400">From:</span>
+                                          <code className="font-mono text-gray-900 dark:text-white">
+                                            {tx.sender.length > 20 ? `${tx.sender.slice(0, 8)}...${tx.sender.slice(-8)}` : tx.sender}
+                                          </code>
+                                        </div>
+                                      )}
+                                      
+                                      {tx.receiver && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400">To:</span>
+                                          <code className="font-mono text-gray-900 dark:text-white">
+                                            {tx.receiver.length > 20 ? `${tx.receiver.slice(0, 8)}...${tx.receiver.slice(-8)}` : tx.receiver}
+                                          </code>
+                                        </div>
+                                      )}
+                                      
+                                      {tx.fee && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-600 dark:text-gray-400">Fee:</span>
+                                          <span className="text-gray-900 dark:text-white">
+                                            {(tx.fee / 1000000).toFixed(6)} ALGO
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="text-right flex-shrink-0">
+                                    {tx.round && (
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                        Round {tx.round.toLocaleString()}
+                                      </div>
+                                    )}
+                                    {tx.timestamp && (
+                                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                                        {new Date(tx.timestamp * 1000).toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {assetData.transactions.length > 50 && (
+                            <div className="mt-4 text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Showing 50 of {assetData.transactions.length} transactions
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+                          <Activity className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-gray-600 dark:text-gray-400">No transaction history available</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                            Transactions will appear here once the asset is used
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Asset Data Available</h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Track collection activity, sales, and minting history.
+                    This collection doesn't have any minted NFTs yet. Activity will appear once NFTs are minted.
                 </p>
               </div>
+              )}
             </div>
           )}
 
@@ -1189,6 +1501,32 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                           }
                         </span>
                       </div>
+                      {/* Asset ID from Nodely API */}
+                      {assetData?.asset && (
+                        <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                          <span className="font-medium text-gray-600 dark:text-gray-400">Blockchain Asset ID</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                              {assetData.asset.index || assetData.asset.id}
+                            </span>
+                            {(assetData.asset.index || assetData.asset.id) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const assetId = assetData.asset.index || assetData.asset.id
+                                  if (assetId) {
+                                    window.open(`https://testnet.algo.surf/asset/${assetId}`, '_blank')
+                                  }
+                                }}
+                                className="h-6 px-2"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1219,6 +1557,232 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                       </div>
                     </div>
                   </div>
+
+                  {/* Blockchain Asset Details from Nodely API */}
+                  {assetData?.asset && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Blockchain Asset Details</h3>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                          <Info className="w-4 h-4" />
+                          <span>Data from Algorand Indexer API</span>
+                        </div>
+                      </div>
+                      <Card className="border-2">
+                        <CardContent className="pt-6 space-y-4">
+                          {assetData.asset.params && (
+                            <>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Asset ID</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-900 dark:text-white font-mono text-sm">
+                                    {assetData.asset.index || assetData.asset.id}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => {
+                                      const assetId = assetData.asset.index || assetData.asset.id
+                                      if (assetId) {
+                                        window.open(`https://testnet.algo.surf/asset/${assetId}`, '_blank')
+                                      }
+                                    }}
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Asset Name</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {assetData.asset.params.name || assetData.asset.params['name-b64'] || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Unit Name</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {assetData.asset.params.unitName || assetData.asset.params['unit-name'] || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Total Supply</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {assetData.asset.params.total ? 
+                                    (assetData.asset.params.total / Math.pow(10, assetData.asset.params.decimals || 0)).toLocaleString() : 
+                                    'N/A'
+                                  }
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Decimals</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {assetData.asset.params.decimals || 0}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Default Frozen</span>
+                                <Badge variant={assetData.asset.params.defaultFrozen || assetData.asset.params['default-frozen'] ? 'destructive' : 'outline'}>
+                                  {assetData.asset.params.defaultFrozen || assetData.asset.params['default-frozen'] ? 'Yes' : 'No'}
+                                </Badge>
+                              </div>
+                              
+                              {/* Creator Address */}
+                              {assetData.asset.params.creator && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Creator Address</span>
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-semibold text-gray-900 dark:text-white font-mono text-xs">
+                                      {(() => {
+                                        const addr = String(assetData.asset.params.creator);
+                                        return addr.length > 20 ? 
+                                          `${addr.slice(0, 10)}...${addr.slice(-8)}` : 
+                                          addr;
+                                      })()}
+                                    </code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(`https://testnet.algo.surf/address/${assetData.asset.params.creator}`, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Manager Address */}
+                              {assetData.asset.params.manager && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Manager Address</span>
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-semibold text-gray-900 dark:text-white font-mono text-xs">
+                                      {(() => {
+                                        const addr = String(assetData.asset.params.manager);
+                                        return addr.length > 20 ? 
+                                          `${addr.slice(0, 10)}...${addr.slice(-8)}` : 
+                                          addr;
+                                      })()}
+                                    </code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(`https://testnet.algo.surf/address/${assetData.asset.params.manager}`, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Reserve Address */}
+                              {assetData.asset.params.reserve && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Reserve Address</span>
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-semibold text-gray-900 dark:text-white font-mono text-xs">
+                                      {(() => {
+                                        const addr = String(assetData.asset.params.reserve);
+                                        return addr.length > 20 ? 
+                                          `${addr.slice(0, 10)}...${addr.slice(-8)}` : 
+                                          addr;
+                                      })()}
+                                    </code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(`https://testnet.algo.surf/address/${assetData.asset.params.reserve}`, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Freeze Address */}
+                              {assetData.asset.params.freeze && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Freeze Address</span>
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-semibold text-gray-900 dark:text-white font-mono text-xs">
+                                      {(() => {
+                                        const addr = String(assetData.asset.params.freeze);
+                                        return addr.length > 20 ? 
+                                          `${addr.slice(0, 10)}...${addr.slice(-8)}` : 
+                                          addr;
+                                      })()}
+                                    </code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(`https://testnet.algo.surf/address/${assetData.asset.params.freeze}`, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Clawback Address */}
+                              {assetData.asset.params.clawback && (
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Clawback Address</span>
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-semibold text-gray-900 dark:text-white font-mono text-xs">
+                                      {(() => {
+                                        const addr = String(assetData.asset.params.clawback);
+                                        return addr.length > 20 ? 
+                                          `${addr.slice(0, 10)}...${addr.slice(-8)}` : 
+                                          addr;
+                                      })()}
+                                    </code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(`https://testnet.algo.surf/address/${assetData.asset.params.clawback}`, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Metadata URL */}
+                              {(assetData.asset.params.url || assetData.asset.params['url-b64']) && (
+                                <div className="flex justify-between items-center py-2">
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">Metadata URL</span>
+                                  <a 
+                                    href={assetData.asset.params.url || assetData.asset.params['url-b64']} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-xs max-w-xs truncate"
+                                  >
+                                    {assetData.asset.params.url || assetData.asset.params['url-b64']}
+                                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                  </a>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </div>
 
                 {/* Collection Stats */}
@@ -1265,6 +1829,48 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                       {collection.description}
                     </p>
                   </div>
+
+                  {/* Algorand Explorer Links */}
+                  {assetData?.asset && (assetData.asset.index || assetData.asset.id) && (
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Blockchain Explorer</h3>
+                      <Card className="border-2">
+                        <CardContent className="pt-6 space-y-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            View detailed blockchain information, transaction history, and asset details on Algorand explorers.
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                const assetId = assetData.asset.index || assetData.asset.id
+                                if (assetId) {
+                                  window.open(`https://testnet.algo.surf/asset/${assetId}`, '_blank')
+                                }
+                              }}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              View on Algo Surf
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                const assetId = assetData.asset.index || assetData.asset.id
+                                if (assetId) {
+                                  window.open(`https://testnet.algo.surf/asset/${assetId}/transactions`, '_blank')
+                                }
+                              }}
+                            >
+                              <Activity className="w-4 h-4 mr-2" />
+                              View Transactions
+                            </Button>
+                </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
