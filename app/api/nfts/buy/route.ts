@@ -383,7 +383,6 @@ export const PUT = requireAuth(async (request: NextRequest) => {
     const updateData: any = {
       ownerAddress: buyerWalletAddress,
       forSale: false,
-      price: null,
       updatedAt: new Date(),
     }
 
