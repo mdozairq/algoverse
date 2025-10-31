@@ -1967,9 +1967,9 @@ export default function MarketplacePage() {
                         <div className="space-y-4">
                           <h3 className="font-semibold text-foreground mb-2">Available Features</h3>
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
-                                  <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
-                                  <span className="text-sm font-medium text-foreground">Mint NFTs</span>
+                            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.secondaryColor}10` }}>
+                                <CheckCircle className="w-4 h-4" style={{ color: marketplace.secondaryColor }} />
+                                <span className="text-sm font-medium text-foreground">Sell NFTs</span>
                             </div>
                             <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.primaryColor}10` }}>
                                   <CheckCircle className="w-4 h-4" style={{ color: marketplace.primaryColor }} />
@@ -1990,7 +1990,7 @@ export default function MarketplacePage() {
                             {marketplace.allowSwap && (
                               <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}10` }}>
                                 <CheckCircle className="w-4 h-4" style={{ color: marketplace.accentColor || marketplace.primaryColor }} />
-                                <span className="text-sm font-medium text-foreground">Swap NFTs</span>
+                                <span className="text-sm font-medium text-foreground">Atomic Swap</span>
                               </div>
                             )}
                             {marketplace.allowTrading && (
