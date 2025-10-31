@@ -188,3 +188,10 @@ debug-*.js
 # Generated files
 generated/
 auto-generated/
+
+flow.md
+NFT_IMPLEMENTATION.md
+SETUP.md
+WALLET_IMPLEMENTATION.md
+WALLET_SYSTEM.md
+THEME_SYSTEM.md
