@@ -286,3 +286,6 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 6. **Dynamic Routing**: Generate routes for collections, products, swap, mint pages
 7. **Client-Side Hydration**: React components hydrate with data
 
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
