@@ -1561,102 +1561,6 @@ export default function MarketplacePage() {
                       </motion.section>
                     )}
 
-                    {/* Generate NFT Section */}
-                      {marketplace.allowCreate && (
-                      <motion.section
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.35 }}
-                        className="py-16 px-6 rounded-3xl"
-                        style={{
-                          backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}05`,
-                          borderColor: `${marketplace.accentColor || marketplace.primaryColor}20`,
-                          borderWidth: '1px'
-                        }}
-                      >
-                        <div className="max-w-6xl mx-auto">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                            <div className="space-y-8">
-                              <div className="flex items-center gap-6">
-                                <div 
-                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
-                                  }}
-                                >
-                                  <Sparkles className="w-10 h-10 text-white" />
-                                </div>
-                                <div>
-                                  <h2 className="text-4xl font-bold text-foreground mb-2">Generate NFT</h2>
-                                  <p className="text-xl text-muted-foreground">AI-powered NFT creation with prompts</p>
-                                </div>
-                              </div>
-                              <p className="text-lg text-muted-foreground leading-relaxed">
-                                Generate unique NFTs using AI. Simply describe what you want, and our AI will create 
-                                stunning digital artwork for your NFT collection.
-                              </p>
-                              <div className="flex flex-col sm:flex-row gap-4">
-                                <Button 
-                                  size="lg"
-                                  className="w-full sm:w-auto text-lg px-8 py-6"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`,
-                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
-                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/generate`)}
-                                >
-                                  <Sparkles className="w-6 h-6 mr-3" />
-                                  Generate Now
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="lg"
-                                  className="w-full sm:w-auto text-lg px-8 py-6"
-                                  style={{
-                                    borderColor: `${marketplace.accentColor || marketplace.primaryColor}40`,
-                                    color: marketplace.accentColor || marketplace.primaryColor,
-                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
-                                  }}
-                                >
-                                  Learn More
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="relative hidden lg:block">
-                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
-                              <div 
-                                className="absolute inset-0 opacity-20"
-                                style={{
-                                  background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
-                                }}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div 
-                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
-                                  }}
-                                >
-                                  <Sparkles className="w-20 h-20 text-white" />
-                                </div>
-                              </div>
-                                {/* Animated background elements */}
-                              {template?.configuration.theme.cardStyle === 'elevated' && (
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                                    className="absolute -top-12 -right-12 w-48 h-48 opacity-10"
-                                  style={{
-                                    background: `conic-gradient(from 0deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor}, ${marketplace.accentColor || marketplace.primaryColor})`
-                                  }}
-                                />
-                              )}
-                            </div>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.section>
-                    )}
 
                     {/* Mint NFTs Section */}
                       {marketplace.allowMint && (
@@ -1966,6 +1870,103 @@ export default function MarketplacePage() {
                         </div>
                         </div>
                       </div>
+                        </div>
+                      </motion.section>
+                    )}
+
+                    {/* Generate NFT Section */}
+                    {marketplace.allowCreate && (
+                      <motion.section
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.35 }}
+                        className="py-16 px-6 rounded-3xl"
+                        style={{
+                          backgroundColor: `${marketplace.accentColor || marketplace.primaryColor}05`,
+                          borderColor: `${marketplace.accentColor || marketplace.primaryColor}20`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <div className="max-w-6xl mx-auto">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div className="space-y-8">
+                              <div className="flex items-center gap-6">
+                                <div 
+                                  className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                >
+                                  <Sparkles className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                  <h2 className="text-4xl font-bold text-foreground mb-2">Generate NFT</h2>
+                                  <p className="text-xl text-muted-foreground">AI-powered NFT creation with prompts</p>
+                                </div>
+                              </div>
+                              <p className="text-lg text-muted-foreground leading-relaxed">
+                                Generate unique NFTs using AI. Simply describe what you want, and our AI will create 
+                                stunning digital artwork for your NFT collection.
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                  onClick={() => router.push(`/marketplace/${merchantId}/${marketplaceId}/generate`)}
+                                >
+                                  <Sparkles className="w-6 h-6 mr-3" />
+                                  Generate Now
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="lg"
+                                  className="w-full sm:w-auto text-lg px-8 py-6"
+                                  style={{
+                                    borderColor: `${marketplace.accentColor || marketplace.primaryColor}40`,
+                                    color: marketplace.accentColor || marketplace.primaryColor,
+                                    borderRadius: template?.configuration.theme.borderRadius === 'large' ? '16px' : '12px'
+                                  }}
+                                >
+                                  Learn More
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="relative hidden lg:block">
+                              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl">
+                              <div 
+                                className="absolute inset-0 opacity-20"
+                                style={{
+                                  background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div 
+                                    className="w-40 h-40 rounded-2xl flex items-center justify-center shadow-xl"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                                  }}
+                                >
+                                  <Sparkles className="w-20 h-20 text-white" />
+                                </div>
+                              </div>
+                                {/* Animated background elements */}
+                              {template?.configuration.theme.cardStyle === 'elevated' && (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    className="absolute -top-12 -right-12 w-48 h-48 opacity-10"
+                                  style={{
+                                    background: `conic-gradient(from 0deg, ${marketplace.accentColor || marketplace.primaryColor}, ${marketplace.secondaryColor}, ${marketplace.accentColor || marketplace.primaryColor})`
+                                  }}
+                                />
+                              )}
+                            </div>
+                            </div>
+                          </div>
                         </div>
                       </motion.section>
                     )}
