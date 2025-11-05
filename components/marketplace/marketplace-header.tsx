@@ -174,6 +174,10 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                 Create
               </Link>
               )}
+              {marketplace.allowCreate && (<Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                Generate
+              </Link>
+              )}
             </nav>
             
             <div className="flex items-center gap-2">
@@ -245,6 +249,9 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                   )}
                   <Link href={`/marketplace/${merchantId}/${marketplaceId}/create`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Create
+                  </Link>
+                  <Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                    Generate
                   </Link>
                 </nav>
                 <div className="flex flex-col gap-2">
