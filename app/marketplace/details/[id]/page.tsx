@@ -501,7 +501,7 @@ export default function MarketplaceDetailPage({ params }: { params: { id: string
                   <Button
                     size="lg"
                     asChild
-                    className="hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                    className="hover:to-purple-700 text-white dark:text-black font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}`} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-5 h-5 mr-2" />
