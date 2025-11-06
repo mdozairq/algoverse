@@ -889,7 +889,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             {/* NFT Actions */}
                             <div className="lg:w-80">
                               <div className="space-y-4">
-                                {nfts[selectedNFTIndex]?.assetId && nfts[selectedNFTIndex]?.price ? (
+                                {nfts[selectedNFTIndex]?.assetId && nfts[selectedNFTIndex]?.price !== undefined ? (
                                   <Button
                                     size="lg"
                                     disabled={
