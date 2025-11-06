@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const address = searchParams.get('address')
-    const limit = parseInt(searchParams.get('limit') || '50')
 
     if (!address) {
       return NextResponse.json({ error: "Address is required" }, { status: 400 })
