@@ -1,13 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
   ArrowLeft, 
@@ -154,16 +151,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
-import Header from "@/components/header"
-import Footer from "@/components/footer"
+import { PageTransition, FadeIn } from "@/components/animations/page-transition"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
 import MarketplaceFooter from "@/components/marketplace/marketplace-footer"
 import TemplateLoader from "@/components/marketplace/template-loader"
 import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/ui/loading-templates"
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
-import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
 
 interface Marketplace {
   id: string
@@ -255,7 +249,7 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null)
 
-  const { isConnected, account, connect, disconnect, sendTransaction } = useWallet()
+  const { isConnected, account, connect } = useWallet()
 
   const fetchCollections = async () => {
     try {
