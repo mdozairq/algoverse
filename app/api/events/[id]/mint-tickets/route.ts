@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { FirebaseService } from '@/lib/firebase/collections'
 import { requireRole } from '@/lib/auth/middleware'
-import { WalletMintService } from '@/lib/algorand/wallet-mint-service'
 import algosdk from 'algosdk'
 
 // Algorand configuration
