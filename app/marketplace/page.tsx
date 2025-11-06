@@ -16,6 +16,7 @@ import { motion } from "framer-motion"
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { useRouter } from "next/navigation"
 
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -23,6 +24,7 @@ export default function MarketplacePage() {
   const [templateFilter, setTemplateFilter] = useState("all")
   const [loading, setLoading] = useState(true)
   const [marketplaces, setMarketplaces] = useState<any[]>([])
+  const router = useRouter()
 
   const fetchMarketplaces = async () => {
     setLoading(true)
@@ -138,7 +140,9 @@ export default function MarketplacePage() {
                     }}
                     className="h-full"
                   >
-                    <Card className="overflow-hidden border border-border bg-card h-full flex flex-col">
+                    <Card 
+                      className="overflow-hidden border border-border bg-card h-full flex flex-col hover:cursor-pointer"
+                    >
                       <div className="aspect-[4/3] bg-muted relative">
                         {(() => {
                           const bannerUrl = Array.isArray(marketplace.banner) 
@@ -173,7 +177,7 @@ export default function MarketplacePage() {
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                           {marketplace.description}
                         </p>
-                        <div className="flex justify-between items-center mb-3 mt-auto">
+                        <div className="flex justify-between items-center mb-4 mt-auto">
                           <Badge 
                             className="rounded-full"
                             style={{ 
@@ -190,27 +194,22 @@ export default function MarketplacePage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 w-full">
                           <Button 
-                            className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full"
-                            asChild
+                            variant="outline"
+                            className="flex-1 border-black text-black hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black rounded-full text-sm transition-colors"
+                            onClick={() => router.push(`/marketplace/details/${marketplace.id}`)}
                           >
-                            <Link href={`/marketplace/details/${marketplace.id}`}>
-                              View Marketplace
-                              <ArrowRight className="w-4 h-4 ml-2" />
-                            </Link>
+                            Marketplace Details
+                            <ArrowRight className="w-4 h-4 ml-2" />
                           </Button>
-                          {marketplace.website && (
-                            <Button 
-                              variant="outline" 
-                              size="icon"
-                              asChild
-                            >
-                              <Link href={marketplace.website} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="w-4 h-4" />
-                              </Link>
-                            </Button>
-                          )}
+                          <Button 
+                            className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full text-sm"
+                            onClick={() => router.push(`/marketplace/${marketplace.merchantId}/${marketplace.id}`)}
+                          >
+                            View Marketplace
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
