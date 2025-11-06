@@ -6,167 +6,42 @@ import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import {
-  Search,
-  Filter,
   ShoppingCart,
-  Heart,
   Share2,
   ExternalLink,
   Store,
   Star,
-  Users,
-  Calendar,
-  MapPin,
-  Phone,
   Mail,
   RefreshCw,
   ArrowLeftRight,
-  Menu,
-  X,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
-  Grid3X3,
-  List,
-  SlidersHorizontal,
   TrendingUp,
-  Award,
   Clock,
   Eye,
   MessageCircle,
-  Bookmark,
-  Download,
   Play,
   Pause,
-  Volume2,
-  VolumeX,
-  Maximize2,
-  Minimize2,
-  Settings,
-  Bell,
-  User,
-  LogOut,
-  Home,
   Package,
-  BarChart3,
-  HelpCircle,
-  Info,
   CheckCircle,
-  AlertCircle,
   Zap,
   Shield,
-  Lock,
-  Unlock,
   Globe,
-  Wifi,
-  WifiOff,
-  Battery,
-  BatteryLow,
-  Sun,
-  Moon,
-  Palette,
   Layout,
-  Layers,
-  Box,
   Tag,
-  Percent,
-  DollarSign,
-  CreditCard,
   Wallet,
-  Banknote,
-  Coins,
-  TrendingDown,
-  Activity,
-  Target,
-  PieChart,
-  LineChart,
-  BarChart,
-  MousePointer,
-  Hand,
-  ThumbsUp,
-  ThumbsDown,
-  Flag,
-  Edit,
-  Trash2,
-  Copy,
-  Save,
-  Upload,
-  Download as DownloadIcon,
-  Send,
-  Paperclip,
-  Image as ImageIcon,
-  Video,
-  FileText,
-  File,
-  Folder,
-  Archive,
-  Database,
-  Server,
-  Cloud,
-  CloudOff,
-  Wrench,
-  Hammer,
-  Cog,
-  Sliders,
-  ToggleLeft,
-  ToggleRight,
-  Power,
-  PowerOff,
-  PlayCircle,
-  PauseCircle,
-  StopCircle,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Volume1,
-  Mic,
-  MicOff,
-  Camera,
-  CameraOff,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Laptop,
-  Headphones,
-  Speaker,
-  Radio,
-  Tv,
-  Gamepad2,
-  Joystick,
-  Keyboard,
-  Mouse,
-  Printer,
-  PhoneCall,
-  PhoneIncoming,
-  PhoneOutgoing,
-  PhoneMissed,
-  Voicemail,
-  MessageSquare,
-  MessageSquareText,
-  MessageSquareReply,
-  MessageSquareMore,
-  MessageSquareX,
-  MessageSquareWarning,
-  MessageSquarePlus,
-  MessageSquareShare,
-  MessageSquareHeart,
-  MessageSquareLock,
   Plus,
   Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/animations/page-transition"
+import { PageTransition } from "@/components/animations/page-transition"
 import { useParams } from "next/navigation"
 import Image from "next/image"
 import TemplateEngine from "@/lib/marketplace/template-engine"
-import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
 import { useWallet } from "@/hooks/use-wallet"
 import { useAuth } from "@/lib/auth/auth-context"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
@@ -300,13 +175,10 @@ export default function MarketplacePage() {
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [swapping, setSwapping] = useState<string | null>(null)
   const [minting, setMinting] = useState<string | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [showFilters, setShowFilters] = useState(false)
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
   const [isBannerAutoPlaying, setIsBannerAutoPlaying] = useState(true)
-  const { theme, resolvedTheme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const isDarkMode = resolvedTheme === 'dark'
   const [renderedComponents, setRenderedComponents] = useState<{
     header: JSX.Element
