@@ -11,7 +11,6 @@ import { motion } from "framer-motion"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { useData } from "@/lib/providers/data-provider"
-import { useToast } from "@/hooks/use-toast"
 
 export default function HomePage() {
   const { featuredEvents, loading } = useData()
