@@ -462,7 +462,7 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
 
               <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
                 {/* Back Button */}
-                <FadeIn>
+                {/* <FadeIn>
                   <div className="mb-4 sm:mb-6">
                     <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}`}>
                       <Button variant="outline" className="rounded-full text-sm sm:text-base">
@@ -472,7 +472,7 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
                       </Button>
                     </Link>
                   </div>
-                </FadeIn>
+                </FadeIn> */}
 
                 {/* Header */}
                 <FadeIn>
