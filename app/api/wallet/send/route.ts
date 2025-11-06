@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { to, amount, assetId, note, privateKey } = await request.json()
+    const { to, amount, privateKey } = await request.json()
 
     // Validate required fields
     if (!to || !amount || !privateKey) {
