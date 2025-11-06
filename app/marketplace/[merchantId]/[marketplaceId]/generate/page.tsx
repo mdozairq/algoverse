@@ -327,7 +327,7 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
           collectionId: selectedCollection,
           marketplaceId: params.marketplaceId,
           merchantId: params.merchantId,
-          userAddress: account?.address || account,
+          userAddress: account?.address,
           traits: nftData.traits || []
         }),
       })
