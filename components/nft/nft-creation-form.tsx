@@ -61,10 +61,6 @@ export function NFTCreationForm({
     setNftTraits([...nftTraits, { trait_type: "", value: "", rarity: 1 }])
   }
 
-  console.log("LOG", isLoading,
-    createdNFTId,
-    showMintOption);
-  
   const updateTrait = (index: number, field: keyof NFTTrait, value: string | number) => {
     const updatedTraits = [...nftTraits]
     updatedTraits[index] = { ...updatedTraits[index], [field]: value }
