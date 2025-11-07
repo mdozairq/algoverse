@@ -22,7 +22,9 @@ import {
   Wallet,
   Zap,
   Eye,
-  X
+  X,
+  Plus,
+  Trash2
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -400,7 +402,8 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
         body: JSON.stringify({
           nftId: createdNFTId,
           signedTransaction,
-          userAddress: account?.address || account
+          userAddress: account?.address || account,
+          isMinted: true,
         }),
       })
 
@@ -840,21 +843,134 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
                                 <Input
                                   id="mintPrice"
                                   type="number"
+                                  step="0.01"
+                                  min="0"
                                   value={nftData.mintPrice || ""}
                                   onChange={(e) => setNftData(prev => ({ ...prev, mintPrice: parseFloat(e.target.value) || 0 }))}
                                   placeholder="0.1"
                                 />
                               </div>
                               <div className="space-y-2">
+                                <Label htmlFor="price">Sale Price (ALGO)</Label>
+                                <Input
+                                  id="price"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={nftData.price || ""}
+                                  onChange={(e) => setNftData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                                  placeholder="1.0"
+                                />
+                                <p className="text-xs text-gray-500">
+                                  Price for listing the NFT for sale
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
                                 <Label htmlFor="royaltyFee">Royalty Fee (%)</Label>
                                 <Input
                                   id="royaltyFee"
                                   type="number"
+                                  step="0.1"
+                                  min="0"
+                                  max="100"
                                   value={nftData.royaltyFee || ""}
                                   onChange={(e) => setNftData(prev => ({ ...prev, royaltyFee: parseFloat(e.target.value) || 0 }))}
                                   placeholder="5"
                                 />
                               </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="rarity">Rarity</Label>
+                                <Select
+                                  value={nftData.rarity}
+                                  onValueChange={(value) => setNftData(prev => ({ ...prev, rarity: value }))}
+                                >
+                                  <SelectTrigger id="rarity">
+                                    <SelectValue placeholder="Select rarity" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="common">Common</SelectItem>
+                                    <SelectItem value="uncommon">Uncommon</SelectItem>
+                                    <SelectItem value="rare">Rare</SelectItem>
+                                    <SelectItem value="epic">Epic</SelectItem>
+                                    <SelectItem value="legendary">Legendary</SelectItem>
+                                    <SelectItem value="mythic">Mythic</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            {/* Traits Section */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <Label>Traits / Attributes</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setNftData(prev => ({
+                                      ...prev,
+                                      traits: [...(prev.traits || []), { trait_type: "", value: "" }]
+                                    }))
+                                  }}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Add Trait
+                                </Button>
+                              </div>
+                              
+                              {nftData.traits && nftData.traits.length > 0 ? (
+                                <div className="space-y-3 border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                                  {nftData.traits.map((trait, index) => (
+                                    <div key={index} className="flex gap-2 items-start">
+                                      <div className="flex-1 grid grid-cols-2 gap-2">
+                                        <Input
+                                          placeholder="Trait type (e.g., Background)"
+                                          value={trait.trait_type}
+                                          onChange={(e) => {
+                                            const newTraits = [...nftData.traits]
+                                            newTraits[index] = { ...trait, trait_type: e.target.value }
+                                            setNftData(prev => ({ ...prev, traits: newTraits }))
+                                          }}
+                                        />
+                                        <Input
+                                          placeholder="Value (e.g., Blue)"
+                                          value={trait.value}
+                                          onChange={(e) => {
+                                            const newTraits = [...nftData.traits]
+                                            newTraits[index] = { ...trait, value: e.target.value }
+                                            setNftData(prev => ({ ...prev, traits: newTraits }))
+                                          }}
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newTraits = nftData.traits.filter((_, i) => i !== index)
+                                          setNftData(prev => ({ ...prev, traits: newTraits }))
+                                        }}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-6 border-2 border-dashed rounded-lg text-gray-500 dark:text-gray-400">
+                                  <p className="text-sm">No traits added yet</p>
+                                  <p className="text-xs mt-1">Click "Add Trait" to add attributes to your NFT</p>
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                Add unique attributes that make your NFT special (e.g., Background: Blue, Eyes: Laser, etc.)
+                              </p>
                             </div>
                           </div>
 
