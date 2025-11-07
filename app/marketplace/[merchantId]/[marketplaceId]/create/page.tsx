@@ -577,7 +577,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
         body: JSON.stringify({
           nftId,
           signedTransaction,
-          userAddress
+          userAddress,
+          isMinted: true
         }),
       })
 
