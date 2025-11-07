@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, TrendingUp } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Package, TrendingUp, Star, Sparkles } from "lucide-react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import MarketplaceHeader from "@/components/marketplace/marketplace-header"
@@ -86,6 +87,8 @@ interface Collection {
   mintPrice?: number
   floorPrice?: number
   topOffer?: number
+  createdAt?: string | Date
+  updatedAt?: string | Date
   nftData?: {
     assetId: number
     totalSupply: number
@@ -182,6 +185,15 @@ export default function CollectionsPage() {
     }
   })
 
+  // Get last 4 collections (most recently created)
+  const featuredCollections = [...collections]
+    .sort((a, b) => {
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bDate - aDate
+    })
+    .slice(0, 4)
+
   if (loading) {
     return <MarketplaceLoadingTemplate />
   }
@@ -205,6 +217,175 @@ export default function CollectionsPage() {
         marketplaceId={marketplaceId}
       />
       <main className="flex-1 container mx-auto px-4 py-6 sm:py-8">
+        {/* Featured Collections Section */}
+        {featuredCollections.length > 0 && (
+          <Card
+            className="card-theme mb-6"
+            style={{
+              backgroundColor: isDarkMode
+                ? (template?.configuration.theme.backgroundColor || '#1f2937')
+                : (template?.configuration.theme.backgroundColor || '#ffffff'),
+              borderColor: `${marketplace.primaryColor}20`
+            }}
+          >
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" style={{ color: marketplace.primaryColor }} />
+                <CardTitle
+                  className="text-lg sm:text-xl text-foreground"
+                  style={{
+                    color: isDarkMode
+                      ? (template?.configuration.theme.textColor || '#f9fafb')
+                      : (template?.configuration.theme.textColor || '#000000')
+                  }}
+                >
+                  Featured Collections
+                </CardTitle>
+              </div>
+              <CardDescription
+                className="text-sm text-muted-foreground"
+                style={{
+                  color: isDarkMode
+                    ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                    : `${template?.configuration.theme.textColor || '#000000'}80`
+                }}
+              >
+                Latest collections in this marketplace
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {featuredCollections.map((collection, index) => (
+                  <motion.div
+                    key={collection.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    className="group cursor-pointer"
+                    onClick={() => {
+                      router.push(`/marketplace/${merchantId}/${marketplaceId}/collection/${collection.id}`)
+                    }}
+                  >
+                    <Card
+                      className="overflow-hidden hover:shadow-lg transition-all duration-300"
+                      style={{
+                        backgroundColor: isDarkMode
+                          ? (template?.configuration.theme.backgroundColor || '#1f2937')
+                          : (template?.configuration.theme.backgroundColor || '#ffffff'),
+                        borderColor: `${marketplace.primaryColor}20`
+                      }}
+                    >
+                      <div className="relative aspect-square">
+                        {collection.image ? (
+                          <Image
+                            src={collection.image}
+                            alt={collection.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center"
+                            style={{
+                              background: `linear-gradient(135deg, ${marketplace.primaryColor}, ${marketplace.secondaryColor})`
+                            }}
+                          >
+                            <Package className="w-12 h-12 text-white opacity-80" />
+                          </div>
+                        )}
+                        <div className="absolute top-3 left-3">
+                          <Badge
+                            className="text-xs font-semibold"
+                            style={{
+                              backgroundColor: `${marketplace.primaryColor}90`,
+                              color: 'white'
+                            }}
+                          >
+                            #{index + 1}
+                          </Badge>
+                        </div>
+                        {collection.rating > 0 && (
+                          <div className="absolute top-3 right-3">
+                            <Badge
+                              className="text-xs font-semibold flex items-center gap-1"
+                              style={{
+                                backgroundColor: `${marketplace.secondaryColor}90`,
+                                color: 'white'
+                              }}
+                            >
+                              <Star className="w-3 h-3 fill-current" />
+                              {collection.rating.toFixed(1)}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-3 sm:p-4">
+                        <h3
+                          className="font-semibold text-sm sm:text-base mb-1 line-clamp-1"
+                          style={{
+                            color: isDarkMode
+                              ? (template?.configuration.theme.textColor || '#f9fafb')
+                              : (template?.configuration.theme.textColor || '#000000')
+                          }}
+                        >
+                          {collection.name}
+                        </h3>
+                        <p
+                          className="text-xs sm:text-sm mb-2 line-clamp-2"
+                          style={{
+                            color: isDarkMode
+                              ? `${template?.configuration.theme.textColor || '#f9fafb'}80`
+                              : `${template?.configuration.theme.textColor || '#000000'}80`
+                          }}
+                        >
+                          {collection.description}
+                        </p>
+                        <div className="flex items-center justify-between mt-3">
+                          <div>
+                            <div
+                              className="font-bold text-sm sm:text-base"
+                              style={{
+                                color: marketplace.primaryColor
+                              }}
+                            >
+                              {collection.floorPrice || collection.price} {currency}
+                            </div>
+                            <div
+                              className="text-xs"
+                              style={{
+                                color: isDarkMode
+                                  ? `${template?.configuration.theme.textColor || '#f9fafb'}60`
+                                  : `${template?.configuration.theme.textColor || '#000000'}60`
+                              }}
+                            >
+                              {collection.nftCount} NFTs
+                            </div>
+                          </div>
+                          {collection.topOffer && (
+                            <div className="text-right">
+                              <div className="flex items-center gap-1 text-xs text-green-600">
+                                <TrendingUp className="w-3 h-3" />
+                                <span className="font-medium">
+                                  {collection.floorPrice && collection.topOffer ?
+                                    (((collection.topOffer - collection.floorPrice) / collection.floorPrice) * 100).toFixed(1) :
+                                    '0.0'
+                                  }%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* All Collections Table */}
         <Card
           className="card-theme"
           style={{
