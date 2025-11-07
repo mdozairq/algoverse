@@ -229,9 +229,9 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
             >
               <div className="py-4 space-y-4 border-t border-border mt-4">
                 <nav className="flex flex-col gap-3">
-                  <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
+                  {/* <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Products
-                  </Link>
+                  </Link> */}
                   {marketplace.allowSwap && (
                     <Link href={`/marketplace/${merchantId}/${marketplaceId}/swap`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                       Swap
