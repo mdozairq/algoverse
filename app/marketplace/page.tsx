@@ -205,7 +205,7 @@ export default function MarketplacePage() {
                           </Button>
                           <Button 
                             className="flex-1 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-full text-sm"
-                            onClick={() => router.push(`/marketplace/${marketplace.merchantId}/${marketplace.id}`)}
+                            onClick={() => window.open(`/marketplace/${marketplace.merchantId}/${marketplace.id}`, '_blank', 'noopener,noreferrer')}
                           >
                             View Marketplace
                             <ArrowRight className="w-4 h-4 ml-2" />
