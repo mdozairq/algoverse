@@ -155,6 +155,9 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
           {/* Navigation */}
           <div className="hidden md:flex items-center gap-4">
             <nav className="flex items-center gap-6">
+              <Link href={`/marketplace/${merchantId}/${marketplaceId}/collection`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                  Collections
+              </Link>
               {marketplace.allowSwap && (
                 <Link href={`/marketplace/${merchantId}/${marketplaceId}/swap`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                   Swap
@@ -232,6 +235,9 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                   {/* <Link href="#products" className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Products
                   </Link> */}
+                  <Link href={`/marketplace/${merchantId}/${marketplaceId}/collection`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                    Collections
+                  </Link>
                   {marketplace.allowSwap && (
                     <Link href={`/marketplace/${merchantId}/${marketplaceId}/swap`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                       Swap
