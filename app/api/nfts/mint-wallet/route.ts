@@ -132,8 +132,11 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
     try {
       // Get current NFT data to update available supply
       const currentNft = await FirebaseService.getNFTById(submitData.nftId)
-      const newAvailableSupply = currentNft?.availableSupply !== undefined ? 
-        Math.max(0, currentNft.availableSupply - 1) : undefined
+      let newAvailableSupply
+      if(!submitData.isMinted) {
+        newAvailableSupply = currentNft?.availableSupply !== undefined ? 
+          Math.max(0, currentNft.availableSupply - 1) : undefined
+      }
 
       const updateData: any = {
         assetId: result.assetId,
@@ -159,7 +162,7 @@ export const PUT = requireRole(["user", "merchant"])(async (request: NextRequest
       // Update collection available supply
       if (currentNft?.collectionId) {
         const collection = await FirebaseService.getCollectionById(currentNft.collectionId)
-        if (collection && collection.availableSupply !== undefined) {
+        if (collection && collection.availableSupply !== undefined && submitData.isMinted) {
           const newCollectionSupply = Math.max(0, collection.availableSupply - 1)
           await FirebaseService.updateCollection(currentNft.collectionId, {
             availableSupply: newCollectionSupply
