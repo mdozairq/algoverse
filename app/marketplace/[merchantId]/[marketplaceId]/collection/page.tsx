@@ -343,14 +343,14 @@ export default function CollectionsPage() {
                         </p>
                         <div className="flex items-center justify-between mt-3">
                           <div>
-                            <div
+                            {/* <div
                               className="font-bold text-sm sm:text-base"
                               style={{
                                 color: marketplace.primaryColor
                               }}
                             >
                               {collection.floorPrice || collection.price} {currency}
-                            </div>
+                            </div> */}
                             <div
                               className="text-xs"
                               style={{
