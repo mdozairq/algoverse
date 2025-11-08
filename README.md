@@ -63,16 +63,7 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Price Impact Warnings**: Alerts for high price impact trades
 - **Transaction Status**: Complete transaction flow tracking
 
-### 6. **Launchpad System**
-- **NFT Project Launch**: Create and launch NFT projects with phased minting
-- **Minting Phases**: Configure multiple minting phases with different prices and eligibility
-- **Whitelist Management**: Manage project whitelists and presale eligibility
-- **Roadmap Tracking**: Project roadmap and milestones
-- **Team Management**: Display project team and advisors
-- **FAQ Management**: Project-specific FAQs and support
-- **Real-Time Stats**: Live minting statistics and progress tracking
-
-### 7. **Wallet Management**
+### 6. **Wallet Management**
 - **Multi-Wallet Support**: Connect Pera Wallet or create/import local wallets
 - **Pera Wallet Integration**: Seamless connection to Pera Wallet mobile app
 - **Local Wallet Creation**: Generate new wallets with mnemonic phrase backup
@@ -82,28 +73,28 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Asset Management**: View and manage all assets in wallet
 - **Send/Receive**: Send ALGO and ASAs to other addresses
 
-### 8. **IPFS Integration**
+### 7. **IPFS Integration**
 - **Decentralized Storage**: Store NFT metadata and images on IPFS
 - **Pinata Integration**: Reliable pinning service for IPFS content
 - **Metadata Upload**: Upload and manage NFT metadata JSON files
 - **Image Storage**: Store NFT images with IPFS hash references
 - **Content Addressing**: Immutable content addressing via IPFS hashes
 
-### 9. **Collections & Products**
+### 8. **Collections & Products**
 - **Collection Creation**: Merchants can create NFT collections for their marketplaces
 - **Product Management**: List NFTs as products with pricing, inventory, and details
 - **Supply Management**: Track current and available supply of NFTs
 - **Minting Sessions**: Create scheduled minting sessions for products
 - **Collection Filtering**: Filter and search collections by various attributes
 
-### 10. **Trading & Secondary Market**
+### 9. **Trading & Secondary Market**
 - **Buy/Sell NFTs**: List NFTs for sale and purchase from other users
 - **Auction System**: Place NFTs in auctions with bidding functionality
 - **Order Management**: Manage buy and sell orders
 - **Trading History**: Complete trading history across all marketplaces
 - **Price Tracking**: Track NFT prices and market statistics
 
-### 11. **Analytics & Reporting**
+### 10. **Analytics & Reporting**
 - **Platform Analytics**: Platform-wide statistics and metrics
 - **Merchant Analytics**: Detailed analytics for merchant marketplaces
 - **Marketplace Analytics**: Individual marketplace performance metrics
@@ -111,7 +102,7 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Revenue Tracking**: Monitor revenue, fees, and commissions
 - **NFT Statistics**: NFT ownership, trading, and market data
 
-### 12. **Role-Based Access Control**
+### 11. **Role-Based Access Control**
 - **Three User Roles**: Admin, Merchant, and User with distinct permissions
 - **Admin Dashboard**: Platform management, merchant approval, template management
 - **Merchant Dashboard**: Marketplace creation, event management, analytics
@@ -119,7 +110,7 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **JWT Authentication**: Secure token-based authentication
 - **Session Management**: Persistent sessions with cookie-based storage
 
-### 13. **Security Features**
+### 12. **Security Features**
 - **Blockchain Verification**: All transactions verified on-chain
 - **Immutable Records**: Permanent transaction history on blockchain
 - **Private Key Security**: Secure handling of wallet private keys
