@@ -27,6 +27,8 @@ import { CreatePageLoadingTemplate, SimpleLoadingTemplate } from "@/components/u
 import Image from "next/image"
 import { useWallet } from "@/hooks/use-wallet"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
+import { transactionSigner } from "@/lib/wallet/transaction-signer"
+import { useToast } from "@/hooks/use-toast"
 
 interface DraftNFT {
   id: string
@@ -74,7 +76,13 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const [priceValue, setPriceValue] = useState("")
   const [updatingPrice, setUpdatingPrice] = useState(false)
 
-  const { isConnected, account, sendTransaction } = useWallet()
+  const { isConnected, account, connect, disconnect } = useWallet()
+  const { toast } = useToast()
+
+  // Initialize transaction signer with wallet hook
+  useEffect(() => {
+    transactionSigner.setUseWalletHook({ isConnected, account, connect, disconnect })
+  }, [isConnected, account, connect, disconnect])
 
   const fetchDraftNFTs = async () => {
     try {
@@ -187,60 +195,131 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   }
 
   const handleMint = async () => {
-    if (!selectedNFTs.length || !isConnected || !account) return
+    if (!selectedNFTs.length || !isConnected || !account) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to mint NFTs.",
+        variant: "destructive"
+      })
+      return
+    }
 
     setMinting(true)
     setMintProgress(0)
 
     try {
-      // Simulate minting progress
-      const progressInterval = setInterval(() => {
-        setMintProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval)
-            return prev
+      // Mint each NFT sequentially
+      const mintedNFTs: string[] = []
+      const failedNFTs: string[] = []
+
+      for (let i = 0; i < selectedNFTs.length; i++) {
+        const nft = selectedNFTs[i]
+        setMintProgress((i / selectedNFTs.length) * 80) // Progress up to 80% for minting
+
+        try {
+          toast({
+            title: "Creating Mint Transaction",
+            description: `Preparing to mint ${nft.name}...`,
+          })
+
+          // Step 1: Create mint transaction
+          const mintResponse = await fetch('/api/nfts/mint-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nftId: nft.id,
+              userAddress: account.address
+            }),
+          })
+
+          if (!mintResponse.ok) {
+            const errorData = await mintResponse.json()
+            throw new Error(errorData.error || 'Failed to create mint transaction')
           }
-          return prev + 10
-        })
-      }, 200)
 
-      const nftIds = selectedNFTs.map(nft => nft.id)
-      const totalCost = selectedNFTs.reduce((sum, nft) => sum + nft.mintPrice, 0)
+          const mintData = await mintResponse.json()
 
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          collectionId: selectedNFTs[0]?.collectionId || "",
-          nftIds,
-          userAddress: account.address,
-          quantity: selectedNFTs.length,
-          totalCost,
-          currency: "ALGO"
-        }),
-      })
+          // Step 2: Sign transaction
+          toast({
+            title: "Signing Transaction",
+            description: `Please sign the transaction for ${nft.name} in your wallet.`,
+          })
 
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Simulate transaction
-        if (sendTransaction) {
-          await sendTransaction(
-            "",
-            totalCost,
-            `Mint ${selectedNFTs.length} NFT(s)`
+          const signedTransaction = await transactionSigner.signTransaction(
+            mintData.transaction.txn,
+            account.address
           )
-        }
 
-        setMintProgress(100)
-        setShowMintDialog(false)
-        setSelectedNFTs([])
-        fetchDraftNFTs()
-        fetchUserNFTs()
+          // Step 3: Submit signed transaction
+          toast({
+            title: "Submitting Transaction",
+            description: `Submitting mint transaction for ${nft.name}...`,
+          })
+
+          const submitResponse = await fetch('/api/nfts/mint-wallet', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              signedTransaction,
+              nftId: nft.id,
+              userAddress: account.address,
+              isMinted: false
+            }),
+          })
+
+          if (!submitResponse.ok) {
+            const errorData = await submitResponse.json()
+            throw new Error(errorData.error || 'Failed to submit mint transaction')
+          }
+
+          const submitData = await submitResponse.json()
+          mintedNFTs.push(nft.id)
+
+          toast({
+            title: "Mint Successful",
+            description: `${nft.name} has been minted successfully!`,
+          })
+        } catch (error: any) {
+          console.error(`Failed to mint NFT ${nft.name}:`, error)
+          failedNFTs.push(nft.name)
+          toast({
+            title: "Mint Failed",
+            description: `Failed to mint ${nft.name}: ${error.message}`,
+            variant: "destructive"
+          })
+        }
       }
-    } catch (error) {
-      console.error("Failed to mint NFT:", error)
-      alert("Failed to mint NFT")
+
+      setMintProgress(100)
+
+      // Show final result
+      if (mintedNFTs.length > 0) {
+        toast({
+          title: "Minting Complete",
+          description: `Successfully minted ${mintedNFTs.length} out of ${selectedNFTs.length} NFT(s).`,
+        })
+      }
+
+      if (failedNFTs.length > 0) {
+        toast({
+          title: "Some Mints Failed",
+          description: `Failed to mint: ${failedNFTs.join(', ')}`,
+          variant: "destructive"
+        })
+      }
+
+      // Refresh data
+      setShowMintDialog(false)
+      setSelectedNFTs([])
+      await fetchDraftNFTs()
+      await fetchUserNFTs()
+    } catch (error: any) {
+      console.error("Failed to mint NFTs:", error)
+      toast({
+        title: "Minting Error",
+        description: error.message || "Failed to mint NFTs",
+        variant: "destructive"
+      })
     } finally {
       setMinting(false)
       setMintProgress(0)
