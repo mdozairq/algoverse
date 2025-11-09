@@ -93,3 +93,51 @@ export async function GET(
     return NextResponse.json({ error: "Failed to fetch draft NFTs" }, { status: 500 })
   }
 }
+
+// PATCH /api/marketplaces/[id]/mint/nfts - Update NFT price
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const marketplaceId = params.id
+    const { nftId, price } = await request.json()
+
+    if (!marketplaceId) {
+      return NextResponse.json({ error: "Marketplace ID is required" }, { status: 400 })
+    }
+
+    if (!nftId) {
+      return NextResponse.json({ error: "NFT ID is required" }, { status: 400 })
+    }
+
+    if (price === undefined || price === null) {
+      return NextResponse.json({ error: "Price is required" }, { status: 400 })
+    }
+
+    if (price < 0) {
+      return NextResponse.json({ error: "Price must be non-negative" }, { status: 400 })
+    }
+
+    // Get NFT to verify it belongs to this marketplace
+    const nft = await FirebaseService.getNFTById(nftId)
+    if (!nft) {
+      return NextResponse.json({ error: "NFT not found" }, { status: 404 })
+    }
+
+    if (nft.marketplaceId !== marketplaceId) {
+      return NextResponse.json({ error: "NFT does not belong to this marketplace" }, { status: 403 })
+    }
+
+    // Update NFT price
+    await FirebaseService.updateNFT(nftId, { price: parseFloat(price) })
+
+    return NextResponse.json({
+      success: true,
+      message: "NFT price updated successfully"
+    })
+  } catch (error: any) {
+    console.error("Error updating NFT price:", error)
+    return NextResponse.json({ error: "Failed to update NFT price" }, { status: 500 })
+  }
+}
