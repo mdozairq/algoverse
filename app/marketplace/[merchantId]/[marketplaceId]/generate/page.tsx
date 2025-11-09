@@ -59,6 +59,7 @@ interface Marketplace {
   allowMint?: boolean
   allowTrading?: boolean
   allowCreate?: boolean
+  allowGenerate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -448,6 +449,45 @@ export default function GeneratePage({ params }: { params: { merchantId: string;
         if (!marketplace) {
           return (
             <SimpleLoadingTemplate message="Marketplace not found. Redirecting..." />
+          )
+        }
+
+        // Check if generate functionality is enabled
+        if (!marketplace?.allowGenerate) {
+          return (
+            <PageTransition>
+              <div 
+                className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                style={getThemeStyles()}
+              >
+                <MarketplaceHeader 
+                  marketplace={marketplace} 
+                  merchantId={params.merchantId} 
+                  marketplaceId={params.marketplaceId} 
+                />
+                <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                      <Sparkles className="w-16 h-16 text-gray-400 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        NFT Generation Disabled
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-center mb-6 max-w-md">
+                        NFT generation functionality is currently disabled for this marketplace. Please contact the marketplace owner to enable this feature.
+                      </p>
+                      <Button
+                        onClick={() => router.push(`/marketplace/${params.merchantId}/${params.marketplaceId}`)}
+                        variant="outline"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Marketplace
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+                <MarketplaceFooter marketplace={marketplace} />
+              </div>
+            </PageTransition>
           )
         }
 
