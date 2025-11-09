@@ -36,6 +36,7 @@ interface Marketplace {
   allowMint?: boolean
   allowTrading?: boolean
   allowCreate?: boolean
+  allowGenerate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -177,7 +178,7 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                 Create
               </Link>
               )}
-              {marketplace.allowCreate && (<Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+              {marketplace?.allowGenerate && (<Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                 Generate
               </Link>
               )}
@@ -253,12 +254,12 @@ export default function MarketplaceHeader({ marketplace, merchantId, marketplace
                       Trade
                     </Link>
                   )}
-                  <Link href={`/marketplace/${merchantId}/${marketplaceId}/create`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                  {marketplace?.allowCreate && <Link href={`/marketplace/${merchantId}/${marketplaceId}/create`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Create
-                  </Link>
-                  <Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
+                  </Link>}
+                  {marketplace?.allowGenerate && <Link href={`/marketplace/${merchantId}/${marketplaceId}/generate`} className="text-sm font-medium hover:opacity-80 transition-opacity">
                     Generate
-                  </Link>
+                  </Link>}
                 </nav>
                 <div className="flex flex-col gap-2">
                   {/* Mobile Theme Toggle Button */}
