@@ -51,7 +51,8 @@ import {
   Star,
   ShoppingCart,
   Heart,
-  Share2
+  Share2,
+  Sparkles
 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
@@ -96,6 +97,7 @@ interface Marketplace {
   allowMint?: boolean
   allowTrading?: boolean
   allowCreate?: boolean
+  allowGenerate?: boolean
   walletAddress: string
   createdAt: Date
   updatedAt?: Date
@@ -622,6 +624,47 @@ export default function MarketplaceManagement() {
           setSelectedMarketplace({
             ...selectedMarketplace,
             allowCreate: allowCreate
+          })
+        }
+        
+        // Refresh the marketplaces list
+        fetchMarketplaces(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update marketplace",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleToggleMarketplaceGenerate = async (marketplaceId: string, allowGenerate: boolean) => {
+    console.log('Toggle marketplace generate:', marketplaceId, allowGenerate)
+    setActionLoading(marketplaceId)
+    try {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowGenerate }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `NFT generation functionality ${allowGenerate ? 'enabled' : 'disabled'} successfully!`,
+        })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            allowGenerate: allowGenerate
           })
         }
         
@@ -2173,6 +2216,35 @@ export default function MarketplaceManagement() {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>{selectedMarketplace.allowCreate ? 'Disable' : 'Enable'} creating collections/NFTs functionality</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg border">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center">
+                                  <Sparkles className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">NFT Generation Functionality</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {selectedMarketplace.allowGenerate ? 'Users can generate NFTs using AI in your marketplace' : 'NFT generation functionality is disabled'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Switch
+                                    checked={selectedMarketplace.allowGenerate || false}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Generate switch clicked:', checked)
+                                      handleToggleMarketplaceGenerate(selectedMarketplace.id, checked)
+                                    }}
+                                    disabled={actionLoading === selectedMarketplace.id}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{selectedMarketplace.allowGenerate ? 'Disable' : 'Enable'} NFT generation functionality</p>
                                 </TooltipContent>
                               </Tooltip>
                             </div>
