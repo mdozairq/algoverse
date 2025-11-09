@@ -141,7 +141,7 @@ export const PUT = requireRole(["merchant", "admin"])(async (
       'primaryColor', 'secondaryColor', 'customDomain',
       'isEnabled', 'allowSwap', 'allowMint', 'allowTrading',
       'walletAddress', 'website', 'logo', 'banner', 'allowCreate',
-      'status'
+      'allowGenerate', 'status'
     ]
     
     const filteredUpdates = Object.keys(updates)
