@@ -69,6 +69,7 @@ interface Marketplace {
   allowMint?: boolean
   allowTrading?: boolean
   allowCreate?: boolean
+  allowGenerate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -1747,7 +1748,7 @@ export default function MarketplacePage() {
                     )}
 
                     {/* Generate NFT Section */}
-                    {marketplace.allowCreate && (
+                    {marketplace.allowGenerate && (
                       <motion.section
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
