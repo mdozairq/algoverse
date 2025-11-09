@@ -33,6 +33,8 @@ interface Marketplace {
   allowSwap: boolean
   allowMint?: boolean
   allowTrading?: boolean
+  allowCreate?: boolean
+  allowGenerate?: boolean
   createdAt: Date
   updatedAt?: Date
 }
@@ -135,9 +137,12 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
                   Trade
                 </Link>
               )}
-              <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/create`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
+              {marketplace?.allowCreate && <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/create`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Create
-              </Link>
+              </Link>}
+              {marketplace?.allowGenerate && <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/generate`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
+                Generate
+              </Link>}
             </nav>
           </div>
 
