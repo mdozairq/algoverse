@@ -20,6 +20,19 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       return NextResponse.json({ error: "Collection ID is required. NFTs must belong to a collection." }, { status: 400 })
     }
 
+    // Validate NFT category matches collection mediaCategory if collection has one
+    if (nftData.collectionId) {
+      const collection = await FirebaseService.getCollectionById(nftData.collectionId)
+      if (collection && collection.mediaCategory && collection.mediaCategory !== "any") {
+        const nftCategory = nftData.category || "any"
+        if (nftCategory !== collection.mediaCategory) {
+          return NextResponse.json({ 
+            error: `This collection only allows ${collection.mediaCategory} NFTs. Selected category: ${nftCategory}` 
+          }, { status: 400 })
+        }
+      }
+    }
+
     // Helper function to remove undefined values from objects
     const removeUndefined = (obj: any): any => {
       if (obj === null || obj === undefined) {
