@@ -234,11 +234,29 @@ export function NFTCreationForm({
           </Label>
           <MultimediaUpload
             onFileUpload={(ipfsHash: string, fileUrl: string, fileType: string) => {
+              // Auto-detect category from file type if not already set or if it doesn't match
+              let detectedCategory: MediaCategory = newNFT.category || "any"
+              if (fileType.startsWith("image/")) {
+                detectedCategory = "image"
+              } else if (fileType.startsWith("audio/")) {
+                detectedCategory = "audio"
+              } else if (fileType.startsWith("video/")) {
+                detectedCategory = "video"
+              } else {
+                detectedCategory = "file"
+              }
+              
+              // If collection has a specific mediaCategory, use that instead
+              const finalCategory = collectionMediaCategory && collectionMediaCategory !== "any" 
+                ? collectionMediaCategory 
+                : detectedCategory
+              
               setNewNFT({ 
                 ...newNFT, 
                 image: fileUrl, 
                 ipfsHash,
-                fileType 
+                fileType,
+                category: finalCategory
               })
             }}
             onFileRemove={() => {
@@ -250,7 +268,7 @@ export function NFTCreationForm({
               })
             }}
             currentFile={newNFT.image}
-            category={newNFT.category || "any"}
+            category={newNFT.category || collectionMediaCategory || "any"}
             maxSize={newNFT.category === "image" ? 10 : 50}
             className="mt-2"
           />
