@@ -39,6 +39,7 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
       status: "draft",
       source: collectionData.source || "merchant",
       isEnabled: collectionData.isEnabled || true,
+      mediaCategory: collectionData.mediaCategory || "any", // Default to "any" for existing collections
       createdAt: new Date(),
       updatedAt: new Date()
     })
