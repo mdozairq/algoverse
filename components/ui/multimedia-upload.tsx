@@ -70,12 +70,29 @@ const getCategoryLabel = (category: MediaCategory): string => {
   }
 }
 
+const getDefaultMaxSize = (category: MediaCategory): number => {
+  switch (category) {
+    case "image":
+      return 1 // 1MB for images
+    case "audio":
+      return 5 // 5MB for audio
+    case "video":
+      return 10 // 10MB for video
+    case "file":
+      return 5 // 5MB for files
+    case "any":
+      return 10 // 10MB default for any (highest limit)
+    default:
+      return 5 // 5MB default
+  }
+}
+
 export default function MultimediaUpload({
   onFileUpload,
   onFileRemove,
   currentFile,
   className,
-  maxSize = 50, // Default 50MB for multimedia
+  maxSize, // Optional: if not provided, will use category-specific defaults
   category = "any",
   disabled = false
 }: MultimediaUploadProps) {
@@ -86,6 +103,8 @@ export default function MultimediaUpload({
   const [fileType, setFileType] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Use provided maxSize or category-specific default
+  const effectiveMaxSize = maxSize ?? getDefaultMaxSize(category)
   const acceptedTypes = getAcceptedTypes(category)
 
   const uploadToIPFS = async (file: File): Promise<{ ipfsHash: string; ipfsUrl: string }> => {
@@ -121,8 +140,8 @@ export default function MultimediaUpload({
 
     try {
       // Validate file size
-      if (file.size > maxSize * 1024 * 1024) {
-        throw new Error(`File size must be less than ${maxSize}MB`)
+      if (file.size > effectiveMaxSize * 1024 * 1024) {
+        throw new Error(`File size must be less than ${effectiveMaxSize}MB`)
       }
 
       // Validate file type
@@ -175,7 +194,7 @@ export default function MultimediaUpload({
       setUploading(false)
       setUploadProgress(0)
     }
-  }, [onFileUpload, maxSize, acceptedTypes, category, disabled])
+  }, [onFileUpload, effectiveMaxSize, acceptedTypes, category, disabled])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -363,7 +382,7 @@ export default function MultimediaUpload({
                   or click to select a file
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
-                  Category: {getCategoryLabel(category)} • Max {maxSize}MB
+                  Category: {getCategoryLabel(category)} • Max {effectiveMaxSize}MB
                 </p>
               </div>
             </motion.div>
