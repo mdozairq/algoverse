@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
 import { NFTCreationForm } from "@/components/nft/nft-creation-form"
 import { WalletConnectButtonCompact } from "@/components/wallet/wallet-connect-button"
+import { MediaCategory } from "@/components/ui/multimedia-upload"
 import { 
   ArrowLeft, 
   Plus,
@@ -208,7 +209,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     mintStartDate: "",
     mintStages: [],
     source: "public",
-    isEnabled: true
+    isEnabled: true,
+    mediaCategory: "any" as MediaCategory
   })
 
   const { isConnected, account, connect, disconnect } = useWallet()
@@ -441,7 +443,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           creatorAddress: account,
           source: "public",
           isEnabled: true,
-          status: "approved"
+          status: "approved",
+          mediaCategory: formData.mediaCategory || "any"
         }),
       })
 
@@ -467,7 +470,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           mintStartDate: "",
           mintStages: [],
           source: "public",
-          isEnabled: true
+          isEnabled: true,
+          mediaCategory: "any"
         })
         setSelectedArtType("unique")
         setUploadedImage(null)
@@ -1023,6 +1027,29 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                       />
                     </div>
 
+                    {/* NFT Media Category */}
+                    <div className="space-y-2">
+                      <Label htmlFor="mediaCategory" className="text-sm font-medium">NFT Media Category</Label>
+                      <Select 
+                        value={formData.mediaCategory || "any"} 
+                        onValueChange={(value: MediaCategory) => setFormData({ ...formData, mediaCategory: value })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any (All Types)</SelectItem>
+                          <SelectItem value="image">Image Only</SelectItem>
+                          <SelectItem value="audio">Audio Only</SelectItem>
+                          <SelectItem value="video">Video Only</SelectItem>
+                          <SelectItem value="file">File/Document Only</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">
+                        Restricts what type of NFTs can be created in this collection
+                      </p>
+                    </div>
+
                     {/* Collection Image Upload */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Collection Image *</Label>
@@ -1352,7 +1379,8 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                               mintStartDate: "",
                               mintStages: [],
                               source: "public",
-                              isEnabled: true
+                              isEnabled: true,
+                              mediaCategory: "any"
                             })
                             setSelectedArtType("unique")
                             setUploadedImage(null)
