@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDevImage } from '@/lib/dev-storage'
+import { getDevImage, getDevFile } from '@/lib/dev-storage'
 
 export async function GET(
   request: NextRequest,
@@ -8,8 +8,8 @@ export async function GET(
   try {
     const { hash } = params
     
-    // Check if we have the image in memory
-    const imageData = getDevImage(hash)
+    // Check if we have the image/file in memory (backward compatibility)
+    const imageData = getDevImage(hash) || getDevFile(hash)
     if (imageData) {
       const { buffer, contentType } = imageData
       
