@@ -104,6 +104,8 @@ export interface Collection {
   // Royalty settings
   royaltyPercentage?: number // Default royalty percentage for NFTs in this collection
   royaltyRecipient?: string // Default royalty recipient address
+  // Media category for NFT type restrictions
+  mediaCategory?: "image" | "audio" | "video" | "file" | "any" // Restricts what type of NFTs can be created in this collection
 }
 
 export interface NFT {
