@@ -1395,7 +1395,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                             style={getButtonStyle('primary')}
                         >
                           <Plus className="w-5 h-5 mr-2" />
-                          Publish on Algorand
+                          Add Collection In Marketplace
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500 text-center">
@@ -1579,7 +1579,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
               {creating && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span>Creating Item</span>
+                    <span>Creating Collection</span>
                     <span>{createProgress}%</span>
                   </div>
                   <Progress value={createProgress} className="h-2" />
@@ -1603,7 +1603,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                   ) : (
                     <>
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Item
+                      Create Collection
                     </>
                   )}
                 </Button>
