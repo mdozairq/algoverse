@@ -61,7 +61,8 @@ export const POST = requireRole(["merchant"])(async (
       allowSwap,
       userAddress,
       marketplaceId: requestMarketplaceId,
-      merchantId
+      merchantId,
+      mediaCategory
     } = body
 
     // Validate required fields
@@ -93,6 +94,7 @@ export const POST = requireRole(["merchant"])(async (
       marketplaceId,
       merchantId,
       creatorAddress: userAddress,
+      mediaCategory: mediaCategory || "any", // Default to "any" for existing collections
       createdAt: new Date(),
       views: 0,
       sales: 0,
