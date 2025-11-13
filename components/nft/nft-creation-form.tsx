@@ -88,6 +88,7 @@ interface NFTCreationFormProps {
   isLoading: boolean
   createdNFTId?: string | null
   showMintOption?: boolean
+  collectionMediaCategory?: MediaCategory // Restricts allowed categories based on collection
 }
 
 export function NFTCreationForm({
@@ -100,7 +101,8 @@ export function NFTCreationForm({
   onMint,
   isLoading,
   createdNFTId,
-  showMintOption = false
+  showMintOption = false,
+  collectionMediaCategory
 }: NFTCreationFormProps) {
   const addTrait = () => {
     setNftTraits([...nftTraits, { trait_type: "", value: "", rarity: 1 }])
@@ -167,7 +169,7 @@ export function NFTCreationForm({
         <div>
           <Label htmlFor="nftCategory">Media Category</Label>
           <Select 
-            value={newNFT.category || "any"} 
+            value={newNFT.category || collectionMediaCategory || "any"} 
             onValueChange={(value: MediaCategory) => {
               // Reset image/file and category-specific metadata when category changes
               setNewNFT({ 
@@ -182,20 +184,33 @@ export function NFTCreationForm({
                 fileMetadata: value === "file" ? newNFT.fileMetadata : undefined
               })
             }}
+            disabled={!!collectionMediaCategory && collectionMediaCategory !== "any"}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">Any (All Types)</SelectItem>
-              <SelectItem value="image">Image</SelectItem>
-              <SelectItem value="audio">Audio</SelectItem>
-              <SelectItem value="video">Video</SelectItem>
-              <SelectItem value="file">File/Document</SelectItem>
+              {(!collectionMediaCategory || collectionMediaCategory === "any") && (
+                <SelectItem value="any">Any (All Types)</SelectItem>
+              )}
+              {(!collectionMediaCategory || collectionMediaCategory === "any" || collectionMediaCategory === "image") && (
+                <SelectItem value="image">Image</SelectItem>
+              )}
+              {(!collectionMediaCategory || collectionMediaCategory === "any" || collectionMediaCategory === "audio") && (
+                <SelectItem value="audio">Audio</SelectItem>
+              )}
+              {(!collectionMediaCategory || collectionMediaCategory === "any" || collectionMediaCategory === "video") && (
+                <SelectItem value="video">Video</SelectItem>
+              )}
+              {(!collectionMediaCategory || collectionMediaCategory === "any" || collectionMediaCategory === "file") && (
+                <SelectItem value="file">File/Document</SelectItem>
+              )}
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-500 mt-1">
-            Select the category to filter allowed file types for upload
+            {collectionMediaCategory && collectionMediaCategory !== "any" 
+              ? `This collection only allows ${collectionMediaCategory} NFTs`
+              : "Select the category to filter allowed file types for upload"}
           </p>
         </div>
 
