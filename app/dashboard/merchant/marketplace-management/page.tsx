@@ -131,6 +131,7 @@ interface Collection {
   rating?: number
   reviews?: number
   nftCount: number // Minimum 1 NFT required
+  mediaCategory?: "image" | "audio" | "video" | "file" | "any" // Restricts what type of NFTs can be created in this collection
 }
 
 interface MarketplaceStats {
@@ -167,7 +168,8 @@ export default function MarketplaceManagement() {
     image: "",
     ipfsHash: "",
     royaltyPercentage: 5, // Default 5% royalty
-    royaltyRecipient: "" // Will be set to merchant wallet address
+    royaltyRecipient: "", // Will be set to merchant wallet address
+    mediaCategory: "any" as MediaCategory // Default to "any" to allow all types
   })
   const [editCollectionData, setEditCollectionData] = useState({
     name: "",
@@ -178,7 +180,8 @@ export default function MarketplaceManagement() {
     image: "",
     ipfsHash: "",
     royaltyPercentage: 5,
-    royaltyRecipient: ""
+    royaltyRecipient: "",
+    mediaCategory: "any" as MediaCategory
   })
   const [newNFT, setNewNFT] = useState<{
     name: string
@@ -777,7 +780,8 @@ export default function MarketplaceManagement() {
           image: "",
           ipfsHash: "",
           royaltyPercentage: 5,
-          royaltyRecipient: ""
+          royaltyRecipient: "",
+          mediaCategory: "any"
         })
         setShowAddCollectionDialog(false)
         fetchCollections(selectedMarketplace.id)
@@ -869,7 +873,8 @@ export default function MarketplaceManagement() {
       image: collection.image,
       ipfsHash: (collection as any).ipfsHash || "",
       royaltyPercentage: (collection as any).royaltyPercentage || 5,
-      royaltyRecipient: (collection as any).royaltyRecipient || ""
+      royaltyRecipient: (collection as any).royaltyRecipient || "",
+      mediaCategory: collection.mediaCategory || "any"
     })
     setShowEditCollectionDialog(true)
   }
@@ -948,6 +953,13 @@ export default function MarketplaceManagement() {
   const handleManageNFTs = (collection: Collection) => {
     setSelectedCollectionForNFTs(collection)
     setShowNFTManagementDialog(true)
+    // Initialize NFT category based on collection's mediaCategory
+    if (collection.mediaCategory && collection.mediaCategory !== "any") {
+      setNewNFT({
+        ...newNFT,
+        category: collection.mediaCategory
+      })
+    }
   }
 
   const handleCreateNFT = async () => {
@@ -1453,6 +1465,29 @@ export default function MarketplaceManagement() {
                                       </Select>
                                     </div>
                                   </div>
+                                  {newCollection.type === "nft" && (
+                                    <div>
+                                      <Label htmlFor="collectionMediaCategory">NFT Media Category</Label>
+                                      <Select 
+                                        value={newCollection.mediaCategory || "any"} 
+                                        onValueChange={(value: MediaCategory) => setNewCollection({ ...newCollection, mediaCategory: value })}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="any">Any (All Types)</SelectItem>
+                                          <SelectItem value="image">Image Only</SelectItem>
+                                          <SelectItem value="audio">Audio Only</SelectItem>
+                                          <SelectItem value="video">Video Only</SelectItem>
+                                          <SelectItem value="file">File/Document Only</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Restricts what type of NFTs can be created in this collection
+                                      </p>
+                                    </div>
+                                  )}
                                   <div>
                                     <Label htmlFor="collectionDescription">Description</Label>
                                     <Textarea
@@ -1555,7 +1590,8 @@ export default function MarketplaceManagement() {
                                       image: "",
                                       ipfsHash: "",
                                       royaltyPercentage: 5,
-                                      royaltyRecipient: ""
+                                      royaltyRecipient: "",
+                                      mediaCategory: "any"
                                     })}>
                                       Cancel
                                     </Button>
@@ -1764,6 +1800,7 @@ export default function MarketplaceManagement() {
                                   isLoading={actionLoading === "create-nft"}
                                   createdNFTId={createdNFTId}
                                   showMintOption={true}
+                                  collectionMediaCategory={selectedCollectionForNFTs?.mediaCategory}
                                 />
                               )}
 
