@@ -24,8 +24,8 @@ const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
 const PINATA_JWT = process.env.PINATA_JWT;
 
-// Upload image to IPFS via Pinata
-export const uploadImageToIPFS = async (file: File): Promise<string> => {
+// Upload file to IPFS via Pinata (generic function for all file types)
+export const uploadFileToIPFS = async (file: File): Promise<string> => {
   try {
     if (!PINATA_JWT) {
       // Fallback to development mode
@@ -33,20 +33,28 @@ export const uploadImageToIPFS = async (file: File): Promise<string> => {
       const devHash = `dev-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       
       // Store in development storage
-      const { storeDevImage } = await import('@/lib/dev-storage')
+      const { storeDevFile } = await import('@/lib/dev-storage')
       const buffer = Buffer.from(await file.arrayBuffer())
-      storeDevImage(devHash, buffer, file.type)
+      storeDevFile(devHash, buffer, file.type)
       
-      return `/api/ipfs/dev-image/${devHash}`
+      return `/api/ipfs/dev-file/${devHash}`
     }
 
     const formData = new FormData();
     formData.append('file', file);
     
+    // Determine file category for metadata
+    let fileCategory = 'file'
+    if (file.type.startsWith('image/')) fileCategory = 'nft-image'
+    else if (file.type.startsWith('audio/')) fileCategory = 'nft-audio'
+    else if (file.type.startsWith('video/')) fileCategory = 'nft-video'
+    else fileCategory = 'nft-file'
+    
     const metadata = JSON.stringify({
       name: file.name,
       keyvalues: {
-        type: 'nft-image',
+        type: fileCategory,
+        mimeType: file.type,
         uploadedAt: new Date().toISOString()
       }
     });
@@ -72,9 +80,14 @@ export const uploadImageToIPFS = async (file: File): Promise<string> => {
     const result = await response.json();
     return `https://gateway.pinata.cloud/ipfs/${result.IpfsHash}`;
   } catch (error) {
-    console.error('Error uploading image to IPFS:', error);
-    throw new Error('Failed to upload image to IPFS');
+    console.error('Error uploading file to IPFS:', error);
+    throw new Error('Failed to upload file to IPFS');
   }
+};
+
+// Legacy function for backward compatibility
+export const uploadImageToIPFS = async (file: File): Promise<string> => {
+  return uploadFileToIPFS(file);
 };
 
 // Upload metadata to IPFS via Pinata
