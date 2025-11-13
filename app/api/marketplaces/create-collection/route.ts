@@ -18,31 +18,40 @@ export const POST = requireRole(["merchant", "user"])(async (request: NextReques
     }
 
     // Create collection in database
+    // Note: Using Record<string, any> to allow additional fields not in Collection interface
+    // (symbol, metadataUrl, artType, chain, mintPrice, etc. are stored but not in the base interface)
     const collectionId = await FirebaseService.createCollection({
       name: collectionData.name,
-      symbol: collectionData.symbol,
       description: collectionData.description || "",
       image: collectionData.image || "",
+      category: collectionData.category || "nft",
+      type: (collectionData.type || "nft") as "nft" | "event" | "merchandise",
+      currency: collectionData.currency || "ALGO",
+      marketplaceId: collectionData.marketplaceId,
+      merchantId: collectionData.merchantId,
+      isEnabled: collectionData.isEnabled !== false,
+      allowSwap: collectionData.allowSwap || false,
+      nftCount: collectionData.nftCount || 1,
+      maxSupply: collectionData.maxSupply || 1000,
+      royaltyPercentage: collectionData.royaltyFee || 0,
+      mediaCategory: collectionData.mediaCategory || "any",
+      // Additional fields stored in Firestore but not in Collection interface
+      symbol: collectionData.symbol,
       metadataUrl: collectionData.metadataUrl || "",
       artType: collectionData.artType || "unique",
       chain: collectionData.chain || "algorand",
       mintPrice: collectionData.mintPrice || 0,
       royaltyFee: collectionData.royaltyFee || 0,
-      maxSupply: collectionData.maxSupply || 1000,
       mintLimit: collectionData.mintLimit || 1,
       mintStartDate: collectionData.mintStartDate ? new Date(collectionData.mintStartDate) : new Date(),
       mintStages: collectionData.mintStages || [],
       creatorAddress: collectionData.userAddress,
-      marketplaceId: collectionData.marketplaceId,
-      merchantId: collectionData.merchantId,
       nftImages: collectionData.nftImages || [],
       status: "draft",
       source: collectionData.source || "merchant",
-      isEnabled: collectionData.isEnabled || true,
-      mediaCategory: collectionData.mediaCategory || "any", // Default to "any" for existing collections
       createdAt: new Date(),
       updatedAt: new Date()
-    })
+    } as any)
 
     return NextResponse.json({
       success: true,
