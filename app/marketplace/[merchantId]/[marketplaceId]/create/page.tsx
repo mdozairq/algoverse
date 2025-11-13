@@ -104,6 +104,42 @@ interface NewNFT {
   rarity: string
   royaltyFee: number
   traits: NFTTrait[]
+  category?: "image" | "audio" | "video" | "file" | "any"
+  fileType?: string
+  audioMetadata?: {
+    thumbnail?: string
+    thumbnailHash?: string
+    composerName?: string
+    singerName?: string
+    creationDate?: string
+    publishDate?: string
+    duration?: string
+    genre?: string
+  }
+  videoMetadata?: {
+    thumbnail?: string
+    thumbnailHash?: string
+    director?: string
+    cast?: string
+    creationDate?: string
+    publishDate?: string
+    duration?: string
+    genre?: string
+  }
+  imageMetadata?: {
+    artist?: string
+    creationDate?: string
+    location?: string
+    technique?: string
+    dimensions?: string
+  }
+  fileMetadata?: {
+    author?: string
+    creationDate?: string
+    documentType?: string
+    pages?: number
+    language?: string
+  }
 }
 
 export default function CreatePage({ params }: { params: { merchantId: string; marketplaceId: string } }) {
@@ -137,7 +173,13 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     maxSupply: 1,
     rarity: "common",
     royaltyFee: 0,
-    traits: []
+    traits: [],
+    category: "any",
+    fileType: undefined,
+    audioMetadata: undefined,
+    videoMetadata: undefined,
+    imageMetadata: undefined,
+    fileMetadata: undefined
   })
   const [nftTraits, setNftTraits] = useState<NFTTrait[]>([])
   const [createdNFTId, setCreatedNFTId] = useState<string | null>(null)
@@ -517,7 +559,13 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
           maxSupply: 1,
           rarity: "common",
           royaltyFee: 0,
-          traits: []
+          traits: [],
+          category: "any",
+          fileType: undefined,
+          audioMetadata: undefined,
+          videoMetadata: undefined,
+          imageMetadata: undefined,
+          fileMetadata: undefined
         })
         setNftTraits([])
         fetchAvailableCollections()
@@ -1390,7 +1438,13 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                           maxSupply: 1,
                           rarity: "common",
                           royaltyFee: 0,
-                          traits: []
+                          traits: [],
+                          category: "any",
+                          fileType: undefined,
+                          audioMetadata: undefined,
+                          videoMetadata: undefined,
+                          imageMetadata: undefined,
+                          fileMetadata: undefined
                         })
                         setNftTraits([])
                         setCreatedNFTId(null)
