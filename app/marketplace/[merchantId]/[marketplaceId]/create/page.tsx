@@ -289,6 +289,25 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     }
   }, [isConnected, account])
 
+  // Auto-set NFT category when collection is selected
+  useEffect(() => {
+    if (selectedCollection && selectedCollection !== "no-collections" && availableCollections.length > 0) {
+      const collection = availableCollections.find(c => c.id === selectedCollection)
+      if (collection?.mediaCategory && collection.mediaCategory !== "any") {
+        // Only update if category is not already set or doesn't match
+        setNewNFT(prev => {
+          if (!prev.category || prev.category !== collection.mediaCategory) {
+            return {
+              ...prev,
+              category: collection.mediaCategory
+            }
+          }
+          return prev
+        })
+      }
+    }
+  }, [selectedCollection, availableCollections.length])
+
   const uploadImageToServer = async (file: File, path: string): Promise<string> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -523,11 +542,22 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     // Get collection to check mediaCategory
     const collection = availableCollections.find(c => c.id === selectedCollection)
     if (collection?.mediaCategory && collection.mediaCategory !== "any") {
-      // Ensure NFT category matches collection mediaCategory
-      if (newNFT.category !== collection.mediaCategory) {
+      // Auto-set category if not set or doesn't match collection's mediaCategory
+      let finalCategory = newNFT.category
+      if (!finalCategory || finalCategory !== collection.mediaCategory) {
+        // If category is not set or doesn't match, use collection's mediaCategory
+        finalCategory = collection.mediaCategory
+        setNewNFT({
+          ...newNFT,
+          category: finalCategory
+        })
+      }
+      
+      // Final validation: Ensure NFT category matches collection mediaCategory
+      if (finalCategory !== collection.mediaCategory) {
         toast({
           title: "Error",
-          description: `This collection only allows ${collection.mediaCategory} NFTs`,
+          description: `This collection only allows ${collection.mediaCategory} NFTs. Please upload a ${collection.mediaCategory} file.`,
           variant: "destructive",
         })
         return
@@ -1470,6 +1500,10 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                       nftTraits={nftTraits}
                       setNftTraits={setNftTraits}
                       onCancel={() => {
+                        const collection = availableCollections.find(c => c.id === selectedCollection)
+                        const defaultCategory = collection?.mediaCategory && collection.mediaCategory !== "any" 
+                          ? collection.mediaCategory 
+                          : "any"
                         setNewNFT({
                           name: "",
                           description: "",
@@ -1481,7 +1515,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                           rarity: "common",
                           royaltyFee: 0,
                           traits: [],
-                          category: "any",
+                          category: defaultCategory,
                           fileType: undefined,
                           audioMetadata: undefined,
                           videoMetadata: undefined,
