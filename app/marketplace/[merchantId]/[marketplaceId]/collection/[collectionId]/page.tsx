@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -90,6 +90,7 @@ import {
   Volume1,
   Mic,
   MicOff,
+  Music,
   Camera,
   CameraOff,
   Monitor,
@@ -245,15 +246,242 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
   const [assetData, setAssetData] = useState<any>(null)
   const [assetLoading, setAssetLoading] = useState(false)
   const [assetError, setAssetError] = useState<string | null>(null)
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null)
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null)
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
 
   const { isConnected, account, connect, disconnect } = useWallet()
   const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
 
+  // Helper function to get NFT category and media URL
+  const getNFTMediaInfo = (nft: NFT) => {
+    const category = nft.metadata?.properties?.category || 
+                     nft.metadata?.properties?.mediaCategory || 
+                     (nft.metadata?.image?.startsWith('data:image') ? 'image' : 
+                      nft.metadata?.image?.match(/\.(mp4|webm|ogg|mov)$/i) ? 'video' :
+                      nft.metadata?.image?.match(/\.(mp3|wav|ogg|m4a)$/i) ? 'audio' :
+                      nft.metadata?.image?.match(/\.(pdf|doc|docx|txt)$/i) ? 'file' : 'image')
+    const mediaUrl = nft.metadata?.image || nft.image || ''
+    const fileType = nft.metadata?.properties?.fileType || ''
+    return { category, mediaUrl, fileType }
+  }
+
+  // Component to render NFT media based on type
+  const renderNFTMedia = (nft: NFT, className: string = "w-full h-full object-cover") => {
+    const { category, mediaUrl, fileType } = getNFTMediaInfo(nft)
+    const nftId = nft.id
+
+    switch (category) {
+      case 'audio':
+        return (
+          <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+            {nft.metadata?.properties?.audioMetadata?.thumbnail ? (
+              <Image
+                src={nft.metadata.properties.audioMetadata.thumbnail}
+                alt={nft.metadata.name}
+                fill
+                className="object-cover opacity-50"
+              />
+            ) : (
+              <Music className="w-24 h-24 text-white opacity-80" />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="bg-black/60 rounded-full p-4 backdrop-blur-sm">
+                {playingAudio === nftId ? (
+                  <PauseCircle 
+                    className="w-16 h-16 text-white cursor-pointer hover:scale-110 transition-transform"
+                    onClick={() => {
+                      const audio = audioRefs.current.get(nftId)
+                      audio?.pause()
+                      setPlayingAudio(null)
+                    }}
+                  />
+                ) : (
+                  <PlayCircle 
+                    className="w-16 h-16 text-white cursor-pointer hover:scale-110 transition-transform"
+                    onClick={() => {
+                      // Stop any currently playing audio
+                      if (playingAudio) {
+                        const currentAudio = audioRefs.current.get(playingAudio)
+                        currentAudio?.pause()
+                      }
+                      // Play this audio
+                      let audio = audioRefs.current.get(nftId)
+                      if (!audio) {
+                        audio = new Audio(mediaUrl)
+                        audioRefs.current.set(nftId, audio)
+                        audio.onended = () => setPlayingAudio(null)
+                        audio.onerror = () => {
+                          setPlayingAudio(null)
+                          toast({
+                            title: "Playback Error",
+                            description: "Failed to play audio file",
+                            variant: "destructive"
+                          })
+                        }
+                      }
+                      audio.src = mediaUrl
+                      audio.play()
+                      setPlayingAudio(nftId)
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+            {nft.metadata?.properties?.audioMetadata && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white p-2 text-xs">
+                {nft.metadata.properties.audioMetadata.composerName && (
+                  <div>Composer: {nft.metadata.properties.audioMetadata.composerName}</div>
+                )}
+                {nft.metadata.properties.audioMetadata.singerName && (
+                  <div>Singer: {nft.metadata.properties.audioMetadata.singerName}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'video':
+        return (
+          <div className="relative w-full h-full">
+            {playingVideo === nftId ? (
+              <video
+                ref={(el) => {
+                  if (el) {
+                    videoRefs.current.set(nftId, el)
+                    // Auto-play when video element is ready
+                    el.play().catch((error) => {
+                      console.error("Video play error:", error)
+                      setPlayingVideo(null)
+                      toast({
+                        title: "Playback Error",
+                        description: "Failed to play video file",
+                        variant: "destructive"
+                      })
+                    })
+                  }
+                }}
+                src={mediaUrl}
+                controls
+                className={className}
+                onEnded={() => setPlayingVideo(null)}
+                onError={() => {
+                  setPlayingVideo(null)
+                  toast({
+                    title: "Playback Error",
+                    description: "Failed to play video file",
+                    variant: "destructive"
+                  })
+                }}
+              />
+            ) : (
+              <>
+                {nft.metadata?.properties?.videoMetadata?.thumbnail ? (
+                  <Image
+                    src={nft.metadata.properties.videoMetadata.thumbnail}
+                    alt={nft.metadata.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <Video className="w-24 h-24 text-white opacity-80" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <PlayCircle 
+                    className="w-20 h-20 text-white cursor-pointer hover:scale-110 transition-transform drop-shadow-lg"
+                    onClick={() => {
+                      // Stop any currently playing video
+                      if (playingVideo) {
+                        const currentVideo = videoRefs.current.get(playingVideo)
+                        currentVideo?.pause()
+                      }
+                      setPlayingVideo(nftId)
+                    }}
+                  />
+                </div>
+              </>
+            )}
+            {nft.metadata?.properties?.videoMetadata && playingVideo !== nftId && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white p-2 text-xs">
+                {nft.metadata.properties.videoMetadata.director && (
+                  <div>Director: {nft.metadata.properties.videoMetadata.director}</div>
+                )}
+                {nft.metadata.properties.videoMetadata.duration && (
+                  <div>Duration: {nft.metadata.properties.videoMetadata.duration}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'file':
+        return (
+          <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-400 to-gray-600">
+            <FileText className="w-24 h-24 text-white opacity-80 mb-4" />
+            <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white p-4 text-center">
+              <p className="text-sm font-semibold mb-2">{nft.metadata.name}</p>
+              {nft.metadata?.properties?.fileMetadata && (
+                <div className="text-xs space-y-1">
+                  {nft.metadata.properties.fileMetadata.documentType && (
+                    <div>Type: {nft.metadata.properties.fileMetadata.documentType}</div>
+                  )}
+                  {nft.metadata.properties.fileMetadata.pages && (
+                    <div>Pages: {nft.metadata.properties.fileMetadata.pages}</div>
+                  )}
+                </div>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 bg-white text-gray-900 hover:bg-gray-100"
+                onClick={() => window.open(mediaUrl, '_blank')}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download File
+              </Button>
+            </div>
+          </div>
+        )
+
+      case 'image':
+      default:
+        return (
+          <Image
+            src={mediaUrl || collection?.image || ''}
+            alt={nft.metadata?.name || nft.name || collection?.name || 'NFT'}
+            fill
+            className={className}
+          />
+        )
+    }
+  }
+
 
   useEffect(() => {
     fetchCollectionData()
   }, [params.collectionId])
+
+  // Cleanup: Stop playing media when switching NFTs or unmounting
+  useEffect(() => {
+    return () => {
+      // Stop all audio
+      audioRefs.current.forEach((audio) => {
+        audio.pause()
+        audio.src = ''
+      })
+      // Stop all video
+      videoRefs.current.forEach((video) => {
+        video.pause()
+        video.src = ''
+      })
+      setPlayingAudio(null)
+      setPlayingVideo(null)
+    }
+  }, [selectedNFTIndex])
 
   // Set up the transaction signer
   useEffect(() => {
@@ -739,12 +967,16 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                             className="w-full h-full"
                           >
-                            <Image
-                              src={nfts[selectedNFTIndex]?.metadata.image || collection.image}
-                              alt={nfts[selectedNFTIndex]?.metadata.name || collection.name}
-                              fill
-                              className="object-cover"
-                            />
+                            {nfts[selectedNFTIndex] ? (
+                              renderNFTMedia(nfts[selectedNFTIndex], "object-cover")
+                            ) : (
+                              <Image
+                                src={collection.image}
+                                alt={collection.name}
+                                fill
+                                className="object-cover"
+                              />
+                            )}
                           </motion.div>
                         </AnimatePresence>
                       ) : (
@@ -796,12 +1028,43 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                               : 'opacity-60 hover:opacity-100'
                             }`}
                         >
-                          <Image
-                            src={nft.metadata.image}
-                            alt={nft.metadata.name}
-                            fill
-                            className="object-cover"
-                          />
+                          {(() => {
+                            const { category, mediaUrl } = getNFTMediaInfo(nft)
+                            if (category === 'audio' && nft.metadata?.properties?.audioMetadata?.thumbnail) {
+                              return (
+                                <Image
+                                  src={nft.metadata.properties.audioMetadata.thumbnail}
+                                  alt={nft.metadata.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              )
+                            } else if (category === 'video' && nft.metadata?.properties?.videoMetadata?.thumbnail) {
+                              return (
+                                <Image
+                                  src={nft.metadata.properties.videoMetadata.thumbnail}
+                                  alt={nft.metadata.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              )
+                            } else if (category === 'file') {
+                              return (
+                                <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                                  <FileText className="w-6 h-6 text-white" />
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <Image
+                                  src={mediaUrl || nft.metadata.image}
+                                  alt={nft.metadata.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              )
+                            }
+                          })()}
                         </button>
                       ))}
                     </div>
@@ -1089,12 +1352,7 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
                     >
                       <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700">
                         <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
-                          <Image
-                            src={nft.metadata.image}
-                            alt={nft.metadata.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
+                          {renderNFTMedia(nft, "object-cover group-hover:scale-105 transition-transform duration-300")}
 
                           {/* Token ID Badge */}
                           <div className="absolute top-2 left-2">
@@ -1954,12 +2212,43 @@ export default function CollectionPage({ params }: { params: { merchantId: strin
               {nfts.length > 0 && (
                 <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                    <Image
-                      src={nfts[selectedNFTIndex].metadata?.image || collection.image}
-                      alt={nfts[selectedNFTIndex].metadata?.name || collection.name}
-                      fill
-                      className="object-cover"
-                    />
+                    {(() => {
+                      const { category, mediaUrl } = getNFTMediaInfo(nfts[selectedNFTIndex])
+                      if (category === 'audio' && nfts[selectedNFTIndex].metadata?.properties?.audioMetadata?.thumbnail) {
+                        return (
+                          <Image
+                            src={nfts[selectedNFTIndex].metadata.properties.audioMetadata.thumbnail}
+                            alt={nfts[selectedNFTIndex].metadata?.name || collection.name}
+                            fill
+                            className="object-cover"
+                          />
+                        )
+                      } else if (category === 'video' && nfts[selectedNFTIndex].metadata?.properties?.videoMetadata?.thumbnail) {
+                        return (
+                          <Image
+                            src={nfts[selectedNFTIndex].metadata.properties.videoMetadata.thumbnail}
+                            alt={nfts[selectedNFTIndex].metadata?.name || collection.name}
+                            fill
+                            className="object-cover"
+                          />
+                        )
+                      } else if (category === 'file') {
+                        return (
+                          <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                            <FileText className="w-8 h-8 text-white" />
+                          </div>
+                        )
+                      } else {
+                        return (
+                          <Image
+                            src={mediaUrl || collection.image}
+                            alt={nfts[selectedNFTIndex].metadata?.name || collection.name}
+                            fill
+                            className="object-cover"
+                          />
+                        )
+                      }
+                    })()}
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 dark:text-white">
