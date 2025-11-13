@@ -516,6 +516,20 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
       return
     }
 
+    // Get collection to check mediaCategory
+    const collection = availableCollections.find(c => c.id === selectedCollection)
+    if (collection?.mediaCategory && collection.mediaCategory !== "any") {
+      // Ensure NFT category matches collection mediaCategory
+      if (newNFT.category !== collection.mediaCategory) {
+        toast({
+          title: "Error",
+          description: `This collection only allows ${collection.mediaCategory} NFTs`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     if (!newNFT.name || !newNFT.description) {
       toast({
         title: "Error",
@@ -1454,6 +1468,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                       isLoading={creating}
                       createdNFTId={createdNFTId}
                       showMintOption={enableOnChainMint}
+                      collectionMediaCategory={availableCollections.find(c => c.id === selectedCollection)?.mediaCategory}
                     />
                   )}
 
