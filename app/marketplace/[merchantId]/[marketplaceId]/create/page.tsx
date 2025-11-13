@@ -199,7 +199,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
     price: "",
     currency: "ALGO",
     symbol: "",
-    chain: "algorand",
+    chain: "testnet",
     artType: "unique" as "same" | "unique",
     metadataUrl: "",
     mintPrice: "",
@@ -990,7 +990,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                     {/* Chain Selection */}
                     <div className="space-y-2">
                       <Label htmlFor="chain" className="text-sm font-medium">Algorand Chain</Label>
-                      <Select defaultValue="algorand">
+                      <Select defaultValue="testnet">
                         <SelectTrigger className="select-theme-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -1126,7 +1126,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                     </div>
 
                     {/* NFT Art Type */}
-                    <div className="space-y-4">
+                    {/* <div className="space-y-4">
                       <Label className="text-sm font-medium">NFT Art Type</Label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card 
@@ -1164,14 +1164,14 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                           </CardContent>
                         </Card>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Unique Artwork Upload */}
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                       <Label className="text-sm font-medium">Upload Artwork Files</Label>
                       <p className="text-xs text-gray-500">File types allowed: .jpg,.png. Max file size: 10MB</p>
                       
-                      {/* Uploaded Images Grid */}
+                      // Uploaded Images Grid 
                       {uploadedNFTImages.length > 0 && (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                           {uploadedNFTImages.map((imageUrl, index) => (
@@ -1232,7 +1232,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                           )}
                         </div>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Metadata URL */}
                     <div className="space-y-2">
@@ -1369,7 +1369,7 @@ export default function CreatePage({ params }: { params: { merchantId: string; m
                               price: "",
                               currency: "ALGO",
                               symbol: "",
-                              chain: "algorand",
+                              chain: "testnet",
                               artType: "unique",
                               metadataUrl: "",
                               mintPrice: "",
