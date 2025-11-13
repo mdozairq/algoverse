@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from "@/components/ui/progress"
 import ImageUpload from "@/components/ui/image-upload"
 import { NFTCreationForm } from "@/components/nft/nft-creation-form"
+import { MediaCategory } from "@/components/ui/multimedia-upload"
 import { 
   Plus, 
   Edit, 
@@ -179,17 +180,66 @@ export default function MarketplaceManagement() {
     royaltyPercentage: 5,
     royaltyRecipient: ""
   })
-  const [newNFT, setNewNFT] = useState({
+  const [newNFT, setNewNFT] = useState<{
+    name: string
+    description: string
+    image: string
+    ipfsHash: string
+    price: number
+    rarity: string
+    traits: { trait_type: string; value: string; rarity: number }[]
+    mintPrice: number
+    maxSupply: number
+    royaltyFee: number
+    category?: MediaCategory
+    fileType?: string
+    audioMetadata?: {
+      thumbnail?: string
+      thumbnailHash?: string
+      composerName?: string
+      singerName?: string
+      creationDate?: string
+      publishDate?: string
+      duration?: string
+      genre?: string
+    }
+    videoMetadata?: {
+      thumbnail?: string
+      thumbnailHash?: string
+      director?: string
+      cast?: string
+      creationDate?: string
+      publishDate?: string
+      duration?: string
+      genre?: string
+    }
+    imageMetadata?: {
+      artist?: string
+      creationDate?: string
+      location?: string
+      technique?: string
+      dimensions?: string
+    }
+    fileMetadata?: {
+      author?: string
+      creationDate?: string
+      documentType?: string
+      pages?: number
+      language?: string
+    }
+  }>({
     name: "",
     description: "",
     image: "",
     ipfsHash: "",
     price: 0,
     rarity: "common",
-    traits: [] as { trait_type: string; value: string; rarity: number }[],
+    traits: [],
     mintPrice: 0,
     maxSupply: 1,
-    royaltyFee: 0
+    royaltyFee: 0,
+    category: "any",
+    fileType: undefined
   })
   const [createdNFTId, setCreatedNFTId] = useState<string | null>(null)
   const [nftTraits, setNftTraits] = useState<{ trait_type: string; value: string; rarity: number }[]>([])
@@ -945,7 +995,13 @@ export default function MarketplaceManagement() {
           traits: [],
           mintPrice: 0,
           maxSupply: 1,
-          royaltyFee: 0
+          royaltyFee: 0,
+          category: "any",
+          fileType: undefined,
+          audioMetadata: undefined,
+          videoMetadata: undefined,
+          imageMetadata: undefined,
+          fileMetadata: undefined
         })
         setNftTraits([])
         if (selectedMarketplace) {
