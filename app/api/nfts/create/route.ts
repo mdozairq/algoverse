@@ -20,6 +20,67 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
       return NextResponse.json({ error: "Collection ID is required. NFTs must belong to a collection." }, { status: 400 })
     }
 
+    // Helper function to remove undefined values from objects
+    const removeUndefined = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return undefined
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(removeUndefined).filter(item => item !== undefined)
+      }
+      if (typeof obj === 'object') {
+        const cleaned: any = {}
+        for (const [key, value] of Object.entries(obj)) {
+          const cleanedValue = removeUndefined(value)
+          if (cleanedValue !== undefined) {
+            cleaned[key] = cleanedValue
+          }
+        }
+        return Object.keys(cleaned).length > 0 ? cleaned : undefined
+      }
+      return obj
+    }
+
+    // Build properties object, only including defined values
+    const properties: any = {
+      ...(nftData.properties || {}),
+      mediaCategory: nftData.category || "any",
+    }
+
+    // Only add fileType if it exists
+    if (nftData.fileType) {
+      properties.fileType = nftData.fileType
+    }
+
+    // Only add category-specific metadata if it exists and has values
+    if (nftData.audioMetadata) {
+      const cleanedAudio = removeUndefined(nftData.audioMetadata)
+      if (cleanedAudio && Object.keys(cleanedAudio).length > 0) {
+        properties.audioMetadata = cleanedAudio
+      }
+    }
+
+    if (nftData.videoMetadata) {
+      const cleanedVideo = removeUndefined(nftData.videoMetadata)
+      if (cleanedVideo && Object.keys(cleanedVideo).length > 0) {
+        properties.videoMetadata = cleanedVideo
+      }
+    }
+
+    if (nftData.imageMetadata) {
+      const cleanedImage = removeUndefined(nftData.imageMetadata)
+      if (cleanedImage && Object.keys(cleanedImage).length > 0) {
+        properties.imageMetadata = cleanedImage
+      }
+    }
+
+    if (nftData.fileMetadata) {
+      const cleanedFile = removeUndefined(nftData.fileMetadata)
+      if (cleanedFile && Object.keys(cleanedFile).length > 0) {
+        properties.fileMetadata = cleanedFile
+      }
+    }
+
     // Create NFT in database
     const nftId = await FirebaseService.createNFT({
       eventId: nftData.collectionId || "",
@@ -40,7 +101,7 @@ export const POST = requireRole(["user", "merchant"])(async (request: NextReques
         category: nftData.category || "",
         traits: nftData.traits || [],
         royaltyFee: nftData.royaltyFee || 0,
-        properties: nftData.properties || {},
+        properties: removeUndefined(properties) || {},
       },
       isEnabled: true,
       allowSwap: false,
