@@ -23,6 +23,10 @@ import {
   PlayCircle,
   PauseCircle,
   Download,
+  Users,
+  Clock,
+  TrendingDown,
+  AlertCircle,
   } from "lucide-react"
 import { motion } from "framer-motion"
 import { PageTransition, FadeIn } from "@/components/animations/page-transition"
@@ -35,6 +39,7 @@ import { useWallet } from "@/hooks/use-wallet"
 import { WalletConnectButton } from "@/components/wallet/wallet-connect-button"
 import { transactionSigner } from "@/lib/wallet/transaction-signer"
 import { useToast } from "@/hooks/use-toast"
+import algosdk from "algosdk"
 
 interface DraftNFT {
   id: string
@@ -86,6 +91,15 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const [playingVideo, setPlayingVideo] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
+  
+  // Dutch auction state
+  const [dutchQueueStatus, setDutchQueueStatus] = useState<any>(null)
+  const [loadingQueueStatus, setLoadingQueueStatus] = useState(false)
+  const [joiningQueue, setJoiningQueue] = useState(false)
+  const [triggeringMint, setTriggeringMint] = useState(false)
+  const [requestingRefund, setRequestingRefund] = useState(false)
+  const [showDutchDialog, setShowDutchDialog] = useState(false)
+  const [selectedForDutch, setSelectedForDutch] = useState<DraftNFT[]>([])
 
   const { isConnected, account, connect, disconnect } = useWallet()
   const { toast } = useToast()
@@ -367,6 +381,33 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     }
   }, [isConnected, account])
 
+  // Fetch Dutch queue status
+  const fetchDutchQueueStatus = async () => {
+    setLoadingQueueStatus(true)
+    try {
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`)
+      if (response.ok) {
+        const data = await response.json()
+        setDutchQueueStatus(data.queueStatus)
+      } else {
+        // Contract might not be configured, which is okay
+        setDutchQueueStatus(null)
+      }
+    } catch (error) {
+      console.error("Error fetching Dutch queue status:", error)
+      setDutchQueueStatus(null)
+    } finally {
+      setLoadingQueueStatus(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDutchQueueStatus()
+    // Poll every 10 seconds for queue updates
+    const interval = setInterval(fetchDutchQueueStatus, 10000)
+    return () => clearInterval(interval)
+  }, [params.marketplaceId])
+
   // Cleanup: Stop playing media when unmounting
   useEffect(() => {
     return () => {
@@ -575,6 +616,218 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
     return matchesSearch
   })
 
+  // Dutch auction handlers
+  const handleJoinDutchQueue = async () => {
+    if (!selectedForDutch.length || !isConnected || !account) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet and select NFTs to join the queue.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setJoiningQueue(true)
+    try {
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nftIds: selectedForDutch.map(nft => nft.id),
+          requestCount: selectedForDutch.length,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to join queue')
+      }
+
+      const data = await response.json()
+      
+      // Sign transactions
+      const signedTransactions = []
+      for (const tx of data.transactions) {
+        const signed = await transactionSigner.signTransaction(
+          tx.txn,
+          account.address
+        )
+        signedTransactions.push(signed)
+      }
+
+      // Submit signed transactions
+      const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signedTransactions,
+        }),
+      })
+
+      if (!submitResponse.ok) {
+        throw new Error('Failed to submit transactions')
+      }
+
+      toast({
+        title: "Joined Queue",
+        description: `Successfully joined the Dutch mint queue with ${selectedForDutch.length} NFT(s).`,
+      })
+
+      setShowDutchDialog(false)
+      setSelectedForDutch([])
+      await fetchDutchQueueStatus()
+    } catch (error: any) {
+      console.error("Error joining queue:", error)
+      toast({
+        title: "Queue Join Failed",
+        description: error.message || "Failed to join the queue",
+        variant: "destructive"
+      })
+    } finally {
+      setJoiningQueue(false)
+    }
+  }
+
+  const handleTriggerDutchMint = async () => {
+    if (!isConnected || !account) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to trigger minting.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setTriggeringMint(true)
+    try {
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to trigger mint')
+      }
+
+      const data = await response.json()
+      
+      // Sign transactions
+      const signedTransactions = []
+      for (const tx of data.transactions) {
+        const signed = await transactionSigner.signTransaction(
+          tx.txn,
+          account.address
+        )
+        signedTransactions.push(signed)
+      }
+
+      // Submit signed transactions
+      const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/trigger`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signedTransactions,
+        }),
+      })
+
+      if (!submitResponse.ok) {
+        throw new Error('Failed to submit trigger transaction')
+      }
+
+      toast({
+        title: "Minting Triggered",
+        description: "Batch minting has been triggered. NFTs will be minted shortly.",
+      })
+
+      await fetchDutchQueueStatus()
+      await fetchDraftNFTs()
+      await fetchUserNFTs()
+    } catch (error: any) {
+      console.error("Error triggering mint:", error)
+      toast({
+        title: "Trigger Failed",
+        description: error.message || "Failed to trigger minting",
+        variant: "destructive"
+      })
+    } finally {
+      setTriggeringMint(false)
+    }
+  }
+
+  const handleRequestRefund = async () => {
+    if (!isConnected || !account) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to request a refund.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setRequestingRefund(true)
+    try {
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to request refund')
+      }
+
+      const data = await response.json()
+      
+      // Sign transactions
+      const signedTransactions = []
+      for (const tx of data.transactions) {
+        const signed = await transactionSigner.signTransaction(
+          tx.txn,
+          account.address
+        )
+        signedTransactions.push(signed)
+      }
+
+      // Submit signed transactions directly
+      const { getAlgodClient } = await import('@/lib/algorand/config')
+      const algodClient = getAlgodClient()
+
+      const signedTxns = signedTransactions.map((tx: string) => 
+        new Uint8Array(Buffer.from(tx, 'base64'))
+      )
+
+      const result = await algodClient.sendRawTransaction(signedTxns).do()
+      await algosdk.waitForConfirmation(algodClient, result.txid, 4)
+
+      toast({
+        title: "Refund Processed",
+        description: `Successfully refunded ${data.refundAmountAlgos.toFixed(6)} ALGO.`,
+      })
+
+      await fetchDutchQueueStatus()
+    } catch (error: any) {
+      console.error("Error requesting refund:", error)
+      toast({
+        title: "Refund Failed",
+        description: error.message || "Failed to process refund",
+        variant: "destructive"
+      })
+    } finally {
+      setRequestingRefund(false)
+    }
+  }
+
+  const formatTimeRemaining = (seconds: number) => {
+    if (seconds <= 0) return "Expired"
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    if (hours > 0) return `${hours}h ${minutes}m`
+    if (minutes > 0) return `${minutes}m ${secs}s`
+    return `${secs}s`
+  }
+
   if (loading) {
     return (
       <PageTransition>
@@ -631,8 +884,9 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                 </FadeIn>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="drafts">Draft NFTs</TabsTrigger>
+                    <TabsTrigger value="dutch-auction">Dutch Auction</TabsTrigger>
                     <TabsTrigger value="my-nfts">My NFTs</TabsTrigger>
                   </TabsList>
 
@@ -787,6 +1041,221 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                           </motion.div>
                         ))}
                       </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="dutch-auction" className="space-y-6">
+                    {!dutchQueueStatus ? (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                          <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                            Dutch Auction Not Available
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-center">
+                            The Dutch auction mechanism is not configured for this marketplace.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <>
+                        {/* Queue Status Card */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <TrendingDown className="w-5 h-5" />
+                              Dutch Auction Queue Status
+                            </CardTitle>
+                            <CardDescription>
+                              Join the queue to mint NFTs at a discounted bulk rate
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            {/* Progress Bar */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Queue Progress
+                                </span>
+                                <span className="font-semibold">
+                                  {dutchQueueStatus.queueCount} / {dutchQueueStatus.threshold}
+                                </span>
+                              </div>
+                              <Progress 
+                                value={(dutchQueueStatus.queueCount / dutchQueueStatus.threshold) * 100} 
+                                className="h-3"
+                              />
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                <span>{dutchQueueStatus.queueCount} assets in queue</span>
+                                <span>{dutchQueueStatus.threshold - dutchQueueStatus.queueCount} more needed</span>
+                              </div>
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Users className="w-4 h-4 text-blue-500" />
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">In Queue</span>
+                                </div>
+                                <p className="text-2xl font-bold">{dutchQueueStatus.queueCount}</p>
+                              </div>
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Zap className="w-4 h-4 text-green-500" />
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">Threshold</span>
+                                </div>
+                                <p className="text-2xl font-bold">{dutchQueueStatus.threshold}</p>
+                              </div>
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Clock className="w-4 h-4 text-orange-500" />
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">Time Left</span>
+                                </div>
+                                <p className="text-lg font-bold">
+                                  {dutchQueueStatus.timeRemaining 
+                                    ? formatTimeRemaining(dutchQueueStatus.timeRemaining)
+                                    : "N/A"}
+                                </p>
+                              </div>
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Wallet className="w-4 h-4 text-purple-500" />
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">Escrowed</span>
+                                </div>
+                                <p className="text-lg font-bold">
+                                  {(dutchQueueStatus.totalEscrowed / 1000000).toFixed(2)} ALGO
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* User's Escrowed Amount */}
+                            {dutchQueueStatus.userEscrowed > 0 && (
+                              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                      Your Escrowed Amount
+                                    </p>
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                      {dutchQueueStatus.userEscrowedAlgos.toFixed(6)} ALGO
+                                    </p>
+                                  </div>
+                                  {dutchQueueStatus.canRefund && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleRequestRefund}
+                                      disabled={requestingRefund}
+                                    >
+                                      {requestingRefund ? "Processing..." : "Request Refund"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              {!isConnected ? (
+                                <div className="flex-1">
+                                  <WalletConnectButton />
+                                </div>
+                              ) : (
+                                <>
+                                  <Button
+                                    onClick={() => {
+                                      setSelectedForDutch(selectedNFTs)
+                                      setShowDutchDialog(true)
+                                    }}
+                                    disabled={selectedNFTs.length === 0}
+                                    style={getButtonStyle('primary')}
+                                    className="flex-1"
+                                  >
+                                    <Zap className="w-4 h-4 mr-2" />
+                                    Join Queue ({selectedNFTs.length} selected)
+                                  </Button>
+                                  {dutchQueueStatus.canTrigger && (
+                                    <Button
+                                      onClick={handleTriggerDutchMint}
+                                      disabled={triggeringMint}
+                                      variant="default"
+                                      className="flex-1 bg-green-600 hover:bg-green-700"
+                                    >
+                                      {triggeringMint ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                          Triggering...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Zap className="w-4 h-4 mr-2" />
+                                          Trigger Batch Mint
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Status Messages */}
+                            {dutchQueueStatus.thresholdMet && (
+                              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                  <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                                    Threshold Met! Batch minting can now be triggered.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {dutchQueueStatus.canRefund && !dutchQueueStatus.thresholdMet && (
+                              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                                <div className="flex items-center gap-2">
+                                  <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                  <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                                    Time window expired. You can request a refund if threshold was not met.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Benefits Card */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Why Use Dutch Auction?</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid md:grid-cols-3 gap-4">
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <TrendingDown className="w-8 h-8 text-green-500 mb-2" />
+                                <h4 className="font-semibold mb-1">Cost Efficiency</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Save up to 30% on minting costs with bulk processing
+                                </p>
+                              </div>
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <CheckCircle2 className="w-8 h-8 text-blue-500 mb-2" />
+                                <h4 className="font-semibold mb-1">Trust & Transparency</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Smart contract ensures funds only used when threshold is met
+                                </p>
+                              </div>
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <Zap className="w-8 h-8 text-purple-500 mb-2" />
+                                <h4 className="font-semibold mb-1">Value Retention</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Batch minting maintains collective worth of assets
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
                     )}
                   </TabsContent>
 
@@ -977,6 +1446,130 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                               <>
                                 <Zap className="w-4 h-4 mr-2" />
                                 Mint {selectedNFTs.length} NFT{selectedNFTs.length > 1 ? 's' : ''}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Dutch Queue Join Dialog */}
+              <Dialog open={showDutchDialog} onOpenChange={setShowDutchDialog}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Join Dutch Auction Queue</DialogTitle>
+                    <DialogDescription>
+                      Join the queue to mint {selectedForDutch.length} NFT{selectedForDutch.length > 1 ? 's' : ''} at a discounted bulk rate
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    {selectedForDutch.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                          {selectedForDutch.map((nft) => (
+                            <div key={nft.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                                {(() => {
+                                  const { category, mediaUrl, metadata } = getNFTMediaInfo(nft)
+                                  if (category === 'audio' && metadata?.properties?.audioMetadata?.thumbnail) {
+                                    return (
+                                      <Image
+                                        src={metadata.properties.audioMetadata.thumbnail}
+                                        alt={nft.name}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    )
+                                  } else if (category === 'video' && metadata?.properties?.videoMetadata?.thumbnail) {
+                                    return (
+                                      <Image
+                                        src={metadata.properties.videoMetadata.thumbnail}
+                                        alt={nft.name}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    )
+                                  } else if (category === 'file') {
+                                    return (
+                                      <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                                        <FileText className="w-6 h-6 text-white" />
+                                      </div>
+                                    )
+                                  } else {
+                                    return (
+                                      <Image
+                                        src={mediaUrl || nft.image}
+                                        alt={nft.name}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    )
+                                  }
+                                })()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm truncate">{nft.name}</h4>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {nft.mintPrice} {nft.currency}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {dutchQueueStatus && (
+                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>Selected NFTs:</span>
+                                <span className="font-semibold">{selectedForDutch.length}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Effective Cost per NFT:</span>
+                                <span className="font-semibold">
+                                  {dutchQueueStatus.effectiveCost 
+                                    ? (dutchQueueStatus.effectiveCost / 1000000).toFixed(6)
+                                    : '0.007000'} ALGO
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm font-semibold">
+                                <span>Total Cost:</span>
+                                <span>
+                                  {dutchQueueStatus.effectiveCost
+                                    ? (selectedForDutch.length * (dutchQueueStatus.effectiveCost / 1000000)).toFixed(6)
+                                    : (selectedForDutch.length * 0.007).toFixed(6)} ALGO
+                                </span>
+                              </div>
+                              <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                                <p className="text-xs text-blue-700 dark:text-blue-300">
+                                  Funds will be locked in escrow until the threshold ({dutchQueueStatus.threshold} NFTs) is met.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowDutchDialog(false)}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handleJoinDutchQueue}
+                            disabled={joiningQueue || !isConnected}
+                            style={getButtonStyle('primary')}
+                          >
+                            {joiningQueue ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Joining Queue...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-4 h-4 mr-2" />
+                                Join Queue
                               </>
                             )}
                           </Button>
