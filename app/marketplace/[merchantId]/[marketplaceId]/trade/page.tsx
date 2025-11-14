@@ -369,7 +369,10 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
     }
   }
 
-  const formatPrice = (price: number, currency: string = "ALGO") => {
+  const formatPrice = (price: number | null | undefined, currency: string = "ALGO") => {
+    if (price == null || isNaN(price)) {
+      return `N/A ${currency}`
+    }
     if (showUSD) {
       const usdPrice = price * 0.4 // Mock conversion rate
       return `$${(usdPrice / 1000).toFixed(1)}K`
@@ -377,7 +380,14 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
     return `${price.toFixed(2)} ${currency}`
   }
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value == null || isNaN(value)) {
+      return (
+        <span className="flex items-center gap-1 text-gray-500">
+          N/A
+        </span>
+      )
+    }
     const isPositive = value >= 0
     return (
       <span className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
@@ -694,9 +704,9 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           <div className="text-gray-900 dark:text-white font-medium">
                             {formatPrice(collection.floorPrice)}
                           </div>
-                          {showUSD && (
+                          {showUSD && collection.floorPrice != null && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              ${(collection.floorPrice * 0.4 / 1000).toFixed(1)}K
+                              ${((collection.floorPrice * 0.4) / 1000).toFixed(1)}K
                             </div>
                           )}
                         </td>
@@ -704,9 +714,9 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           <div className="text-gray-900 dark:text-white font-medium">
                             {formatPrice(collection.totalVolume)}
                               </div>
-                          {showUSD && (
+                          {showUSD && collection.totalVolume != null && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              ${(collection.totalVolume * 0.4 / 1000).toFixed(1)}K
+                              ${((collection.totalVolume * 0.4) / 1000).toFixed(1)}K
                             </div>
                           )}
                         </td>
@@ -714,9 +724,9 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           <div className="text-gray-900 dark:text-white font-medium">
                             {formatPrice(collection.marketCap)}
                           </div>
-                          {showUSD && (
+                          {showUSD && collection.marketCap != null && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              ${(collection.marketCap * 0.4 / 1000).toFixed(1)}K
+                              ${((collection.marketCap * 0.4) / 1000).toFixed(1)}K
                 </div>
               )}
                         </td>
@@ -724,9 +734,9 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           <div className="text-gray-900 dark:text-white font-medium">
                             {formatPrice(collection.topOffer)}
                             </div>
-                          {showUSD && (
+                          {showUSD && collection.topOffer != null && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              ${(collection.topOffer * 0.4 / 1000).toFixed(1)}K
+                              ${((collection.topOffer * 0.4) / 1000).toFixed(1)}K
                             </div>
                           )}
                         </td>
@@ -737,9 +747,9 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           <div className="text-gray-900 dark:text-white font-medium">
                             {formatPrice(collection.volume1d)}
                           </div>
-                          {showUSD && (
+                          {showUSD && collection.volume1d != null && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              ${(collection.volume1d * 0.4 / 1000).toFixed(1)}K
+                              ${((collection.volume1d * 0.4) / 1000).toFixed(1)}K
                           </div>
                           )}
                         </td>
@@ -748,23 +758,23 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="text-gray-900 dark:text-white font-medium">
-                            {collection.sales1d.toLocaleString()}
+                            {collection.sales1d != null ? collection.sales1d.toLocaleString() : '0'}
                         </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="text-gray-900 dark:text-white font-medium">
-                            {collection.listed.toLocaleString()}
+                            {collection.listed != null ? collection.listed.toLocaleString() : '0'}
               </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            ({collection.listedPercentage.toFixed(1)}%)
+                            ({collection.listedPercentage != null ? collection.listedPercentage.toFixed(1) : '0.0'}%)
                       </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="text-gray-900 dark:text-white font-medium">
-                            {collection.owners.toLocaleString()}
+                            {collection.owners != null ? collection.owners.toLocaleString() : '0'}
                       </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            ({collection.ownersPercentage.toFixed(1)}%)
+                            ({collection.ownersPercentage != null ? collection.ownersPercentage.toFixed(1) : '0.0'}%)
                     </div>
                         </td>
                       </motion.tr>
