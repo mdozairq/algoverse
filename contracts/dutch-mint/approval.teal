@@ -1,0 +1,449 @@
+#pragma version 8
+
+// Dutch Payment Mechanism Smart Contract for NFT Minting
+// This contract manages a queue of mint requests and triggers batch minting when threshold is met
+
+// Global State Schema:
+// - threshold (uint64): Minimum number of assets required to trigger minting
+// - queue_count (uint64): Current number of assets in queue
+// - base_cost (uint64): Base minting cost per asset (in microAlgos)
+// - effective_cost (uint64): Effective cost per asset when threshold is met (in microAlgos)
+// - platform_address (bytes): Platform wallet address for receiving payments
+// - escrow_address (bytes): Escrow account address for holding locked funds
+// - time_window (uint64): Time window in seconds for threshold to be met
+// - queue_start_time (uint64): Timestamp when current queue started
+// - total_escrowed (uint64): Total amount escrowed in microAlgos
+
+// Local State Schema (per user):
+// - request_count (uint64): Number of assets requested by this user
+// - escrowed_amount (uint64): Amount escrowed by this user (in microAlgos)
+// - request_ids (bytes): Serialized list of request IDs
+
+// Application Arguments:
+// 0: Method selector
+//    - "init" (0x696e6974): Initialize contract
+//    - "join_queue" (0x6a6f696e): Join minting queue
+//    - "trigger_mint" (0x74726967): Trigger batch minting (if threshold met)
+//    - "refund" (0x72656675): Request refund
+//    - "get_status" (0x73746174): Get queue status
+
+// On Creation
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+==
+&&
+bnz creation
+
+// On Update/Delete/ClearState - Only creator can do this
+txn OnCompletion
+int UpdateApplication
+==
+txn OnCompletion
+int DeleteApplication
+==
+||
+txn OnCompletion
+int ClearState
+==
+||
+bnz handle_update_delete
+
+// Main logic
+txn ApplicationID
+int 0
+!=
+bnz main_logic
+
+// Creation logic
+creation:
+  // Store initial parameters
+  byte "threshold"
+  txn ApplicationArgs 1
+  btoi
+  app_global_put
+  
+  byte "base_cost"
+  txn ApplicationArgs 2
+  btoi
+  app_global_put
+  
+  byte "effective_cost"
+  txn ApplicationArgs 3
+  btoi
+  app_global_put
+  
+  byte "platform_address"
+  txn ApplicationArgs 4
+  app_global_put
+  
+  byte "escrow_address"
+  txn ApplicationArgs 5
+  app_global_put
+  
+  byte "time_window"
+  txn ApplicationArgs 6
+  btoi
+  app_global_put
+  
+  byte "queue_count"
+  int 0
+  app_global_put
+  
+  byte "total_escrowed"
+  int 0
+  app_global_put
+  
+  int 1
+  return
+
+// Update/Delete - Only creator
+handle_update_delete:
+  txn Sender
+  global CreatorAddress
+  ==
+  return
+
+// Main application logic
+main_logic:
+  // Get method selector
+  txn ApplicationArgs 0
+  byte "init"
+  ==
+  bnz init_method
+  
+  txn ApplicationArgs 0
+  byte "join_queue"
+  ==
+  bnz join_queue_method
+  
+  txn ApplicationArgs 0
+  byte "trigger_mint"
+  ==
+  bnz trigger_mint_method
+  
+  txn ApplicationArgs 0
+  byte "refund"
+  ==
+  bnz refund_method
+  
+  txn ApplicationArgs 0
+  byte "get_status"
+  ==
+  bnz get_status_method
+  
+  // Unknown method
+  err
+
+// Initialize queue (if not already initialized)
+init_method:
+  byte "queue_start_time"
+  app_global_get
+  int 0
+  ==
+  bnz set_start_time
+  int 1
+  return
+  
+set_start_time:
+  byte "queue_start_time"
+  global LatestTimestamp
+  app_global_put
+  int 1
+  return
+
+// Join queue method
+join_queue_method:
+  // Args: [method, request_count, payment_amount]
+  // Payment transaction must be included in group
+  
+  // Verify payment transaction is in group
+  gtxn 1 TypeEnum
+  int pay
+  ==
+  assert
+  
+  // Verify payment is to escrow address
+  gtxn 1 Receiver
+  byte "escrow_address"
+  app_global_get
+  ==
+  assert
+  
+  // Get request count and expected payment
+  txn ApplicationArgs 1
+  btoi
+  store 0  // request_count
+  
+  byte "effective_cost"
+  app_global_get
+  load 0
+  *
+  store 1  // expected_payment
+  
+  // Verify payment amount matches
+  gtxn 1 Amount
+  load 1
+  >=
+  assert
+  
+  // Update global queue count
+  byte "queue_count"
+  app_global_get
+  load 0
+  +
+  store 2  // new_queue_count
+  byte "queue_count"
+  load 2
+  app_global_put
+  
+  // Update total escrowed
+  byte "total_escrowed"
+  app_global_get
+  gtxn 1 Amount
+  +
+  store 3  // new_total_escrowed
+  byte "total_escrowed"
+  load 3
+  app_global_put
+  
+  // Update user local state
+  byte "request_count"
+  txn Sender
+  byte "request_count"
+  app_local_get
+  load 0
+  +
+  app_local_put
+  
+  byte "escrowed_amount"
+  txn Sender
+  byte "escrowed_amount"
+  app_local_get
+  gtxn 1 Amount
+  +
+  app_local_put
+  
+  // If queue_start_time is 0, set it now
+  byte "queue_start_time"
+  app_global_get
+  int 0
+  ==
+  bnz set_queue_start
+  int 1
+  return
+  
+set_queue_start:
+  byte "queue_start_time"
+  global LatestTimestamp
+  app_global_put
+  int 1
+  return
+
+// Trigger mint method (only if threshold met)
+trigger_mint_method:
+  // Check if threshold is met
+  byte "queue_count"
+  app_global_get
+  byte "threshold"
+  app_global_get
+  >=
+  assert
+  
+  // Check if time window hasn't expired (optional check)
+  // For simplicity, we'll allow triggering anytime after threshold is met
+  
+  // Calculate total cost
+  byte "queue_count"
+  app_global_get
+  store 0  // queue_count
+  byte "effective_cost"
+  app_global_get
+  load 0
+  *
+  store 1  // total_cost
+  
+  // Verify escrow has enough funds
+  byte "total_escrowed"
+  app_global_get
+  load 1
+  >=
+  assert
+  
+  // Transfer payment to platform (if payment transaction in group)
+  gtxns 1 TypeEnum
+  int pay
+  ==
+  bnz verify_payment
+  
+  // No payment transaction, just approve the trigger
+  int 1
+  return
+  
+verify_payment:
+  gtxn 1 Sender
+  byte "escrow_address"
+  app_global_get
+  ==
+  assert
+  
+  gtxn 1 Receiver
+  byte "platform_address"
+  app_global_get
+  ==
+  assert
+  
+  gtxn 1 Amount
+  load 1
+  >=
+  assert
+  
+  // Reset queue
+  byte "queue_count"
+  int 0
+  app_global_put
+  
+  byte "total_escrowed"
+  int 0
+  app_global_put
+  
+  byte "queue_start_time"
+  int 0
+  app_global_put
+  
+  int 1
+  return
+
+// Refund method
+refund_method:
+  // Check if time window expired and threshold not met
+  byte "queue_start_time"
+  app_global_get
+  store 0  // start_time
+  
+  load 0
+  int 0
+  ==
+  bnz no_queue
+  
+  byte "time_window"
+  app_global_get
+  load 0
+  +
+  store 1  // expiry_time
+  
+  global LatestTimestamp
+  load 1
+  <
+  bnz time_not_expired
+  
+  // Time expired, check threshold
+  byte "queue_count"
+  app_global_get
+  byte "threshold"
+  app_global_get
+  <
+  assert
+  
+  // Refund user's escrowed amount
+  byte "escrowed_amount"
+  txn Sender
+  app_local_get
+  store 2  // user_escrowed
+  
+  load 2
+  int 0
+  >
+  assert
+  
+  // Verify refund transaction in group
+  gtxn 1 TypeEnum
+  int pay
+  ==
+  assert
+  
+  gtxn 1 Sender
+  byte "escrow_address"
+  app_global_get
+  ==
+  assert
+  
+  gtxn 1 Receiver
+  txn Sender
+  ==
+  assert
+  
+  gtxn 1 Amount
+  load 2
+  >=
+  assert
+  
+  // Update global state
+  byte "queue_count"
+  app_global_get
+  byte "request_count"
+  txn Sender
+  app_local_get
+  -
+  store 3  // new_queue_count
+  byte "queue_count"
+  load 3
+  app_global_put
+  
+  byte "total_escrowed"
+  app_global_get
+  load 2
+  -
+  store 4  // new_total_escrowed
+  byte "total_escrowed"
+  load 4
+  app_global_put
+  
+  // Clear user local state
+  byte "request_count"
+  txn Sender
+  int 0
+  app_local_put
+  
+  byte "escrowed_amount"
+  txn Sender
+  int 0
+  app_local_put
+  
+  int 1
+  return
+  
+time_not_expired:
+  err
+  
+no_queue:
+  err
+
+// Get status method (read-only, returns via logs)
+get_status_method:
+  // Return status information via logs
+  byte "queue_count"
+  app_global_get
+  itob
+  log
+  
+  byte "threshold"
+  app_global_get
+  itob
+  log
+  
+  byte "total_escrowed"
+  app_global_get
+  itob
+  log
+  
+  byte "queue_start_time"
+  app_global_get
+  itob
+  log
+  
+  int 1
+  return
+
