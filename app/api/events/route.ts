@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })
   }
 }
-
+ 
 // POST /api/events - Create new event (merchants only)
 export const POST = requireRole(["merchant"])(async (request: NextRequest) => {
   try {
