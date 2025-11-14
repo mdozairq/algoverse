@@ -114,7 +114,7 @@ export default function CreateEventPage() {
   const handleBack = () => {
     setStep(step - 1)
   }
-
+ 
   const handleSubmit = async () => {
     if (!eventImageUrl) {
       toast({ title: "Image required", description: "Please upload an event image before creating the event.", variant: "destructive" })
