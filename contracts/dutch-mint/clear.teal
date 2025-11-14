@@ -1,0 +1,8 @@
+#pragma version 8
+
+// Clear state program - allows users to clear their local state
+// This is useful for cleanup when refunding
+
+int 1
+return
+
