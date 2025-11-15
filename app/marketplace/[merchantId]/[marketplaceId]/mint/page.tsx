@@ -629,12 +629,17 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
     setJoiningQueue(true)
     try {
+      if (!account?.address) {
+        throw new Error('Wallet address is required')
+      }
+
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nftIds: selectedForDutch.map(nft => nft.id),
           requestCount: selectedForDutch.length,
+          walletAddress: account.address,
         }),
       })
 
@@ -645,15 +650,13 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
       const data = await response.json()
       
-      // Sign transactions
-      const signedTransactions = []
-      for (const tx of data.transactions) {
-        const signed = await transactionSigner.signTransaction(
-          tx.txn,
-          account.address
-        )
-        signedTransactions.push(signed)
-      }
+      // Sign all transactions as a group (Pera Wallet requires the complete group)
+      // The transactions are already grouped with assignGroupID on the backend
+      const transactionStrings = data.transactions.map((tx: any) => tx.txn)
+      const signedTransactions = await transactionSigner.signTransactions(
+        transactionStrings,
+        account.address
+      )
 
       // Submit signed transactions
       const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
@@ -661,6 +664,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           signedTransactions,
+          queueRequestId: data.queueRequestId,
         }),
       })
 
@@ -712,15 +716,12 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
       const data = await response.json()
       
-      // Sign transactions
-      const signedTransactions = []
-      for (const tx of data.transactions) {
-        const signed = await transactionSigner.signTransaction(
-          tx.txn,
-          account.address
-        )
-        signedTransactions.push(signed)
-      }
+      // Sign all transactions as a group (Pera Wallet requires the complete group)
+      const transactionStrings = data.transactions.map((tx: any) => tx.txn)
+      const signedTransactions = await transactionSigner.signTransactions(
+        transactionStrings,
+        account.address
+      )
 
       // Submit signed transactions
       const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/trigger`, {
@@ -779,15 +780,12 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
       const data = await response.json()
       
-      // Sign transactions
-      const signedTransactions = []
-      for (const tx of data.transactions) {
-        const signed = await transactionSigner.signTransaction(
-          tx.txn,
-          account.address
-        )
-        signedTransactions.push(signed)
-      }
+      // Sign all transactions as a group (Pera Wallet requires the complete group)
+      const transactionStrings = data.transactions.map((tx: any) => tx.txn)
+      const signedTransactions = await transactionSigner.signTransactions(
+        transactionStrings,
+        account.address
+      )
 
       // Submit signed transactions directly
       const { getAlgodClient } = await import('@/lib/algorand/config')
