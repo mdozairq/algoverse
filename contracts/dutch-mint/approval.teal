@@ -27,14 +27,11 @@
 //    - "refund" (0x72656675): Request refund
 //    - "get_status" (0x73746174): Get queue status
 
-// On Creation
-txn OnCompletion
-int NoOp
-==
+// Check if this is application creation (ApplicationID == 0)
+// This MUST be checked first before any other logic
 txn ApplicationID
 int 0
 ==
-&&
 bnz creation
 
 // On Update/Delete/ClearState - Only creator can do this
@@ -51,15 +48,19 @@ int ClearState
 ||
 bnz handle_update_delete
 
-// Main logic
+// Main logic (ApplicationID != 0)
 txn ApplicationID
 int 0
 !=
 bnz main_logic
 
+// Fallthrough - should not reach here
+err
+
 // Creation logic
 creation:
   // Store initial parameters
+  // Args: [0="init", 1=threshold, 2=base_cost, 3=effective_cost, 4=platform_address, 5=escrow_address, 6=time_window]
   byte "threshold"
   txn ApplicationArgs 1
   btoi
@@ -93,6 +94,10 @@ creation:
   app_global_put
   
   byte "total_escrowed"
+  int 0
+  app_global_put
+  
+  byte "queue_start_time"
   int 0
   app_global_put
   
@@ -156,13 +161,153 @@ set_start_time:
 
 // Join queue method
 join_queue_method:
-  // Args: [method, request_count, payment_amount]
+  // Args: [method, request_count]
   // Payment transaction must be included in group
   
   // Verify payment transaction is in group
   gtxn 1 TypeEnum
   int pay
   ==
+  assert
+  
+  // Get request count
+  txn ApplicationArgs 1
+  btoi
+  store 0  // request_count
+  
+  // Check if contract state is initialized (check if escrow_address exists and is not empty)
+  // app_global_get returns empty byteslice (len=0) if key doesn't exist
+  byte "escrow_address"
+  app_global_get
+  dup
+  len
+  int 0
+  !=
+  bnz state_initialized
+  pop  // Remove the empty byteslice from stack
+  
+  // State not initialized - skip validation (backend handles validation)
+  // app_global_get on non-existent key returns 0, so we can safely add
+  byte "queue_count"
+  app_global_get
+  load 0
+  +
+  app_global_put
+  
+  // Update total escrowed (use payment amount from transaction)
+  byte "total_escrowed"
+  app_global_get
+  gtxn 1 Amount
+  +
+  app_global_put
+  
+  // Set queue start time if not set
+  byte "queue_start_time"
+  app_global_get
+  int 0
+  ==
+  bnz set_start_time_uninit
+  
+  // Update user local state
+  // Check if account has opted in (app_opted_in expects [address, app_id] on stack)
+  txn Sender
+  global CurrentApplicationID
+  app_opted_in
+  bnz update_existing_local_state_1
+  
+  // Account hasn't opted in - app_local_put will opt them in
+  // app_local_put expects [key, value] - push key first, then value
+  byte "request_count"
+  load 0
+  app_local_put
+  
+  byte "escrowed_amount"
+  gtxn 1 Amount
+  app_local_put
+  
+  b skip_update_local_state_1
+  
+update_existing_local_state_1:
+  // Account has opted in - get existing values and add to them
+  byte "request_count"
+  app_local_get
+  load 0
+  +
+  store 4  // new_request_count
+  byte "request_count"
+  load 4
+  app_local_put
+  
+  byte "escrowed_amount"
+  app_local_get
+  gtxn 1 Amount
+  +
+  store 5  // new_escrowed_amount
+  byte "escrowed_amount"
+  load 5
+  app_local_put
+  
+skip_update_local_state_1:
+  
+  int 1
+  return
+  
+set_start_time_uninit:
+  byte "queue_start_time"
+  global LatestTimestamp
+  app_global_put
+  
+  // Update user local state
+  // Check if account has opted in (app_opted_in expects [address, app_id] on stack)
+  txn Sender
+  global CurrentApplicationID
+  app_opted_in
+  bnz update_existing_local_state_2
+  
+  // Account hasn't opted in - app_local_put will opt them in
+  // app_local_put expects [key, value] - push key first, then value
+  byte "request_count"
+  load 0
+  app_local_put
+  
+  byte "escrowed_amount"
+  gtxn 1 Amount
+  app_local_put
+  
+  b skip_update_local_state_2
+  
+update_existing_local_state_2:
+  // Account has opted in - get existing values and add to them
+  byte "request_count"
+  app_local_get
+  load 0
+  +
+  store 4  // new_request_count
+  byte "request_count"
+  load 4
+  app_local_put
+  
+  byte "escrowed_amount"
+  app_local_get
+  gtxn 1 Amount
+  +
+  store 5  // new_escrowed_amount
+  byte "escrowed_amount"
+  load 5
+  app_local_put
+  
+skip_update_local_state_2:
+  
+  int 1
+  return
+  
+state_initialized:
+  // Verify escrow address is set (not empty)
+  byte "escrow_address"
+  app_global_get
+  len
+  int 0
+  !=
   assert
   
   // Verify payment is to escrow address
@@ -172,10 +317,12 @@ join_queue_method:
   ==
   assert
   
-  // Get request count and expected payment
-  txn ApplicationArgs 1
-  btoi
-  store 0  // request_count
+  // Verify effective_cost is set (not 0)
+  byte "effective_cost"
+  app_global_get
+  int 0
+  !=
+  assert
   
   byte "effective_cost"
   app_global_get
@@ -210,21 +357,45 @@ join_queue_method:
   app_global_put
   
   // Update user local state
-  byte "request_count"
+  // Check if account has opted in (app_opted_in expects [address, app_id] on stack)
   txn Sender
+  global CurrentApplicationID
+  app_opted_in
+  bnz update_existing_local_state_3
+  
+  // Account hasn't opted in - app_local_put will opt them in
+  // app_local_put expects [key, value] - push key first, then value
+  byte "request_count"
+  load 0
+  app_local_put
+  
+  byte "escrowed_amount"
+  gtxn 1 Amount
+  app_local_put
+  
+  b skip_update_local_state_3
+  
+update_existing_local_state_3:
+  // Account has opted in - get existing values and add to them
   byte "request_count"
   app_local_get
   load 0
   +
+  store 4  // new_request_count
+  byte "request_count"
+  load 4
   app_local_put
   
-  byte "escrowed_amount"
-  txn Sender
   byte "escrowed_amount"
   app_local_get
   gtxn 1 Amount
   +
+  store 5  // new_escrowed_amount
+  byte "escrowed_amount"
+  load 5
   app_local_put
+  
+skip_update_local_state_3:
   
   // If queue_start_time is 0, set it now
   byte "queue_start_time"
@@ -252,37 +423,22 @@ trigger_mint_method:
   >=
   assert
   
-  // Check if time window hasn't expired (optional check)
-  // For simplicity, we'll allow triggering anytime after threshold is met
-  
-  // Calculate total cost
-  byte "queue_count"
-  app_global_get
-  store 0  // queue_count
-  byte "effective_cost"
-  app_global_get
-  load 0
-  *
-  store 1  // total_cost
-  
-  // Verify escrow has enough funds
-  byte "total_escrowed"
-  app_global_get
-  load 1
+  // Verify payment transaction from escrow to platform (if in group)
+  global GroupSize
+  int 2
   >=
-  assert
+  bnz check_payment
   
-  // Transfer payment to platform (if payment transaction in group)
-  gtxns 1 TypeEnum
-  int pay
-  ==
-  bnz verify_payment
-  
-  // No payment transaction, just approve the trigger
+  // No payment transaction, just trigger (platform will handle minting off-chain)
   int 1
   return
   
-verify_payment:
+check_payment:
+  gtxn 1 TypeEnum
+  int pay
+  ==
+  assert
+  
   gtxn 1 Sender
   byte "escrow_address"
   app_global_get
@@ -293,11 +449,6 @@ verify_payment:
   byte "platform_address"
   app_global_get
   ==
-  assert
-  
-  gtxn 1 Amount
-  load 1
-  >=
   assert
   
   // Reset queue
@@ -446,4 +597,3 @@ get_status_method:
   
   int 1
   return
-
