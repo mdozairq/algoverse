@@ -119,9 +119,9 @@ export default function MarketplaceFooter({ marketplace }: MarketplaceFooterProp
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-foreground">Quick Links</h4>
             <nav className="space-y-2">
-              <Link href="#products" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
+              {/* <Link href="#products" className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                 Products
-              </Link>
+              </Link> */}
               {marketplace.allowSwap && (
                 <Link href={`/marketplace/${marketplace.merchantId}/${marketplace.id}/swap`} className="block text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-white transition-colors">
                   Swap
