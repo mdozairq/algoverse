@@ -49,6 +49,8 @@ export interface JoinQueueParams {
   userAddress: string
   requestCount: number
   appId: number
+  effectiveCost?: number // Optional: if provided, use this instead of reading from contract
+  escrowAddress?: string // Optional: if provided, use this instead of reading from contract
 }
 
 export interface TriggerMintParams {
@@ -169,13 +171,49 @@ export class DutchMintContract {
     groupId: string
   }> {
     try {
+      // Check account balance before creating transactions
+      const accountInfo = await algodClient.accountInformation(params.userAddress).do()
+      const accountBalance = Number(accountInfo.amount)
+      
+      // Calculate required balance: payment amount + transaction fees (2000 microAlgos for 2 transactions)
       const suggestedParams = await algodClient.getTransactionParams().do()
 
-      // Get contract state to calculate payment
-      const status = await this.getQueueStatus(params.appId)
-      const effectiveCostMicroAlgos = await this.getEffectiveCost(params.appId)
+      // Get effective cost - use provided value or read from contract
+      let effectiveCostMicroAlgos: number
+      if (params.effectiveCost !== undefined) {
+        effectiveCostMicroAlgos = params.effectiveCost
+      } else {
+        try {
+          effectiveCostMicroAlgos = await this.getEffectiveCost(params.appId)
+        } catch (error) {
+          console.error("Error getting effective cost from contract:", error)
+          throw new Error("Failed to get effective cost from contract. Please provide effectiveCost in params or ensure contract is properly initialized.")
+        }
+      }
 
       const paymentAmount = effectiveCostMicroAlgos * params.requestCount
+      const minRequiredBalance = paymentAmount + 2000 // Payment + fees for 2 transactions
+      
+      if (accountBalance < minRequiredBalance) {
+        throw new Error(
+          `Insufficient balance. Account has ${accountBalance / 1000000} ALGO but needs at least ${minRequiredBalance / 1000000} ALGO ` +
+          `(${paymentAmount / 1000000} ALGO for payment + 0.002 ALGO for fees). ` +
+          `Please fund your account with testnet ALGO from https://testnet.algoexplorer.io/dispenser`
+        )
+      }
+
+      // Get escrow address - use provided value or read from contract
+      let escrowAddress: string
+      if (params.escrowAddress) {
+        escrowAddress = params.escrowAddress
+      } else {
+        try {
+          escrowAddress = await this.getEscrowAddress(params.appId)
+        } catch (error) {
+          console.error("Error getting escrow address from contract:", error)
+          throw new Error("Failed to get escrow address from contract. Please provide escrowAddress in params or ensure contract is properly initialized.")
+        }
+      }
 
       // Create application call transaction
       const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
@@ -189,7 +227,6 @@ export class DutchMintContract {
       })
 
       // Create payment transaction to escrow
-      const escrowAddress = await this.getEscrowAddress(params.appId)
       const paymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: params.userAddress,
         receiver: escrowAddress,
@@ -424,8 +461,11 @@ export class DutchMintContract {
       }
 
       throw new Error('Effective cost not found in contract state')
-    } catch (error) {
-      console.error('Error getting effective cost:', error)
+    } catch (error: any) {
+      // Don't log error here - let the caller handle it (they may have a fallback)
+      if (error.message === 'Effective cost not found in contract state') {
+        throw error // Re-throw the original error
+      }
       throw new Error('Failed to get effective cost')
     }
   }
@@ -478,8 +518,11 @@ export class DutchMintContract {
       }
 
       throw new Error('Escrow address not found in contract state')
-    } catch (error) {
-      console.error('Error getting escrow address:', error)
+    } catch (error: any) {
+      // Don't log error here - let the caller handle it (they may have a fallback)
+      if (error.message === 'Escrow address not found in contract state') {
+        throw error // Re-throw the original error
+      }
       throw new Error('Failed to get escrow address')
     }
   }
