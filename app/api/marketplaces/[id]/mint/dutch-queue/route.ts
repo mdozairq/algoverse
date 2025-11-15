@@ -69,7 +69,11 @@ export const POST = requireRole(["user", "merchant"])(async (
   try {
     const auth = (request as any).auth
     const marketplaceId = params.id
-    const { nftIds, requestCount } = await request.json()
+    const { nftIds, requestCount, walletAddress } = await request.json()
+
+    if (!walletAddress) {
+      return NextResponse.json({ error: "Wallet address is required" }, { status: 400 })
+    }
 
     if (!nftIds || !Array.isArray(nftIds) || nftIds.length === 0) {
       return NextResponse.json({ error: "NFT IDs are required" }, { status: 400 })
@@ -79,15 +83,16 @@ export const POST = requireRole(["user", "merchant"])(async (
       return NextResponse.json({ error: "Request count must be greater than 0" }, { status: 400 })
     }
 
-    // Get user
-    const userDoc = await adminDb.collection('users').doc(auth.uid).get()
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    const user = userDoc.data()
-    if (!user?.walletAddress) {
-      return NextResponse.json({ error: "User wallet address not found" }, { status: 400 })
+    // Use walletAddress directly, or try to get from user if authenticated
+    let userWalletAddress = walletAddress
+    if (auth?.uid) {
+      const userDoc = await adminDb.collection('users').doc(auth.uid).get()
+      if (userDoc.exists) {
+        const user = userDoc.data()
+        if (user?.walletAddress) {
+          userWalletAddress = user.walletAddress
+        }
+      }
     }
 
     // Get marketplace configuration
@@ -98,6 +103,7 @@ export const POST = requireRole(["user", "merchant"])(async (
 
     const marketplace = marketplaceDoc.data()
     const dutchMintAppId = marketplace?.dutchMintAppId
+    const dutchMintConfig = marketplace?.dutchMintConfig
 
     if (!dutchMintAppId) {
       return NextResponse.json({
@@ -105,18 +111,54 @@ export const POST = requireRole(["user", "merchant"])(async (
       }, { status: 404 })
     }
 
-    // Create join queue transaction
+    // Get effective cost from contract, fallback to config if contract state not available
+    let effectiveCost: number
+    try {
+      effectiveCost = await DutchMintContract.getEffectiveCost(dutchMintAppId)
+    } catch (error) {
+      // Fallback to config value (convert ALGO to microAlgos)
+      effectiveCost = dutchMintConfig?.effectiveCost 
+        ? Math.round(dutchMintConfig.effectiveCost * 1000000)
+        : 7000 // Default: 0.007 ALGO
+      // Only log if config is also missing
+      if (!dutchMintConfig?.effectiveCost) {
+        console.warn("Using default effective cost (0.007 ALGO) - contract state and config not available")
+      }
+    }
+
+    // Get escrow address from contract, fallback to config if contract state not available
+    let escrowAddress: string | undefined
+    try {
+      escrowAddress = await DutchMintContract.getEscrowAddress(dutchMintAppId)
+    } catch (error) {
+      // Fallback to config value
+      escrowAddress = dutchMintConfig?.escrowAddress
+      // Only log if config is also missing
+      if (!escrowAddress) {
+        console.warn("Escrow address not found in contract state or config")
+      }
+    }
+
+    if (!escrowAddress) {
+      return NextResponse.json({
+        error: "Escrow address not found. Please ensure the contract is properly configured.",
+      }, { status: 500 })
+    }
+
+    // Create join queue transaction with effective cost and escrow address
     const { transactions, groupId } = await DutchMintContract.joinQueue({
-      userAddress: user.walletAddress,
+      userAddress: userWalletAddress,
       requestCount,
       appId: dutchMintAppId,
+      effectiveCost, // Pass effective cost to avoid reading from contract again
+      escrowAddress, // Pass escrow address to avoid reading from contract again
     })
 
     // Store queue request in database
     const queueRequestRef = await adminDb.collection('dutch_mint_queue').add({
       marketplaceId,
-      userId: auth.uid,
-      userAddress: user.walletAddress,
+      userId: auth?.uid || null,
+      userAddress: userWalletAddress,
       nftIds,
       requestCount,
       status: 'pending',
@@ -152,11 +194,14 @@ export const PUT = requireRole(["user", "merchant"])(async (
   try {
     const auth = (request as any).auth
     const marketplaceId = params.id
-    const { signedTransactions } = await request.json()
+    const { signedTransactions, queueRequestId } = await request.json()
 
     if (!signedTransactions || !Array.isArray(signedTransactions)) {
       return NextResponse.json({ error: "Signed transactions are required" }, { status: 400 })
     }
+
+    // Wallet address is optional in PUT, but we need it for transaction verification
+    // If not provided, try to get from authenticated user
 
     // Submit signed transactions
     const algodClient = await import('algosdk').then(m => {
@@ -174,6 +219,20 @@ export const PUT = requireRole(["user", "merchant"])(async (
     // Wait for confirmation
     await algosdk.waitForConfirmation(algodClient, txId, 4)
 
+    // Update queue request status if queueRequestId is provided
+    if (queueRequestId && typeof queueRequestId === 'string' && queueRequestId.trim() !== '') {
+      try {
+        await adminDb.collection('dutch_mint_queue').doc(queueRequestId).update({
+          status: 'confirmed',
+          transactionId: txId,
+          confirmedAt: new Date(),
+        })
+      } catch (updateError) {
+        console.warn("Failed to update queue request status:", updateError)
+        // Don't fail the request if update fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       transactionId: txId,
@@ -181,8 +240,15 @@ export const PUT = requireRole(["user", "merchant"])(async (
     })
   } catch (error: any) {
     console.error("Error submitting join queue transaction:", error)
+    
+    // Provide helpful error message for insufficient balance
+    let errorMessage = error.message || "Failed to submit transactions"
+    if (errorMessage.includes("overspend") || errorMessage.includes("Insufficient balance")) {
+      errorMessage = "Insufficient balance. Please fund your wallet with testnet ALGO from https://testnet.algoexplorer.io/dispenser"
+    }
+    
     return NextResponse.json({
-      error: error.message || "Failed to submit transactions",
+      error: errorMessage,
     }, { status: 500 })
   }
 })
