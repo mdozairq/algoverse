@@ -98,6 +98,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const [joiningQueue, setJoiningQueue] = useState(false)
   const [triggeringMint, setTriggeringMint] = useState(false)
   const [requestingRefund, setRequestingRefund] = useState(false)
+  const [isTransactionPending, setIsTransactionPending] = useState(false)
   const [showDutchDialog, setShowDutchDialog] = useState(false)
   const [selectedForDutch, setSelectedForDutch] = useState<DraftNFT[]>([])
 
@@ -627,7 +628,18 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       return
     }
 
+    // Prevent multiple simultaneous requests
+    if (joiningQueue || isTransactionPending) {
+      toast({
+        title: "Transaction Pending",
+        description: "Please wait for the current transaction to complete.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setJoiningQueue(true)
+    setIsTransactionPending(true)
     try {
       if (!account?.address) {
         throw new Error('Wallet address is required')
@@ -682,13 +694,22 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       await fetchDutchQueueStatus()
     } catch (error: any) {
       console.error("Error joining queue:", error)
+      
+      // Provide user-friendly error messages
+      let errorMessage = error.message || "Failed to join the queue"
+      if (errorMessage.includes('4100') || errorMessage.includes('Transaction request pending')) {
+        errorMessage = "Another transaction is pending in Pera Wallet. Please complete or cancel the pending transaction in your wallet, then try again."
+      }
+      
       toast({
         title: "Queue Join Failed",
-        description: error.message || "Failed to join the queue",
-        variant: "destructive"
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000
       })
     } finally {
       setJoiningQueue(false)
+      setIsTransactionPending(false)
     }
   }
 
@@ -702,7 +723,18 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       return
     }
 
+    // Prevent multiple simultaneous requests
+    if (triggeringMint || isTransactionPending) {
+      toast({
+        title: "Transaction Pending",
+        description: "Please wait for the current transaction to complete.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setTriggeringMint(true)
+    setIsTransactionPending(true)
     try {
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/trigger`, {
         method: 'POST',
@@ -746,13 +778,22 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       await fetchUserNFTs()
     } catch (error: any) {
       console.error("Error triggering mint:", error)
+      
+      // Provide user-friendly error messages
+      let errorMessage = error.message || "Failed to trigger minting"
+      if (errorMessage.includes('4100') || errorMessage.includes('Transaction request pending')) {
+        errorMessage = "Another transaction is pending in Pera Wallet. Please complete or cancel the pending transaction in your wallet, then try again."
+      }
+      
       toast({
         title: "Trigger Failed",
-        description: error.message || "Failed to trigger minting",
-        variant: "destructive"
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000
       })
     } finally {
       setTriggeringMint(false)
+      setIsTransactionPending(false)
     }
   }
 
@@ -766,7 +807,18 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       return
     }
 
+    // Prevent multiple simultaneous requests
+    if (requestingRefund || isTransactionPending) {
+      toast({
+        title: "Transaction Pending",
+        description: "Please wait for the current transaction to complete.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setRequestingRefund(true)
+    setIsTransactionPending(true)
     try {
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue/refund`, {
         method: 'POST',
@@ -806,13 +858,22 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
       await fetchDutchQueueStatus()
     } catch (error: any) {
       console.error("Error requesting refund:", error)
+      
+      // Provide user-friendly error messages
+      let errorMessage = error.message || "Failed to process refund"
+      if (errorMessage.includes('4100') || errorMessage.includes('Transaction request pending')) {
+        errorMessage = "Another transaction is pending in Pera Wallet. Please complete or cancel the pending transaction in your wallet, then try again."
+      }
+      
       toast({
         title: "Refund Failed",
-        description: error.message || "Failed to process refund",
-        variant: "destructive"
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000
       })
     } finally {
       setRequestingRefund(false)
+      setIsTransactionPending(false)
     }
   }
 
