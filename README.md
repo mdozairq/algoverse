@@ -154,7 +154,7 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Role-Based Authorization**: Middleware-based route protection
 - **Transaction Signing**: Secure transaction signing process
 
-![Security Features](docs/screenshots/security-features.png)
+![Security Features](docs/screenshots/security-features.jpeg)
 
 ## 🏗️ Architecture
 
