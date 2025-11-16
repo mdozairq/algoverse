@@ -1,5 +1,7 @@
 # AlgoVerse - NFT Marketplace Platform
 
+![Blockchain-Powered NFT System](docs/screenshots/home.png)
+
 > **Create, launch, and scale your NFT marketplace on Algorand in minutes. No coding required.**
 
 > Built for creators, brands, and businesses ready to enter Web3.
