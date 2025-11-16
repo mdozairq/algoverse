@@ -40,6 +40,14 @@ export class TransactionSigner {
       return signedTxns[0]
     } catch (error: any) {
       console.error('Transaction signing failed:', error)
+      
+      // Handle Pera Wallet specific errors
+      if (error?.message?.includes('4100') || error?.message?.includes('Transaction request pending')) {
+        throw new Error(
+          'Another transaction is pending in Pera Wallet. Please complete or cancel the pending transaction in your wallet, then try again.'
+        )
+      }
+      
       throw new Error(`Failed to sign transaction: ${error.message || 'Unknown error'}`)
     }
   }
@@ -58,6 +66,14 @@ export class TransactionSigner {
       return signedTxns
     } catch (error: any) {
       console.error('Transaction signing failed for multiple transactions:', error)
+      
+      // Handle Pera Wallet specific errors
+      if (error?.message?.includes('4100') || error?.message?.includes('Transaction request pending')) {
+        throw new Error(
+          'Another transaction is pending in Pera Wallet. Please complete or cancel the pending transaction in your wallet, then try again.'
+        )
+      }
+      
       throw new Error(`Failed to sign transactions: ${error.message || 'Unknown error'}`)
     }
   }
