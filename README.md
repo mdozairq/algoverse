@@ -4,7 +4,7 @@
 
 > Built for creators, brands, and businesses ready to enter Web3.
 
-A comprehensive, decentralized NFT marketplace platform for event tickets, digital collectibles, and experiences, built on the Algorand blockchain. AlgoVerse provides white-label marketplace solutions that enable anyone to launch their own branded NFT marketplace without writing a single line of code. With our template-based system, atomic swaps, launchpad functionality, and complete ecosystem, you can go from idea to live marketplace in minutes.
+A comprehensive, decentralized NFT marketplace platform for event tickets, digital collectibles, and experiences, built on the Algorand blockchain. AlgoVerse provides white-label marketplace solutions that enable anyone to launch their own branded NFT marketplace without writing a single line of code. With our template-based system, atomic swaps, Dutch mint bulk pricing, launchpad functionality, and complete ecosystem, you can go from idea to live marketplace in minutes.
 
 ## 🚀 Why AlgoVerse?
 
@@ -32,6 +32,8 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Dynamic NFTs**: Update metadata post-mint for evolving ticket information
 - **Royalty Support**: Automatic royalty distribution on secondary sales
 
+![Blockchain-Powered NFT System](docs/screenshots/blockchain-nft-system.png)
+
 ### 2. **Event Ticketing System**
 - **Secure Ticket NFTs**: Each event ticket is a unique, verifiable NFT on the blockchain
 - **QR Code Verification**: Generate and scan QR codes for event entry verification
@@ -39,6 +41,8 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Bundle Tickets**: Create bundled ticket packages with multiple NFTs
 - **Ticket Transfer**: Easy transfer of tickets between users
 - **Purchase Flow**: Complete purchase-to-mint workflow with payment verification
+
+![Event Ticketing System](docs/screenshots/event-ticketing-system.png)
 
 ### 3. **White-Label Marketplace Platform** ⚡ *No-Code Required*
 - **Template-Based System**: Choose from pre-built marketplace templates—no coding needed
@@ -49,6 +53,8 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Product Listings**: List and sell NFTs as products with pricing and inventory management
 - **Multi-Merchant Support**: Launch multiple branded marketplaces from a single account
 
+![White-Label Marketplace Platform](docs/screenshots/white-label-marketplace.png)
+
 ### 4. **Atomic Swaps**
 - **Peer-to-Peer Trading**: Trustless NFT swaps between users without intermediaries
 - **Atomic Execution**: All-or-nothing transaction execution ensures security
@@ -56,12 +62,16 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **On-Chain Security**: All swaps recorded immutably on blockchain
 - **Swap History**: Track all swap transactions and status
 
+![Atomic Swaps](docs/screenshots/atomic-swaps.png)
+
 ### 5. **Tinyman Integration**
 - **Asset Swapping**: Swap any Algorand Standard Asset (ASA) for ALGO using Tinyman AMM
 - **Liquidity Pools**: Automatic discovery and interaction with Tinyman liquidity pools
 - **Real-Time Quotes**: Live price quotes with slippage tolerance
 - **Price Impact Warnings**: Alerts for high price impact trades
 - **Transaction Status**: Complete transaction flow tracking
+
+![Tinyman Integration](docs/screenshots/tinyman-integration.png)
 
 ### 6. **Wallet Management**
 - **Multi-Wallet Support**: Connect Pera Wallet or create/import local wallets
@@ -73,12 +83,16 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Asset Management**: View and manage all assets in wallet
 - **Send/Receive**: Send ALGO and ASAs to other addresses
 
+![Wallet Management](docs/screenshots/wallet-management.png)
+
 ### 7. **IPFS Integration**
 - **Decentralized Storage**: Store NFT metadata and images on IPFS
 - **Pinata Integration**: Reliable pinning service for IPFS content
 - **Metadata Upload**: Upload and manage NFT metadata JSON files
 - **Image Storage**: Store NFT images with IPFS hash references
 - **Content Addressing**: Immutable content addressing via IPFS hashes
+
+![IPFS Integration](docs/screenshots/ipfs-integration.png)
 
 ### 8. **Collections & Products**
 - **Collection Creation**: Merchants can create NFT collections for their marketplaces
@@ -87,14 +101,30 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Minting Sessions**: Create scheduled minting sessions for products
 - **Collection Filtering**: Filter and search collections by various attributes
 
-### 9. **Trading & Secondary Market**
+![Collections & Products](docs/screenshots/collections-products.png)
+
+### 9. **Dutch Mint System** 🎯 *Cost-Efficient Bulk Minting*
+- **Queue-Based Minting**: Join a minting queue and lock funds in escrow until threshold is met
+- **Threshold-Based Trigger**: Automatic batch minting when minimum threshold of NFTs is reached
+- **Discounted Rates**: Save up to 30% on minting costs with bulk pricing (e.g., 0.007 ALGO vs 0.01 ALGO per NFT)
+- **Smart Contract Escrow**: Funds securely locked in smart contract escrow until minting triggers
+- **Time-Limited Windows**: Configurable time windows for threshold achievement
+- **Automatic Refunds**: Full refunds if threshold isn't met within the time window
+- **Real-Time Queue Status**: Monitor queue progress, current count, and time remaining
+- **Batch Processing**: Efficient gas usage through batch transaction processing
+
+![Dutch Mint System](docs/screenshots/dutch-mint-system.png)
+
+### 10. **Trading & Secondary Market**
 - **Buy/Sell NFTs**: List NFTs for sale and purchase from other users
 - **Auction System**: Place NFTs in auctions with bidding functionality
 - **Order Management**: Manage buy and sell orders
 - **Trading History**: Complete trading history across all marketplaces
 - **Price Tracking**: Track NFT prices and market statistics
 
-### 10. **Analytics & Reporting**
+![Trading & Secondary Market](docs/screenshots/trading-secondary-market.png)
+
+### 11. **Analytics & Reporting**
 - **Platform Analytics**: Platform-wide statistics and metrics
 - **Merchant Analytics**: Detailed analytics for merchant marketplaces
 - **Marketplace Analytics**: Individual marketplace performance metrics
@@ -102,7 +132,9 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **Revenue Tracking**: Monitor revenue, fees, and commissions
 - **NFT Statistics**: NFT ownership, trading, and market data
 
-### 11. **Role-Based Access Control**
+![Analytics & Reporting](docs/screenshots/analytics-reporting.png)
+
+### 12. **Role-Based Access Control**
 - **Three User Roles**: Admin, Merchant, and User with distinct permissions
 - **Admin Dashboard**: Platform management, merchant approval, template management
 - **Merchant Dashboard**: Marketplace creation, event management, analytics
@@ -110,13 +142,17 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 - **JWT Authentication**: Secure token-based authentication
 - **Session Management**: Persistent sessions with cookie-based storage
 
-### 12. **Security Features**
+![Role-Based Access Control](docs/screenshots/role-based-access-control.png)
+
+### 13. **Security Features**
 - **Blockchain Verification**: All transactions verified on-chain
 - **Immutable Records**: Permanent transaction history on blockchain
 - **Private Key Security**: Secure handling of wallet private keys
 - **Password Hashing**: bcrypt password hashing for user accounts
 - **Role-Based Authorization**: Middleware-based route protection
 - **Transaction Signing**: Secure transaction signing process
+
+![Security Features](docs/screenshots/security-features.png)
 
 ## 🏗️ Architecture
 
@@ -174,6 +210,14 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 3. **Price Management**: Set and update NFT prices
 4. **Royalty Configuration**: Configure royalty percentages for secondary sales
 
+#### Dutch Mint Configuration
+1. **Deploy Smart Contract**: Deploy Dutch mint contract with threshold, pricing, and time window settings
+2. **Configure Pricing**: Set base cost and effective cost (discounted bulk rate) for minting
+3. **Set Threshold**: Define minimum number of NFTs required to trigger batch minting
+4. **Monitor Queue**: Track queue progress and escrowed funds in real-time
+5. **Trigger Minting**: Automatically trigger batch minting when threshold is met
+6. **Handle Refunds**: Process refunds if threshold isn't met within time window
+
 ### For Event Attendees (Users)
 
 #### Ticket Purchase
@@ -182,6 +226,13 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 3. **Connect Wallet**: Connect Pera Wallet or use local wallet
 4. **Complete Purchase**: Sign payment transaction, receive NFT tickets
 5. **Claim Tickets**: Claim minted tickets to wallet
+
+#### Dutch Mint Participation
+1. **Join Queue**: Select NFTs and join the Dutch mint queue
+2. **Lock Payment**: Funds automatically locked in smart contract escrow at discounted rate
+3. **Monitor Progress**: Track queue count and time remaining until threshold
+4. **Receive NFTs**: Automatically receive NFTs when threshold is met and batch minting triggers
+5. **Request Refund**: Get full refund if threshold isn't met within time window
 
 #### Ticket Management
 1. **View Collection**: See all owned NFT tickets in wallet
@@ -266,6 +317,18 @@ Launch your NFT marketplace in minutes, not months. Our template-based system el
 7. **Swap Execution**: Transactions submitted to Tinyman and Algorand
 8. **Confirmation**: Wait for blockchain confirmation
 9. **Balance Update**: User's balance refreshed with new amounts
+
+### Dutch Mint Flow
+
+1. **Contract Deployment**: Merchant deploys Dutch mint smart contract with threshold, pricing, and time window configuration
+2. **User Joins Queue**: User selects NFTs and joins minting queue by locking payment in escrow
+3. **Queue Building**: System tracks queue count and escrowed funds as more users join
+4. **Threshold Monitoring**: Smart contract monitors if queue_count >= threshold
+5. **Automatic Trigger**: When threshold is met, anyone can trigger batch minting
+6. **Batch Minting**: Platform executes batch minting for all queued assets efficiently
+7. **Payment Release**: Escrow releases payment to platform at discounted bulk rate
+8. **NFT Distribution**: All queued users receive their NFTs in their wallets
+9. **Refund Option**: If time window expires without threshold, users can request full refunds
 
 ### Marketplace Rendering Flow
 
