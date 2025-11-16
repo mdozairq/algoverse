@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Zap, Smartphone, RefreshCw, Award, Globe, ArrowRight, CheckCircle } from "lucide-react"
+import { Shield, Zap, Smartphone, RefreshCw, Award, Globe, ArrowRight, CheckCircle, Code, Layers, TrendingUp, Wallet, Database, BarChart3 } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { motion } from "framer-motion"
@@ -14,34 +14,49 @@ export default function AboutPage() {
   
   const features = [
     {
-      icon: Shield,
-      title: "Blockchain Security",
-      description: "Built on Algorand for instant, secure, and eco-friendly transactions with guaranteed authenticity.",
-    },
-    {
-      icon: RefreshCw,
-      title: "Atomic Swaps",
-      description: "Trade NFTs instantly with atomic swap technology - no intermediaries, no risk of fraud.",
-    },
-    {
-      icon: Smartphone,
-      title: "Smart Check-in",
-      description: "QR codes and NFC integration for seamless event entry and real-time validation.",
-    },
-    {
-      icon: Award,
-      title: "Loyalty Rewards",
-      description: "Earn loyalty NFTs and points for purchases and event attendance with exclusive perks.",
+      icon: Code,
+      title: "No-Code Marketplace Creation",
+      description: "Launch your NFT marketplace in minutes, not months. Template-based system eliminates coding knowledge—focus on building your Web3 presence.",
     },
     {
       icon: Globe,
       title: "White-Label Solutions",
-      description: "Custom-branded marketplaces for merchants with full control over design and fees.",
+      description: "Fully customizable branded marketplaces with complete control over colors, logos, banners, and styling—all without touching code.",
     },
     {
-      icon: Zap,
-      title: "Dynamic NFTs",
-      description: "Update seat assignments, dates, and bundles with metadata that evolves in real-time.",
+      icon: Layers,
+      title: "Dutch Mint System",
+      description: "Cost-efficient bulk minting with queue-based system. Save up to 30% on minting costs with threshold-based batch processing.",
+    },
+    {
+      icon: RefreshCw,
+      title: "Atomic Swaps",
+      description: "Trustless peer-to-peer NFT trading with atomic execution. All-or-nothing transactions ensure security without intermediaries.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Tinyman Integration",
+      description: "Swap any Algorand Standard Asset for ALGO using Tinyman AMM with real-time quotes, liquidity pools, and price impact warnings.",
+    },
+    {
+      icon: Shield,
+      title: "Blockchain Security",
+      description: "Built on Algorand for instant finality, minimal fees (under $0.01), and carbon-negative transactions with guaranteed authenticity.",
+    },
+    {
+      icon: Smartphone,
+      title: "Event Ticketing System",
+      description: "Secure ticket NFTs with QR code verification, seat management, bundle tickets, and seamless event entry validation.",
+    },
+    {
+      icon: Wallet,
+      title: "Wallet Management",
+      description: "Multi-wallet support with Pera Wallet integration, local wallet creation, transaction history, and complete asset management.",
+    },
+    {
+      icon: Database,
+      title: "IPFS Integration",
+      description: "Decentralized storage for NFT metadata and images via Pinata integration with immutable content addressing.",
     },
   ]
 
@@ -56,37 +71,37 @@ export default function AboutPage() {
     {
       title: "For Event Organizers",
       description:
-        "Create and manage your own NFT marketplace with complete control over pricing, royalties, and branding.",
+        "Launch your NFT marketplace in minutes with our no-code platform. Choose templates, configure branding, and publish instantly—no deployment or hosting required.",
       features: [
-        "Custom marketplace creation",
-        "NFT minting and listing",
+        "No-code marketplace creation",
+        "Template-based instant setup",
+        "Custom branding and theming",
+        "Dutch mint bulk pricing",
         "Real-time analytics dashboard",
-        "Automated royalty collection",
-        "White-label branding options",
       ],
       cta: "Become a Merchant",
     },
     {
       title: "For Event Attendees",
-      description: "Buy, sell, and trade event NFTs with complete ownership and the ability to resell or swap tickets.",
+      description: "Buy, sell, and trade event NFTs with complete ownership. Join Dutch mint queues for discounted rates, use atomic swaps, and manage your collection.",
       features: [
         "Secure NFT wallet integration",
+        "Dutch mint participation",
         "Instant atomic swaps",
-        "Loyalty rewards program",
-        "Mobile check-in system",
-        "Secondary market trading",
+        "Tinyman asset swapping",
+        "QR code event check-in",
       ],
       cta: "Start Collecting",
     },
     {
       title: "For Platform Admins",
       description:
-        "Oversee the entire ecosystem with comprehensive tools for merchant management and platform governance.",
+        "Oversee the entire ecosystem with comprehensive tools for merchant management, template creation, and platform governance.",
       features: [
         "Merchant approval system",
-        "Fee and commission management",
+        "Template management",
+        "Fee and commission configuration",
         "Platform-wide analytics",
-        "Marketplace oversight",
         "Security and compliance tools",
       ],
       cta: "Admin Access",
@@ -143,8 +158,7 @@ export default function AboutPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1 }}
             >
-              AlgoVerse revolutionizes the event industry by transforming tickets into tradeable digital assets on the
-              Algorand blockchain. Secure, authentic, and infinitely more valuable than traditional tickets.
+              Create, launch, and scale your NFT marketplace on Algorand in minutes. No coding required. Built for creators, brands, and businesses ready to enter Web3 with white-label solutions, atomic swaps, and cost-efficient bulk minting.
             </motion.p>
             <motion.div 
               className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide mb-6 sm:mb-8"
@@ -244,8 +258,8 @@ export default function AboutPage() {
           >
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 sm:mb-6 text-black dark:text-white">BUILT FOR THE FUTURE</h2>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4 sm:px-0">
-              Our platform combines cutting-edge blockchain technology with intuitive user experience to create the most
-              advanced event ticketing system ever built.
+              Our platform combines cutting-edge blockchain technology with intuitive no-code tools to create the most
+              advanced NFT marketplace platform. From event ticketing to digital collectibles, launch your Web3 presence in minutes.
             </p>
           </motion.div>
 
@@ -484,7 +498,7 @@ export default function AboutPage() {
               transition={{ duration: 0.8, delay: 0.4 }}
               viewport={{ once: true }}
             >
-            Join the revolution in event ticketing. Create, trade, and experience events like never before.
+            Join the Web3 revolution. Launch your NFT marketplace, create digital collectibles, or trade event tickets—all in minutes, no coding required.
           </motion.p>
           <motion.div 
             className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0"
