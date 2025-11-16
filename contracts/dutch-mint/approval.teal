@@ -27,11 +27,16 @@
 //    - "refund" (0x72656675): Request refund
 //    - "get_status" (0x73746174): Get queue status
 
-// Check if this is application creation (ApplicationID == 0)
+// Check if this is application creation
+// During creation, ApplicationID is 0 AND OnCompletion is NoOpOC (0)
 // This MUST be checked first before any other logic
 txn ApplicationID
 int 0
 ==
+txn OnCompletion
+int 0
+==
+&&
 bnz creation
 
 // On Update/Delete/ClearState - Only creator can do this
@@ -166,7 +171,7 @@ join_queue_method:
   
   // Verify payment transaction is in group
   gtxn 1 TypeEnum
-  int pay
+  int 1  // pay
   ==
   assert
   
@@ -175,17 +180,44 @@ join_queue_method:
   btoi
   store 0  // request_count
   
-  // Check if contract state is initialized (check if escrow_address exists and is not empty)
-  // app_global_get returns empty byteslice (len=0) if key doesn't exist
+  // Check if contract state is initialized
+  // We need BOTH escrow_address (byteslice, len > 0) AND threshold (int, > 0) to be valid
+  // Default to uninitialized path - only go to initialized if BOTH checks pass
+  
+  // Check escrow_address (must be byteslice with length > 0)
+  // If escrow_address doesn't exist or is empty, state is not initialized
   byte "escrow_address"
   app_global_get
   dup
   len
   int 0
-  !=
-  bnz state_initialized
-  pop  // Remove the empty byteslice from stack
+  ==
+  bnz state_not_initialized  // Escrow address is empty - state not initialized
+  pop  // Remove escrow_address from stack (keep the byteslice for later)
   
+  // Check threshold (must be integer > 0)
+  // If threshold doesn't exist or is <= 0, state is not initialized
+  byte "threshold"
+  app_global_get
+  dup
+  int 0
+  <=
+  bnz state_not_initialized  // Threshold is 0 or negative - state not initialized
+  pop  // Remove threshold from stack
+  
+  // Both checks passed - verify one more time that escrow_address is valid
+  // Re-check escrow_address to ensure it's actually a valid address (32 bytes)
+  byte "escrow_address"
+  app_global_get
+  len
+  int 32
+  ==
+  bnz state_initialized  // Escrow address is 32 bytes (valid address) - state is initialized
+  
+  // Escrow address length is not 32 bytes - state not initialized
+  b state_not_initialized
+  
+state_not_initialized:
   // State not initialized - skip validation (backend handles validation)
   // app_global_get on non-existent key returns 0, so we can safely add
   byte "queue_count"
@@ -302,6 +334,14 @@ skip_update_local_state_2:
   return
   
 state_initialized:
+  // Double-check that state is actually initialized
+  // Verify threshold is set (not 0)
+  byte "threshold"
+  app_global_get
+  int 0
+  !=
+  assert
+  
   // Verify escrow address is set (not empty)
   byte "escrow_address"
   app_global_get
@@ -435,7 +475,7 @@ trigger_mint_method:
   
 check_payment:
   gtxn 1 TypeEnum
-  int pay
+  int 1  // pay
   ==
   assert
   
@@ -499,8 +539,9 @@ refund_method:
   assert
   
   // Refund user's escrowed amount
-  byte "escrowed_amount"
+  // app_local_get expects [account, key] on stack
   txn Sender
+  byte "escrowed_amount"
   app_local_get
   store 2  // user_escrowed
   
@@ -511,7 +552,7 @@ refund_method:
   
   // Verify refund transaction in group
   gtxn 1 TypeEnum
-  int pay
+  int 1  // pay
   ==
   assert
   
@@ -534,8 +575,9 @@ refund_method:
   // Update global state
   byte "queue_count"
   app_global_get
-  byte "request_count"
+  // app_local_get expects [account, key] on stack
   txn Sender
+  byte "request_count"
   app_local_get
   -
   store 3  // new_queue_count
@@ -553,13 +595,14 @@ refund_method:
   app_global_put
   
   // Clear user local state
-  byte "request_count"
+  // app_local_put expects [account, key, value] on stack
   txn Sender
+  byte "request_count"
   int 0
   app_local_put
   
-  byte "escrowed_amount"
   txn Sender
+  byte "escrowed_amount"
   int 0
   app_local_put
   
