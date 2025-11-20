@@ -141,14 +141,14 @@ export const PUT = requireRole(["merchant", "admin"])(async (
       'primaryColor', 'secondaryColor', 'customDomain',
       'isEnabled', 'allowSwap', 'allowMint', 'allowTrading',
       'walletAddress', 'website', 'logo', 'banner', 'allowCreate',
-      'allowGenerate', 'status'
+      'allowGenerate', 'allowDutchMint', 'status'
     ]
     
     const filteredUpdates = Object.keys(updates)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
         // Validate specific field types
-        if (key === 'isEnabled' || key === 'allowSwap' || key === 'allowMint' || key === 'allowTrading') {
+        if (key === 'isEnabled' || key === 'allowSwap' || key === 'allowMint' || key === 'allowTrading' || key === 'allowDutchMint') {
           obj[key] = Boolean(updates[key])
         } else if (key === 'primaryColor' || key === 'secondaryColor') {
           // Validate color format
