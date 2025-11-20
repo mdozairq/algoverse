@@ -179,6 +179,9 @@ export interface Marketplace {
   configuration?: MarketplaceConfiguration
   analytics?: MarketplaceAnalytics
   customDomain?: string
+  // Token launchpad
+  tokenAssetId?: number
+  tokenSymbol?: string
 }
 
 export interface MarketplaceConfiguration {
@@ -570,6 +573,113 @@ export interface Transaction {
   createdAt: Date
   updatedAt?: Date
   completedAt?: Date
+}
+
+// Token Launchpad Interfaces
+export interface MarketplaceToken {
+  id: string
+  marketplaceId: string
+  merchantId: string
+  name: string
+  symbol: string
+  description: string
+  totalSupply: number
+  decimals: number
+  assetId?: number // Algorand ASA ID after creation
+  logoUrl?: string
+  website?: string
+  whitepaper?: string
+  status: "draft" | "pending" | "approved" | "rejected" | "deployed"
+  // Token economics
+  initialPrice: number // Price in ALGO
+  initialLiquidity: number // Initial liquidity in ALGO
+  // Liquidity pool configuration
+  liquidityPools?: {
+    tinyman?: {
+      poolId?: string
+      poolAddress?: string
+      enabled: boolean
+    }
+    pact?: {
+      poolId?: string
+      poolAddress?: string
+      enabled: boolean
+    }
+  }
+  // Trading rules automation
+  tradingRules?: {
+    dca?: {
+      enabled: boolean
+      interval: number // in hours
+      amount: number // in tokens
+    }
+    rebalancing?: {
+      enabled: boolean
+      targetAllocation: number // percentage
+      threshold: number // percentage deviation
+    }
+    rotation?: {
+      enabled: boolean
+      strategy: "performance" | "time" | "volume"
+    }
+  }
+  // Admin review
+  adminNotes?: string
+  rejectionReason?: string
+  approvedBy?: string
+  approvedAt?: Date
+  // Metadata
+  createdAt: Date
+  updatedAt?: Date
+  deployedAt?: Date
+}
+
+export interface TokenLiquidityPool {
+  id: string
+  tokenId: string
+  dex: "tinyman" | "pact" | "both"
+  poolId?: string
+  poolAddress?: string
+  tokenReserve: number
+  algoReserve: number
+  totalLiquidity: number
+  price: number // Current price in ALGO
+  volume24h: number
+  fees24h: number
+  status: "active" | "inactive" | "pending"
+  createdAt: Date
+  updatedAt?: Date
+}
+
+export interface TokenSwapQuote {
+  tokenIn: string // Token symbol or asset ID
+  tokenOut: string // Token symbol or asset ID
+  amountIn: number
+  amountOut: number
+  priceImpact: number // percentage
+  route: Array<{
+    dex: "tinyman" | "pact"
+    poolId: string
+    amountIn: number
+    amountOut: number
+  }>
+  fees: number
+  minAmountOut: number
+  slippage: number
+}
+
+export interface TokenTradingRule {
+  id: string
+  tokenId: string
+  marketplaceId: string
+  type: "dca" | "rebalancing" | "rotation"
+  enabled: boolean
+  config: Record<string, any>
+  lastExecuted?: Date
+  nextExecution?: Date
+  executionCount: number
+  createdAt: Date
+  updatedAt?: Date
 }
 
 export interface Swap {
@@ -2081,5 +2191,289 @@ export const swapHistoryCollection = {
       console.error('Error fetching swap history by ID:', error)
       return null
     }
+  }
+}
+
+// Token Launchpad Collection Service
+export const marketplaceTokensCollection = {
+  async create(tokenData: Omit<MarketplaceToken, "id" | "createdAt" | "updatedAt">): Promise<string> {
+    const doc = await adminDb.collection("marketplace_tokens").add({
+      ...tokenData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(tokenId: string): Promise<MarketplaceToken | null> {
+    try {
+      const doc = await adminDb.collection("marketplace_tokens").doc(tokenId).get()
+      if (doc.exists) {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          approvedAt: data?.approvedAt?.toDate(),
+          deployedAt: data?.deployedAt?.toDate(),
+        } as MarketplaceToken
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching token:', error)
+      return null
+    }
+  },
+
+  async getByMarketplace(marketplaceId: string): Promise<MarketplaceToken[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("marketplace_tokens")
+        .where("marketplaceId", "==", marketplaceId)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          approvedAt: data?.approvedAt?.toDate(),
+          deployedAt: data?.deployedAt?.toDate(),
+        } as MarketplaceToken
+      })
+    } catch (error) {
+      console.error('Error fetching marketplace tokens:', error)
+      return []
+    }
+  },
+
+  async getByMerchant(merchantId: string): Promise<MarketplaceToken[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("marketplace_tokens")
+        .where("merchantId", "==", merchantId)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          approvedAt: data?.approvedAt?.toDate(),
+          deployedAt: data?.deployedAt?.toDate(),
+        } as MarketplaceToken
+      })
+    } catch (error) {
+      console.error('Error fetching merchant tokens:', error)
+      return []
+    }
+  },
+
+  async getPending(): Promise<MarketplaceToken[]> {
+    try {
+      // Fetch without orderBy to avoid index requirement, sort in memory
+      const snapshot = await adminDb
+        .collection("marketplace_tokens")
+        .where("status", "==", "pending")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          approvedAt: data?.approvedAt?.toDate(),
+          deployedAt: data?.deployedAt?.toDate(),
+        } as MarketplaceToken
+      }).sort((a: MarketplaceToken, b: MarketplaceToken) => {
+        // Sort by createdAt descending in memory
+        const aDate = a.createdAt || new Date(0)
+        const bDate = b.createdAt || new Date(0)
+        return bDate.getTime() - aDate.getTime()
+      })
+    } catch (error) {
+      console.error('Error fetching pending tokens:', error)
+      return []
+    }
+  },
+
+  async update(tokenId: string, updateData: Partial<MarketplaceToken>): Promise<void> {
+    await adminDb.collection("marketplace_tokens").doc(tokenId).update({
+      ...updateData,
+      updatedAt: new Date(),
+    })
+  },
+
+  async approve(tokenId: string, adminId: string, notes?: string): Promise<void> {
+    await adminDb.collection("marketplace_tokens").doc(tokenId).update({
+      status: "approved",
+      approvedBy: adminId,
+      approvedAt: new Date(),
+      adminNotes: notes,
+      updatedAt: new Date(),
+    })
+  },
+
+  async reject(tokenId: string, reason: string): Promise<void> {
+    await adminDb.collection("marketplace_tokens").doc(tokenId).update({
+      status: "rejected",
+      rejectionReason: reason,
+      updatedAt: new Date(),
+    })
+  },
+
+  async deploy(tokenId: string, assetId: number): Promise<void> {
+    await adminDb.collection("marketplace_tokens").doc(tokenId).update({
+      status: "deployed",
+      assetId,
+      deployedAt: new Date(),
+      updatedAt: new Date(),
+    })
+  }
+}
+
+// Token Trading Rules Collection Service
+export const tokenTradingRulesCollection = {
+  async create(ruleData: Omit<TokenTradingRule, "id" | "createdAt" | "updatedAt">): Promise<string> {
+    const doc = await adminDb.collection("token_trading_rules").add({
+      ...ruleData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(ruleId: string): Promise<TokenTradingRule | null> {
+    try {
+      const doc = await adminDb.collection("token_trading_rules").doc(ruleId).get()
+      if (doc.exists) {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          lastExecuted: data?.lastExecuted?.toDate(),
+          nextExecution: data?.nextExecution?.toDate(),
+        } as TokenTradingRule
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching trading rule:', error)
+      return null
+    }
+  },
+
+  async getByToken(tokenId: string): Promise<TokenTradingRule[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("token_trading_rules")
+        .where("tokenId", "==", tokenId)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+          lastExecuted: data?.lastExecuted?.toDate(),
+          nextExecution: data?.nextExecution?.toDate(),
+        } as TokenTradingRule
+      })
+    } catch (error) {
+      console.error('Error fetching trading rules:', error)
+      return []
+    }
+  },
+
+  async update(ruleId: string, updateData: Partial<TokenTradingRule>): Promise<void> {
+    await adminDb.collection("token_trading_rules").doc(ruleId).update({
+      ...updateData,
+      updatedAt: new Date(),
+    })
+  },
+
+  async delete(ruleId: string): Promise<void> {
+    await adminDb.collection("token_trading_rules").doc(ruleId).delete()
+  },
+
+  async updateExecution(ruleId: string, executionData: { lastExecuted: Date; nextExecution?: Date; executionCount: number }): Promise<void> {
+    await adminDb.collection("token_trading_rules").doc(ruleId).update({
+      ...executionData,
+      updatedAt: new Date(),
+    })
+  }
+}
+
+// Token Liquidity Pools Collection Service
+export const tokenLiquidityPoolsCollection = {
+  async create(poolData: Omit<TokenLiquidityPool, "id" | "createdAt" | "updatedAt">): Promise<string> {
+    const doc = await adminDb.collection("token_liquidity_pools").add({
+      ...poolData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    return doc.id
+  },
+
+  async getById(poolId: string): Promise<TokenLiquidityPool | null> {
+    try {
+      const doc = await adminDb.collection("token_liquidity_pools").doc(poolId).get()
+      if (doc.exists) {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+        } as TokenLiquidityPool
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching liquidity pool:', error)
+      return null
+    }
+  },
+
+  async getByToken(tokenId: string): Promise<TokenLiquidityPool[]> {
+    try {
+      const snapshot = await adminDb
+        .collection("token_liquidity_pools")
+        .where("tokenId", "==", tokenId)
+        .orderBy("createdAt", "desc")
+        .get()
+      
+      return snapshot.docs.map((doc: any) => {
+        const data = doc.data()
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data?.createdAt?.toDate() || new Date(),
+          updatedAt: data?.updatedAt?.toDate(),
+        } as TokenLiquidityPool
+      })
+    } catch (error) {
+      console.error('Error fetching liquidity pools:', error)
+      return []
+    }
+  },
+
+  async update(poolId: string, updateData: Partial<TokenLiquidityPool>): Promise<void> {
+    await adminDb.collection("token_liquidity_pools").doc(poolId).update({
+      ...updateData,
+      updatedAt: new Date(),
+    })
   }
 }
