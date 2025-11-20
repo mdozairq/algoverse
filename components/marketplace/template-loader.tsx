@@ -26,6 +26,16 @@ interface Marketplace {
   allowGenerate?: boolean
   createdAt: Date
   updatedAt?: Date
+  dutchMintAppId?: number
+  dutchMintConfig?: {
+    threshold: number
+    baseCost: number
+    effectiveCost: number
+    platformAddress: string
+    escrowAddress: string
+    timeWindow: number
+    deployedAt?: any
+  }
 }
 
 interface MarketplaceTemplate {
