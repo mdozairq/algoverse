@@ -1,0 +1,379 @@
+#pragma version 8
+
+// Automated Trading Rules Smart Contract
+// Implements DCA, Rebalancing, and Rotation strategies
+
+// Global State Schema
+// Byteslices (1):
+//   0: platform_address (32 bytes)
+// Ints (10):
+//   0: token_asset_id
+//   1: rule_type (0=DCA, 1=Rebalancing, 2=Rotation)
+//   2: enabled (0=disabled, 1=enabled)
+//   3: last_executed (timestamp)
+//   4: execution_count
+//   5: next_execution (timestamp)
+//   6: interval_hours (DCA) / target_allocation (Rebalancing) / strategy_type (Rotation)
+//   7: amount_per_interval (DCA) / threshold_percentage (Rebalancing) / rotation_period (Rotation)
+//   8: target_price (DCA) / current_allocation (Rebalancing) / min_performance (Rotation)
+//   9: reserved for future use
+
+// On creation
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+==
+&&
+bnz initialization
+
+// Handle different application calls
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+txn OnCompletion
+int OptIn
+==
+bnz handle_optin
+
+int 1
+return
+
+initialization:
+  // Verify we have the required arguments
+  // arg 0: token_asset_id (uint64)
+  // arg 1: platform_address (32 bytes)
+  // arg 2: rule_type (0=DCA, 1=Rebalancing, 2=Rotation)
+  
+  // Store token_asset_id (global int 0)
+  txn ApplicationArgs 0
+  btoi
+  int 0
+  app_global_put
+  
+  // Store platform_address (global byteslice 0)
+  txn ApplicationArgs 1
+  bytec_0  // "platform_address"
+  app_global_put
+  
+  // Store rule_type (global int 1)
+  txn ApplicationArgs 2
+  btoi
+  int 1
+  app_global_put
+  
+  // Initialize default values
+  int 0  // enabled = disabled (global int 2)
+  int 2
+  app_global_put
+  
+  int 0  // last_executed (global int 3)
+  int 3
+  app_global_put
+  
+  int 0  // execution_count (global int 4)
+  int 4
+  app_global_put
+  
+  int 0  // next_execution (global int 5)
+  int 5
+  app_global_put
+  
+  int 0  // interval_hours / target_allocation / strategy_type (global int 6)
+  int 6
+  app_global_put
+  
+  int 0  // amount_per_interval / threshold_percentage / rotation_period (global int 7)
+  int 7
+  app_global_put
+  
+  int 0  // target_price / current_allocation / min_performance (global int 8)
+  int 8
+  app_global_put
+  
+  int 0  // reserved (global int 9)
+  int 9
+  app_global_put
+  
+  int 1
+  return
+
+handle_optin:
+  // Allow opt-in from any address
+  int 1
+  return
+
+handle_noop:
+  // Verify platform address
+  txn Sender
+  bytec_0  // "platform_address"
+  app_global_get
+  ==
+  assert
+  
+  // Get method selector
+  txn ApplicationArgs 0
+  bytec_1  // "configure_dca"
+  ==
+  bz check_configure_rebalancing
+  
+  // configure_dca method
+  // arg 1: interval_hours
+  // arg 2: amount_per_interval
+  // arg 3: target_price (optional, 0 = no target)
+  
+  txn ApplicationArgs 1
+  btoi
+  int 6
+  app_global_put  // interval_hours
+  
+  txn ApplicationArgs 2
+  btoi
+  int 7
+  app_global_put  // amount_per_interval
+  
+  txn ApplicationArgs 3
+  btoi
+  int 8
+  app_global_put  // target_price
+  
+  int 1
+  return
+
+check_configure_rebalancing:
+  txn ApplicationArgs 0
+  bytec_2  // "configure_rebalancing"
+  ==
+  bz check_configure_rotation
+  
+  // configure_rebalancing method
+  // arg 1: target_allocation
+  // arg 2: threshold_percentage
+  
+  txn ApplicationArgs 1
+  btoi
+  int 6
+  app_global_put  // target_allocation
+  
+  txn ApplicationArgs 2
+  btoi
+  int 7
+  app_global_put  // threshold_percentage
+  
+  int 1
+  return
+
+check_configure_rotation:
+  txn ApplicationArgs 0
+  bytec_3  // "configure_rotation"
+  ==
+  bz check_execute_rule
+  
+  // configure_rotation method
+  // arg 1: strategy_type
+  // arg 2: rotation_period
+  // arg 3: min_performance
+  
+  txn ApplicationArgs 1
+  btoi
+  int 6
+  app_global_put  // strategy_type
+  
+  txn ApplicationArgs 2
+  btoi
+  int 7
+  app_global_put  // rotation_period
+  
+  txn ApplicationArgs 3
+  btoi
+  int 8
+  app_global_put  // min_performance
+  
+  int 1
+  return
+
+check_execute_rule:
+  txn ApplicationArgs 0
+  bytec_4  // "execute_rule"
+  ==
+  bz check_enable
+  
+  // execute_rule method
+  // Verify rule is enabled (global int 2)
+  int 2
+  app_global_get
+  int 1
+  ==
+  assert
+  
+  // Verify it's time to execute (next_execution <= current time)
+  // next_execution is global int 5
+  int 5
+  app_global_get
+  global LatestTimestamp
+  <=
+  assert
+  
+  // Update last_executed (global int 3)
+  global LatestTimestamp
+  int 3
+  app_global_put
+  
+  // Increment execution_count (global int 4)
+  int 4
+  app_global_get
+  int 1
+  +
+  int 4
+  app_global_put
+  
+  // Calculate next_execution based on rule_type
+  // rule_type is global int 1
+  int 1
+  app_global_get
+  int 0  // DCA
+  ==
+  bz check_rebalancing_next
+  
+  // DCA: next_execution = last_executed + (interval_hours * 3600)
+  // interval_hours is global int 6
+  int 6
+  app_global_get
+  int 3600
+  *
+  global LatestTimestamp
+  +
+  int 5
+  app_global_put  // next_execution
+  
+  int 1
+  return
+
+check_rebalancing_next:
+  int 1
+  app_global_get  // rule_type
+  int 1  // Rebalancing
+  ==
+  bz rotation_next
+  
+  // Rebalancing: next_execution = last_executed + 1 hour (default)
+  global LatestTimestamp
+  int 3600
+  +
+  int 5
+  app_global_put  // next_execution
+  
+  int 1
+  return
+
+rotation_next:
+  // Rotation: next_execution = last_executed + rotation_period
+  // rotation_period is global int 7
+  int 7
+  app_global_get
+  global LatestTimestamp
+  +
+  int 5
+  app_global_put  // next_execution
+  
+  int 1
+  return
+
+check_enable:
+  txn ApplicationArgs 0
+  bytec_5  // "enable"
+  ==
+  bz check_disable
+  
+  // enable method
+  int 1  // enabled (global int 2)
+  int 2
+  app_global_put
+  
+  // Set next_execution to current time (global int 5)
+  global LatestTimestamp
+  int 5
+  app_global_put
+  
+  int 1
+  return
+
+check_disable:
+  txn ApplicationArgs 0
+  bytec_6  // "disable"
+  ==
+  bz check_get_status
+  
+  // disable method
+  int 0  // disabled (global int 2)
+  int 2
+  app_global_put
+  
+  int 1
+  return
+
+check_get_status:
+  txn ApplicationArgs 0
+  bytec_7  // "get_status"
+  ==
+  bz invalid_method
+  
+  // get_status method - return status via logs
+  int 0
+  app_global_get  // token_asset_id
+  itob
+  log
+  
+  int 1
+  app_global_get  // rule_type
+  itob
+  log
+  
+  int 2
+  app_global_get  // enabled
+  itob
+  log
+  
+  int 3
+  app_global_get  // last_executed
+  itob
+  log
+  
+  int 4
+  app_global_get  // execution_count
+  itob
+  log
+  
+  int 5
+  app_global_get  // next_execution
+  itob
+  log
+  
+  int 1
+  return
+
+invalid_method:
+  int 0
+  return
+
+// String constants
+bytec_0:
+  byte "platform_address"
+bytec_1:
+  byte "configure_dca"
+bytec_2:
+  byte "configure_rebalancing"
+bytec_3:
+  byte "configure_rotation"
+bytec_4:
+  byte "execute_rule"
+bytec_5:
+  byte "enable"
+bytec_6:
+  byte "disable"
+bytec_7:
+  byte "get_status"
+
