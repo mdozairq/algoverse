@@ -1,0 +1,6 @@
+#pragma version 8
+
+// Clear state program - allows clearing local state
+int 1
+return
+
