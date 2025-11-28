@@ -32,6 +32,28 @@ export async function POST(
 
     const marketplace = marketplaceDoc.data()
 
+    // Check if marketplace has a custom token
+    const hasCustomToken = marketplace?.tokenAssetId && marketplace?.tokenSymbol
+
+    // If payment method is custom token, validate token payment
+    if (paymentMethod === 'custom_token' && hasCustomToken) {
+      // Get marketplace token
+      const { marketplaceTokensCollection } = await import('@/lib/firebase/collections')
+      const tokens = await marketplaceTokensCollection.getByMarketplace(marketplaceId)
+      const activeToken = tokens.find(t => t.status === 'deployed' && t.assetId === marketplace.tokenAssetId)
+
+      if (!activeToken) {
+        return NextResponse.json(
+          { error: 'Marketplace token not available' },
+          { status: 400 }
+        )
+      }
+
+      // TODO: Verify token payment transaction
+      // This would involve checking the transaction on-chain
+      // to ensure the buyer sent the correct amount of tokens
+    }
+
     // Get product details
     const productRef = adminDb.collection('products').doc(productId)
     const productDoc = await productRef.get()

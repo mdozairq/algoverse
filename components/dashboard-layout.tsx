@@ -33,6 +33,7 @@ import {
   DollarSign,
   Activity,
   Ticket,
+  Rocket,
   ArrowRightLeft,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -86,6 +87,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Users, label: "Merchants", href: "/dashboard/admin/merchants" },
           { icon: Store, label: "Marketplaces", href: "/dashboard/admin/marketplaces" },
           { icon: Calendar, label: "Events", href: "/dashboard/admin/events" },
+          { icon: Rocket, label: "Tokens", href: "/dashboard/admin/tokens" },
           { icon: DollarSign, label: "Fee Management", href: "/dashboard/admin/fees" },
           { icon: BarChart3, label: "Analytics", href: "/dashboard/admin/analytics" },
           { icon: Settings, label: "Settings", href: "/dashboard/admin/settings" },
@@ -96,6 +98,7 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Calendar, label: "Events", href: "/dashboard/merchant/events" },
           { icon: Store, label: "Marketplaces", href: "/dashboard/merchant/marketplaces" },
           { icon: Settings, label: "Marketplace Management", href: "/dashboard/merchant/marketplace-management" },
+          { icon: Rocket, label: "Token Launchpad", href: "/dashboard/merchant/token-launchpad" },
           { icon: Wallet, label: "NFT Management", href: "/dashboard/merchant/nft-management" },
         ]
         

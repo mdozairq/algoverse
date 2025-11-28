@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, Clock, Eye, Loader2 } from "lucide-react"
+import { Users, Store, TrendingUp, DollarSign, Activity, CheckCircle, XCircle, Clock, Eye, Loader2, Rocket } from "lucide-react"
+import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import { useToast } from "@/hooks/use-toast"
@@ -303,10 +304,20 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-gray-900 dark:text-white">Recent Activity</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
-                      Latest platform activities and merchant actions
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-gray-900 dark:text-white">Recent Activity</CardTitle>
+                        <CardDescription className="text-gray-600 dark:text-gray-400">
+                          Latest platform activities and merchant actions
+                        </CardDescription>
+                      </div>
+                      <Link href="/dashboard/admin/tokens">
+                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                          <Rocket className="w-4 h-4" />
+                          Token Approvals
+                        </Button>
+                      </Link>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">

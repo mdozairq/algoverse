@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw, Trash2, Store, Settings, BarChart3, Wallet, Gavel, Zap, ArrowRightLeft } from "lucide-react"
+import { Calendar, DollarSign, Users, TrendingUp, Plus, Eye, Edit, MoreHorizontal, Loader2, RefreshCw, Trash2, Store, Settings, BarChart3, Wallet, Gavel, Zap, ArrowRightLeft, Rocket } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
 import Link from "next/link"
@@ -328,7 +328,7 @@ export default function MerchantDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Link href="/dashboard/merchant/events/create-event">
                   <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                     <Calendar className="h-6 w-6" />
@@ -345,6 +345,12 @@ export default function MerchantDashboard() {
                   <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                     <Plus className="h-6 w-6" />
                     <span className="font-medium">Create Marketplace</span>
+                  </Button>
+                </Link>
+                <Link href="/dashboard/merchant/token-launchpad">
+                  <Button className="w-full h-20 flex flex-col items-center justify-center gap-2 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+                    <Rocket className="h-6 w-6" />
+                    <span className="font-medium">Token Launchpad</span>
                   </Button>
                 </Link>
                 <Link href="/dashboard/merchant/analytics">
