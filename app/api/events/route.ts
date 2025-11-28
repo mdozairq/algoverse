@@ -23,12 +23,30 @@ export async function GET(request: NextRequest) {
       events = await FirebaseService.getAllEvents()
     }
 
+    // Helper function to convert Firestore timestamps to ISO strings
+    const convertTimestamp = (timestamp: any): string | null => {
+      if (!timestamp) return null
+      if (timestamp instanceof Date) return timestamp.toISOString()
+      // Handle Firestore timestamp objects
+      if (timestamp._seconds) {
+        return new Date(timestamp._seconds * 1000 + (timestamp._nanoseconds || 0) / 1000000).toISOString()
+      }
+      // Handle Firestore Timestamp objects with toDate method
+      if (typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toISOString()
+      }
+      // If it's already a string, return it
+      if (typeof timestamp === 'string') return timestamp
+      return null
+    }
+
     // Convert date fields to strings
     const eventsWithStringDates = events.map(event => ({
       ...event,
-      createdAt: event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
-      updatedAt: event.updatedAt instanceof Date ? event.updatedAt.toISOString() : event.updatedAt,
-      nftCreatedAt: event.nftCreatedAt instanceof Date ? event.nftCreatedAt.toISOString() : event.nftCreatedAt
+      date: convertTimestamp(event.date) || event.date, // Keep original if not a timestamp
+      createdAt: convertTimestamp(event.createdAt),
+      updatedAt: convertTimestamp(event.updatedAt),
+      nftCreatedAt: convertTimestamp(event.nftCreatedAt)
     }))
 
     return NextResponse.json({ events: eventsWithStringDates })
