@@ -31,6 +31,7 @@ export async function GET(
       ...marketplace,
       createdAt: marketplace.createdAt instanceof Date ? marketplace.createdAt.toISOString() : marketplace.createdAt,
       updatedAt: marketplace.updatedAt instanceof Date ? marketplace.updatedAt.toISOString() : marketplace.updatedAt,
+      permissions: marketplace.permissions || {},
       merchant: merchant ? {
         id: merchant.id,
         businessName: merchant.businessName,

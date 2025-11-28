@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +33,7 @@ import {
   DollarSign,
   Activity,
   Ticket,
+  ArrowRightLeft,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -48,6 +49,27 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const { logout, user } = useAuth()
   const router = useRouter()
+  const [hasTradingEnabled, setHasTradingEnabled] = React.useState<boolean>(false)
+
+  React.useEffect(() => {
+    if (role === "merchant" && user?.userId) {
+      // Check if merchant has any marketplace with trading enabled
+      fetch(`/api/marketplaces`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.marketplaces && Array.isArray(data.marketplaces)) {
+            // Check if any marketplace has allowTrade permission enabled
+            const hasTrade = data.marketplaces.some(
+              (mp: any) => mp.permissions?.allowTrade === true
+            )
+            setHasTradingEnabled(hasTrade)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching marketplace permissions:", error)
+        })
+    }
+  }, [role, user?.userId])
 
   const handleLogout = async () => {
     await logout()
@@ -69,15 +91,29 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { icon: Settings, label: "Settings", href: "/dashboard/admin/settings" },
         ]
       case "merchant":
-        return [
+        const merchantMenuItems = [
           { icon: Home, label: "Dashboard", href: "/dashboard/merchant" },
           { icon: Calendar, label: "Events", href: "/dashboard/merchant/events" },
           { icon: Store, label: "Marketplaces", href: "/dashboard/merchant/marketplaces" },
           { icon: Settings, label: "Marketplace Management", href: "/dashboard/merchant/marketplace-management" },
           { icon: Wallet, label: "NFT Management", href: "/dashboard/merchant/nft-management" },
-          { icon: BarChart3, label: "Analytics", href: "/dashboard/merchant/analytics" },
-          { icon: Settings, label: "Settings", href: "/dashboard/merchant#settings" },
         ]
+        
+        // Add Trade menu item if any marketplace has trading enabled
+        if (hasTradingEnabled) {
+          merchantMenuItems.push({
+            icon: ArrowRightLeft,
+            label: "Trade",
+            href: "/dashboard/merchant/trade",
+          })
+        }
+        
+        merchantMenuItems.push(
+          { icon: BarChart3, label: "Analytics", href: "/dashboard/merchant/analytics" },
+          { icon: Settings, label: "Settings", href: "/dashboard/merchant#settings" }
+        )
+        
+        return merchantMenuItems
       case "user":
         return [
           { icon: Home, label: "Dashboard", href: "/dashboard/user" },

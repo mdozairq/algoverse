@@ -24,11 +24,12 @@ export const GET = requireRole(["admin"])(async (request: NextRequest) => {
       merchants = await FirebaseService.getMerchants()
     }
 
-    // Convert date fields to strings
+    // Convert date fields to strings and include permissions
     const merchantsWithStringDates = merchants.map(merchant => ({
       ...merchant,
       createdAt: merchant.createdAt instanceof Date ? merchant.createdAt.toISOString() : merchant.createdAt,
-      updatedAt: merchant.updatedAt instanceof Date ? merchant.updatedAt.toISOString() : merchant.updatedAt
+      updatedAt: merchant.updatedAt instanceof Date ? merchant.updatedAt.toISOString() : merchant.updatedAt,
+      permissions: merchant.permissions || {},
     }))
 
     return NextResponse.json({ merchants: merchantsWithStringDates })

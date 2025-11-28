@@ -11,16 +11,16 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
-import { ArrowLeft, Loader2, Save, Store, Zap, Sparkles, ArrowRightLeft, Settings, Palette } from "lucide-react"
+import { ArrowLeft, Loader2, Save, Store, Zap, Sparkles, ArrowRightLeft, Settings } from "lucide-react"
 
-interface Marketplace {
+interface Merchant {
   id: string
-  merchantId: string
   businessName: string
-  description: string
+  email: string
   category: string
-  status?: "pending" | "approved" | "rejected" | "draft"
-  isEnabled: boolean
+  walletAddress: string
+  isApproved: boolean
+  status?: "pending" | "approved" | "rejected"
   permissions?: {
     allowMarketplace?: boolean
     allowMint?: boolean
@@ -31,14 +31,14 @@ interface Marketplace {
   }
 }
 
-export default function MarketplaceDetailPage() {
+export default function MerchantDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [marketplace, setMarketplace] = useState<Marketplace | null>(null)
+  const [merchant, setMerchant] = useState<Merchant | null>(null)
   const [permissions, setPermissions] = useState({
     allowMarketplace: false,
     allowMint: false,
@@ -50,37 +50,37 @@ export default function MarketplaceDetailPage() {
 
   useEffect(() => {
     if (isAuthenticated && user && params.id) {
-      fetchMarketplace()
+      fetchMerchant()
     }
   }, [isAuthenticated, user, params.id])
 
-  const fetchMarketplace = async () => {
+  const fetchMerchant = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/marketplaces/${params.id}`)
+      const response = await fetch(`/api/admin/merchants/${params.id}`)
       if (response.ok) {
         const data = await response.json()
-        setMarketplace(data.marketplace)
+        setMerchant(data.merchant)
         setPermissions({
-          allowMarketplace: data.marketplace?.permissions?.allowMarketplace ?? false,
-          allowMint: data.marketplace?.permissions?.allowMint ?? false,
-          allowDutchMint: data.marketplace?.permissions?.allowDutchMint ?? false,
-          allowAIGenerated: data.marketplace?.permissions?.allowAIGenerated ?? false,
-          allowTrade: data.marketplace?.permissions?.allowTrade ?? false,
-          allowSwap: data.marketplace?.permissions?.allowSwap ?? false,
+          allowMarketplace: data.merchant?.permissions?.allowMarketplace ?? false,
+          allowMint: data.merchant?.permissions?.allowMint ?? false,
+          allowDutchMint: data.merchant?.permissions?.allowDutchMint ?? false,
+          allowAIGenerated: data.merchant?.permissions?.allowAIGenerated ?? false,
+          allowTrade: data.merchant?.permissions?.allowTrade ?? false,
+          allowSwap: data.merchant?.permissions?.allowSwap ?? false,
         })
       } else {
         toast({
           title: "Error",
-          description: "Failed to fetch marketplace details",
+          description: "Failed to fetch merchant details",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Error fetching marketplace:", error)
+      console.error("Error fetching merchant:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch marketplace details",
+        description: "Failed to fetch merchant details",
         variant: "destructive",
       })
     } finally {
@@ -89,11 +89,11 @@ export default function MarketplaceDetailPage() {
   }
 
   const handleSavePermissions = async () => {
-    if (!marketplace) return
+    if (!merchant) return
 
     try {
       setSaving(true)
-      const response = await fetch(`/api/admin/marketplaces/${params.id}/permissions`, {
+      const response = await fetch(`/api/admin/merchants/${params.id}/permissions`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -104,18 +104,18 @@ export default function MarketplaceDetailPage() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Marketplace permissions updated successfully",
+          description: "Merchant permissions updated successfully",
         })
-        fetchMarketplace() // Refresh data
+        fetchMerchant()
       } else {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to update permissions")
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update permissions")
       }
     } catch (error: any) {
-      console.error("Error saving permissions:", error)
+      console.error("Error updating permissions:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to save permissions",
+        description: error.message || "Failed to update permissions",
         variant: "destructive",
       })
     } finally {
@@ -128,26 +128,21 @@ export default function MarketplaceDetailPage() {
       <AuthGuard requiredRole="admin">
         <DashboardLayout role="admin">
           <div className="flex items-center justify-center min-h-[400px]">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         </DashboardLayout>
       </AuthGuard>
     )
   }
 
-  if (!marketplace) {
+  if (!merchant) {
     return (
       <AuthGuard requiredRole="admin">
         <DashboardLayout role="admin">
           <div className="text-center py-12">
-            <p className="text-gray-500">Marketplace not found</p>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/admin/marketplaces")}
-              className="mt-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Marketplaces
+            <p className="text-gray-600 dark:text-gray-400">Merchant not found</p>
+            <Button onClick={() => router.push("/dashboard/admin/merchants")} className="mt-4">
+              Back to Merchants
             </Button>
           </div>
         </DashboardLayout>
@@ -159,88 +154,62 @@ export default function MarketplaceDetailPage() {
     <AuthGuard requiredRole="admin">
       <DashboardLayout role="admin">
         <div className="space-y-6">
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={() => router.push("/dashboard/admin/marketplaces")}
+                onClick={() => router.push("/dashboard/admin/merchants")}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  {marketplace.businessName}
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {merchant.businessName}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Manage marketplace permissions and settings
-                </p>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">{merchant.email}</p>
               </div>
             </div>
+            <Badge
+              variant={
+                merchant.status === "approved"
+                  ? "default"
+                  : merchant.status === "rejected"
+                  ? "destructive"
+                  : "secondary"
+              }
+            >
+              {merchant.status || (merchant.isApproved ? "approved" : "pending")}
+            </Badge>
           </div>
 
-          {/* Marketplace Info */}
+          {/* Merchant Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Marketplace Information</CardTitle>
-              <CardDescription>Basic marketplace details</CardDescription>
+              <CardTitle>Merchant Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-500">Business Name</Label>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {marketplace.businessName}
-                  </p>
+                  <Label className="text-gray-600 dark:text-gray-400">Business Name</Label>
+                  <p className="font-medium">{merchant.businessName}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-500">Category</Label>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {marketplace.category}
-                  </p>
+                  <Label className="text-gray-600 dark:text-gray-400">Category</Label>
+                  <p className="font-medium">{merchant.category}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-500">Status</Label>
-                  <div className="mt-1">
-                    {marketplace.status === "approved" && (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        Approved
-                      </Badge>
-                    )}
-                    {marketplace.status === "pending" && (
-                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                        Pending
-                      </Badge>
-                    )}
-                    {marketplace.status === "rejected" && (
-                      <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                        Rejected
-                      </Badge>
-                    )}
-                    {marketplace.status === "draft" && (
-                      <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                        Draft
-                      </Badge>
-                    )}
-                  </div>
+                  <Label className="text-gray-600 dark:text-gray-400">Email</Label>
+                  <p className="font-medium">{merchant.email}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-500">Enabled</Label>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {marketplace.isEnabled ? "Yes" : "No"}
+                  <Label className="text-gray-600 dark:text-gray-400">Wallet Address</Label>
+                  <p className="font-medium font-mono text-sm">
+                    {merchant.walletAddress.slice(0, 10)}...{merchant.walletAddress.slice(-8)}
                   </p>
                 </div>
               </div>
-              {marketplace.description && (
-                <div>
-                  <Label className="text-sm text-gray-500">Description</Label>
-                  <p className="text-base text-gray-900 dark:text-white mt-1">
-                    {marketplace.description}
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -249,7 +218,7 @@ export default function MarketplaceDetailPage() {
             <CardHeader>
               <CardTitle>Feature Permissions</CardTitle>
               <CardDescription>
-                Control which features are enabled for this marketplace
+                Control which features this merchant can access
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -261,7 +230,7 @@ export default function MarketplaceDetailPage() {
                     <div>
                       <Label className="text-base font-medium">Marketplace</Label>
                       <p className="text-sm text-gray-500">
-                        Enable marketplace functionality
+                        Allow merchant to create and manage marketplaces
                       </p>
                     </div>
                   </div>
@@ -280,7 +249,7 @@ export default function MarketplaceDetailPage() {
                     <div>
                       <Label className="text-base font-medium">Mint</Label>
                       <p className="text-sm text-gray-500">
-                        Allow NFT minting in this marketplace
+                        Allow merchant to mint NFTs
                       </p>
                     </div>
                   </div>
@@ -295,11 +264,11 @@ export default function MarketplaceDetailPage() {
                 {/* Dutch Mint */}
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="w-5 h-5 text-gray-400" />
+                    <Zap className="w-5 h-5 text-gray-400" />
                     <div>
                       <Label className="text-base font-medium">Dutch Mint</Label>
                       <p className="text-sm text-gray-500">
-                        Enable Dutch auction minting
+                        Allow merchant to use Dutch auction minting
                       </p>
                     </div>
                   </div>
@@ -314,11 +283,11 @@ export default function MarketplaceDetailPage() {
                 {/* AI Generated */}
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <Palette className="w-5 h-5 text-gray-400" />
+                    <Sparkles className="w-5 h-5 text-gray-400" />
                     <div>
                       <Label className="text-base font-medium">AI Generated</Label>
                       <p className="text-sm text-gray-500">
-                        Allow AI-generated NFT creation
+                        Allow merchant to generate NFTs using AI
                       </p>
                     </div>
                   </div>
@@ -337,7 +306,7 @@ export default function MarketplaceDetailPage() {
                     <div>
                       <Label className="text-base font-medium">Trade</Label>
                       <p className="text-sm text-gray-500">
-                        Enable NFT trading functionality
+                        Allow merchant to list and trade NFTs
                       </p>
                     </div>
                   </div>
@@ -356,7 +325,7 @@ export default function MarketplaceDetailPage() {
                     <div>
                       <Label className="text-base font-medium">Swap</Label>
                       <p className="text-sm text-gray-500">
-                        Enable token swapping functionality
+                        Allow merchant to enable NFT swaps
                       </p>
                     </div>
                   </div>
@@ -370,11 +339,7 @@ export default function MarketplaceDetailPage() {
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button
-                  onClick={handleSavePermissions}
-                  disabled={saving}
-                  className="min-w-[120px]"
-                >
+                <Button onClick={handleSavePermissions} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -395,3 +360,4 @@ export default function MarketplaceDetailPage() {
     </AuthGuard>
   )
 }
+
