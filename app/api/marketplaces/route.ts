@@ -57,9 +57,10 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    // Convert date fields to strings
+    // Convert date fields to strings and ensure permissions are included
     const marketplacesWithStringDates = marketplacesWithMerchants.map(marketplace => ({
       ...marketplace,
+      permissions: marketplace.permissions || {},
       createdAt: marketplace.createdAt instanceof Date ? marketplace.createdAt.toISOString() : marketplace.createdAt,
       updatedAt: marketplace.updatedAt instanceof Date ? marketplace.updatedAt.toISOString() : marketplace.updatedAt
     }))
