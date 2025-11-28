@@ -162,6 +162,15 @@ export interface Merchant {
   updatedAt?: Date
   password?: string
   role: "merchant"
+  // Merchant permissions
+  permissions?: {
+    allowMarketplace?: boolean
+    allowMint?: boolean
+    allowDutchMint?: boolean
+    allowAIGenerated?: boolean
+    allowTrade?: boolean
+    allowSwap?: boolean
+  }
 }
 
 export interface Marketplace {
