@@ -21,6 +21,14 @@ export interface User {
   description?: string
   isApproved?: boolean
   status?: "pending" | "approved" | "rejected"
+  permissions?: {
+    allowMarketplace?: boolean
+    allowMint?: boolean
+    allowDutchMint?: boolean
+    allowAIGenerated?: boolean
+    allowTrade?: boolean
+    allowSwap?: boolean
+  }
 }
 
 export interface Event {
@@ -154,6 +162,15 @@ export interface Merchant {
   updatedAt?: Date
   password?: string
   role: "merchant"
+  // Merchant permissions
+  permissions?: {
+    allowMarketplace?: boolean
+    allowMint?: boolean
+    allowDutchMint?: boolean
+    allowAIGenerated?: boolean
+    allowTrade?: boolean
+    allowSwap?: boolean
+  }
 }
 
 export interface Marketplace {
@@ -182,6 +199,15 @@ export interface Marketplace {
   // Token launchpad
   tokenAssetId?: number
   tokenSymbol?: string
+  // Marketplace permissions
+  permissions?: {
+    allowMarketplace?: boolean
+    allowMint?: boolean
+    allowDutchMint?: boolean
+    allowAIGenerated?: boolean
+    allowTrade?: boolean
+    allowSwap?: boolean
+  }
 }
 
 export interface MarketplaceConfiguration {

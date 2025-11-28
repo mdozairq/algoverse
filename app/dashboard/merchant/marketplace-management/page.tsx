@@ -53,7 +53,9 @@ import {
   ShoppingCart,
   Heart,
   Share2,
-  Sparkles
+  Sparkles,
+  TrendingDown,
+  Rocket
 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import AuthGuard from "@/components/auth-guard"
@@ -64,6 +66,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { transactionSigner } from "@/lib/wallet/transaction-signer"
 import { useWallet } from "@/hooks/use-wallet"
+import algosdk from "algosdk"
 
 // Extend Window interface for TypeScript
 declare global {
@@ -99,10 +102,21 @@ interface Marketplace {
   allowTrading?: boolean
   allowCreate?: boolean
   allowGenerate?: boolean
+  allowDutchMint?: boolean
   walletAddress: string
   createdAt: Date
   updatedAt?: Date
   customDomain?: string
+  dutchMintAppId?: number
+  dutchMintConfig?: {
+    threshold: number
+    baseCost: number
+    effectiveCost: number
+    platformAddress: string
+    escrowAddress: string
+    timeWindow: number
+    deployedAt?: any
+  }
   configuration?: {
     mintingConfig: any
     tradingConfig: any
@@ -159,6 +173,18 @@ export default function MarketplaceManagement() {
   const [showEditCollectionDialog, setShowEditCollectionDialog] = useState(false)
   const [showNFTManagementDialog, setShowNFTManagementDialog] = useState(false)
   const [selectedCollectionForNFTs, setSelectedCollectionForNFTs] = useState<Collection | null>(null)
+  const [showDeployDutchMintDialog, setShowDeployDutchMintDialog] = useState(false)
+  const [deployingDutchMint, setDeployingDutchMint] = useState(false)
+  const [isRedeploying, setIsRedeploying] = useState(false)
+  const [dutchMintConfig, setDutchMintConfig] = useState({
+    threshold: 100,
+    baseCost: 0.01,
+    effectiveCost: 0.007,
+    platformAddress: "",
+    escrowAddress: "",
+    timeWindow: 86400,
+    creatorMnemonic: ""
+  })
   const [newCollection, setNewCollection] = useState({
     name: "",
     description: "",
@@ -265,6 +291,7 @@ export default function MarketplaceManagement() {
   const { user } = useAuth()
   const router = useRouter()
   const useWalletHook = useWallet()
+  const { isConnected, account } = useWallet()
 
   // Set up the useWallet hook for the transaction signer
   useEffect(() => {
@@ -736,8 +763,273 @@ export default function MarketplaceManagement() {
     } finally {
       setActionLoading(null)
     }
-  } 
+  }
 
+  const handleToggleMarketplaceDutchMint = async (marketplaceId: string, allowDutchMint: boolean) => {
+    console.log('Toggle marketplace Dutch mint:', marketplaceId, allowDutchMint)
+    setActionLoading(marketplaceId)
+    try {
+      const response = await fetch(`/api/marketplaces/${marketplaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowDutchMint }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Dutch mint functionality ${allowDutchMint ? 'enabled' : 'disabled'} successfully!`,
+        })
+        
+        // Update the selected marketplace state immediately
+        if (selectedMarketplace && selectedMarketplace.id === marketplaceId) {
+          setSelectedMarketplace({
+            ...selectedMarketplace,
+            allowDutchMint: allowDutchMint
+          })
+        }
+        
+        // Refresh the marketplaces list
+        fetchMarketplaces(true)
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update marketplace")
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update marketplace",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDeployDutchMint = async () => {
+    if (!selectedMarketplace) return
+
+    // Check if wallet is connected
+    if (!isConnected || !account?.address) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet to deploy the contract",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate required fields
+    if (!dutchMintConfig.platformAddress || !dutchMintConfig.escrowAddress) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields (Platform Address, Escrow Address)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setDeployingDutchMint(true)
+    try {
+      // If redeploying, delete existing contract first
+      if (isRedeploying && selectedMarketplace.dutchMintAppId) {
+        toast({
+          title: "Deleting Old Contract",
+          description: "Preparing deletion transaction...",
+        })
+
+        // Step 1: Create delete transaction
+        const deleteResponse = await fetch(`/api/marketplaces/${selectedMarketplace.id}/mint/dutch-queue/deploy`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorAddress: account.address,
+            deleteExisting: true,
+            existingAppId: selectedMarketplace.dutchMintAppId,
+          }),
+        })
+
+        if (!deleteResponse.ok) {
+          const error = await deleteResponse.json()
+          throw new Error(error.error || "Failed to create deletion transaction")
+        }
+
+        const deleteData = await deleteResponse.json()
+
+        // Step 2: Sign delete transaction
+        toast({
+          title: "Signing Deletion",
+          description: "Please sign the deletion transaction in your wallet...",
+        })
+
+        const signedDeleteTxn = await transactionSigner.signTransaction(deleteData.transaction, account.address)
+
+        // Step 3: Submit delete transaction
+        toast({
+          title: "Deleting Contract",
+          description: "Submitting deletion transaction...",
+        })
+
+        const deleteSubmitResponse = await fetch(`/api/marketplaces/${selectedMarketplace.id}/mint/dutch-queue/deploy`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorAddress: account.address,
+            deleteExisting: true,
+            existingAppId: selectedMarketplace.dutchMintAppId,
+            signedTransaction: signedDeleteTxn,
+          }),
+        })
+
+        if (!deleteSubmitResponse.ok) {
+          const error = await deleteSubmitResponse.json()
+          throw new Error(error.error || "Failed to submit deletion transaction")
+        }
+
+        await deleteSubmitResponse.json()
+
+        toast({
+          title: "Old Contract Deleted",
+          description: "Proceeding with new deployment...",
+        })
+      }
+
+      // Step 1: Create unsigned transaction
+      toast({
+        title: "Creating Transaction",
+        description: "Preparing deployment transaction...",
+      })
+
+      const createResponse = await fetch(`/api/marketplaces/${selectedMarketplace.id}/mint/dutch-queue/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorAddress: account.address,
+          threshold: dutchMintConfig.threshold,
+          baseCost: dutchMintConfig.baseCost,
+          effectiveCost: dutchMintConfig.effectiveCost,
+          platformAddress: dutchMintConfig.platformAddress,
+          escrowAddress: dutchMintConfig.escrowAddress,
+          timeWindow: dutchMintConfig.timeWindow,
+        }),
+      })
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json()
+        throw new Error(error.error || "Failed to create deployment transaction")
+      }
+
+      const { transaction, transactionId } = await createResponse.json()
+
+      // Step 2: Sign transaction with connected wallet
+      toast({
+        title: "Signing Transaction",
+        description: "Please sign the transaction in your wallet...",
+      })
+
+      const signedTransaction = await transactionSigner.signTransaction(transaction, account.address)
+
+      // Step 3: Submit signed transaction
+      toast({
+        title: "Submitting Transaction",
+        description: "Submitting deployment transaction...",
+      })
+
+      const submitResponse = await fetch(`/api/marketplaces/${selectedMarketplace.id}/mint/dutch-queue/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorAddress: account.address,
+          threshold: dutchMintConfig.threshold,
+          baseCost: dutchMintConfig.baseCost,
+          effectiveCost: dutchMintConfig.effectiveCost,
+          platformAddress: dutchMintConfig.platformAddress,
+          escrowAddress: dutchMintConfig.escrowAddress,
+          timeWindow: dutchMintConfig.timeWindow,
+          signedTransaction,
+        }),
+      })
+
+      if (submitResponse.ok) {
+        const result = await submitResponse.json()
+        
+        // If init transaction is returned, sign and submit it
+        if (result.initTransaction) {
+          toast({
+            title: "Initializing Contract",
+            description: "Please sign the initialization transaction...",
+          })
+
+          const signedInitTxn = await transactionSigner.signTransaction(result.initTransaction, account.address)
+
+          // Submit initialization transaction
+          const { getAlgodClient } = await import('@/lib/algorand/config')
+          const algosdk = await import('algosdk')
+          const algodClient = getAlgodClient()
+          const signedInitTxnBytes = new Uint8Array(Buffer.from(signedInitTxn, 'base64'))
+          const initResult = await algodClient.sendRawTransaction(signedInitTxnBytes).do()
+          await algosdk.waitForConfirmation(algodClient, initResult.txid, 4)
+        }
+
+        toast({
+          title: "Success",
+          description: `Dutch mint contract ${isRedeploying ? 'redeployed' : 'deployed'} successfully! App ID: ${result.appId}`,
+        })
+        setShowDeployDutchMintDialog(false)
+        setIsRedeploying(false)
+        setDutchMintConfig({
+          threshold: 100,
+          baseCost: 0.01,
+          effectiveCost: 0.007,
+          platformAddress: "",
+          escrowAddress: "",
+          timeWindow: 86400,
+          creatorMnemonic: ""
+        })
+        fetchMarketplaces(true)
+      } else {
+        const error = await submitResponse.json()
+        throw new Error(error.error || "Failed to deploy Dutch mint contract")
+      }
+    } catch (error: any) {
+      toast({
+        title: isRedeploying ? "Redeployment Failed" : "Deployment Failed",
+        description: error.message || `Failed to ${isRedeploying ? 'redeploy' : 'deploy'} Dutch mint contract`,
+        variant: "destructive",
+      })
+    } finally {
+      setDeployingDutchMint(false)
+    }
+  }
+
+  const openDeployDutchMintDialog = (marketplace: Marketplace, isRedeploy: boolean = false) => {
+    setSelectedMarketplace(marketplace)
+    setIsRedeploying(isRedeploy)
+    // Pre-fill with existing config if available
+    if (marketplace.dutchMintConfig) {
+      setDutchMintConfig({
+        threshold: marketplace.dutchMintConfig.threshold || 100,
+        baseCost: marketplace.dutchMintConfig.baseCost || 0.01,
+        effectiveCost: marketplace.dutchMintConfig.effectiveCost || 0.007,
+        platformAddress: marketplace.dutchMintConfig.platformAddress || "",
+        escrowAddress: marketplace.dutchMintConfig.escrowAddress || "",
+        timeWindow: marketplace.dutchMintConfig.timeWindow || 86400,
+        creatorMnemonic: ""
+      })
+    } else {
+      // Pre-fill platform and escrow addresses from marketplace wallet if available
+      setDutchMintConfig({
+        threshold: 100,
+        baseCost: 0.01,
+        effectiveCost: 0.007,
+        platformAddress: marketplace.walletAddress || "",
+        escrowAddress: marketplace.walletAddress || "",
+        timeWindow: 86400,
+        creatorMnemonic: ""
+      })
+    }
+    setShowDeployDutchMintDialog(true)
+  }
   
   const handleAddCollection = async () => {
     if (!selectedMarketplace) return
@@ -1343,6 +1635,50 @@ export default function MarketplaceManagement() {
                           </Button>
                         )}
                       </div>
+
+                      {/* Dutch Mint Deployment */}
+                      {marketplace.allowDutchMint && (
+                        <div className="pt-2 border-t">
+                          {marketplace.dutchMintAppId ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                  <span className="text-xs text-green-700 dark:text-green-300">
+                                    Dutch Mint Deployed (App ID: {marketplace.dutchMintAppId})
+                                  </span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openDeployDutchMintDialog(marketplace, true)
+                                }}
+                                className="w-full"
+                                disabled={actionLoading === marketplace.id}
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Redeploy Contract
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDeployDutchMintDialog(marketplace, false)
+                              }}
+                              className="w-full"
+                            >
+                              <Rocket className="w-3 h-3 mr-1" />
+                              Deploy Dutch Mint
+                            </Button>
+                          )}
+                        </div>
+                      )}
 
                       {/* Action Buttons */}
                                   <div className="flex items-center gap-1 pt-2 border-t">
@@ -2341,6 +2677,40 @@ export default function MarketplaceManagement() {
                                 </TooltipContent>
                               </Tooltip>
                             </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-lg border">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
+                                  <TrendingDown className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">Dutch Mint Functionality</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {selectedMarketplace.allowDutchMint ? 'Users can join Dutch mint queue for bulk minting at discounted rates' : 'Dutch mint functionality is disabled'}
+                                  </p>
+                                  {selectedMarketplace.allowDutchMint && !selectedMarketplace.dutchMintAppId && (
+                                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                      ⚠️ Contract not deployed yet. Deploy from marketplace card.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Switch
+                                    checked={selectedMarketplace.allowDutchMint || false}
+                                    onCheckedChange={(checked) => {
+                                      console.log('Dutch mint switch clicked:', checked)
+                                      handleToggleMarketplaceDutchMint(selectedMarketplace.id, checked)
+                                    }}
+                                    disabled={actionLoading === selectedMarketplace.id}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{selectedMarketplace.allowDutchMint ? 'Disable' : 'Enable'} Dutch mint functionality</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                           </CardContent>
                         </Card>
 
@@ -2593,6 +2963,200 @@ export default function MarketplaceManagement() {
                             <Wallet className="w-4 h-4 mr-2" />
                           )}
                           Update Wallet
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Deploy Dutch Mint Dialog */}
+                <Dialog open={showDeployDutchMintDialog} onOpenChange={(open) => {
+                  setShowDeployDutchMintDialog(open)
+                  if (!open) {
+                    setIsRedeploying(false)
+                  }
+                }}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        {isRedeploying ? (
+                          <>
+                            <RefreshCw className="w-5 h-5" />
+                            Redeploy Dutch Mint Contract
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="w-5 h-5" />
+                            Deploy Dutch Mint Contract
+                          </>
+                        )}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {isRedeploying ? (
+                          <>
+                            Redeploy the Dutch mint contract. This will delete the existing contract (App ID: {selectedMarketplace?.dutchMintAppId}) and create a new one with updated configuration.
+                          </>
+                        ) : (
+                          <>
+                            Deploy a smart contract for Dutch auction bulk minting. Users can join a queue and get discounted rates when threshold is met.
+                          </>
+                        )}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {isRedeploying && (
+                        <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <p className="text-sm text-orange-900 dark:text-orange-100">
+                            <strong>⚠️ Redeployment Warning:</strong> This will permanently delete the existing contract (App ID: {selectedMarketplace?.dutchMintAppId}). All queue data and escrowed funds will be lost. Make sure to process any pending refunds before redeploying.
+                          </p>
+                        </div>
+                      )}
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <p className="text-sm text-blue-900 dark:text-blue-100">
+                          <strong>What is Dutch Mint?</strong> Users join a minting queue and lock funds in escrow. When the threshold is met, batch minting triggers at a discounted rate (e.g., 0.007 ALGO vs 0.01 ALGO per NFT).
+                        </p>
+                      </div>
+
+                      {!isConnected ? (
+                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                          <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                            <strong>Wallet Required:</strong> Please connect your wallet to deploy the contract. The connected wallet will be used to sign the deployment transaction.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <div>
+                              <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                                Wallet Connected
+                              </p>
+                              <p className="text-xs text-green-700 dark:text-green-300 font-mono mt-1">
+                                {account?.address}
+                              </p>
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                This wallet will be used to deploy the contract. Needs ~0.1 ALGO for deployment.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="platformAddress">Platform Address *</Label>
+                          <Input
+                            id="platformAddress"
+                            value={dutchMintConfig.platformAddress}
+                            onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, platformAddress: e.target.value })}
+                            placeholder="Algorand address"
+                            className="font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Receives payments when threshold is met
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="escrowAddress">Escrow Address *</Label>
+                          <Input
+                            id="escrowAddress"
+                            value={dutchMintConfig.escrowAddress}
+                            onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, escrowAddress: e.target.value })}
+                            placeholder="Algorand address"
+                            className="font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Holds locked funds until threshold
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="threshold">Threshold</Label>
+                          <Input
+                            id="threshold"
+                            type="number"
+                            value={dutchMintConfig.threshold}
+                            onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, threshold: parseInt(e.target.value) || 100 })}
+                            min="1"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Min NFTs to trigger
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="baseCost">Base Cost (ALGO)</Label>
+                          <Input
+                            id="baseCost"
+                            type="number"
+                            step="0.001"
+                            value={dutchMintConfig.baseCost}
+                            onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, baseCost: parseFloat(e.target.value) || 0.01 })}
+                            min="0"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Individual mint price
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="effectiveCost">Effective Cost (ALGO)</Label>
+                          <Input
+                            id="effectiveCost"
+                            type="number"
+                            step="0.001"
+                            value={dutchMintConfig.effectiveCost}
+                            onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, effectiveCost: parseFloat(e.target.value) || 0.007 })}
+                            min="0"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Bulk mint price
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="timeWindow">Time Window (seconds)</Label>
+                        <Input
+                          id="timeWindow"
+                          type="number"
+                          value={dutchMintConfig.timeWindow}
+                          onChange={(e) => setDutchMintConfig({ ...dutchMintConfig, timeWindow: parseInt(e.target.value) || 86400 })}
+                          min="1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Time to reach threshold (86400 = 24 hours)
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-4 border-t">
+                        <Button variant="outline" onClick={() => setShowDeployDutchMintDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleDeployDutchMint}
+                          disabled={deployingDutchMint || !isConnected}
+                        >
+                          {deployingDutchMint ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              {isRedeploying ? 'Redeploying...' : 'Deploying...'}
+                            </>
+                          ) : (
+                            <>
+                              {isRedeploying ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                  Redeploy Contract
+                                </>
+                              ) : (
+                                <>
+                                  <Rocket className="w-4 h-4 mr-2" />
+                                  Deploy Contract
+                                </>
+                              )}
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

@@ -249,7 +249,7 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null)
 
-  const { isConnected, account, connect } = useWallet()
+  const { isConnected, account, connect, signMessage, signTransactions } = useWallet()
 
   const fetchCollections = async () => {
     try {
@@ -310,42 +310,188 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
     }
   }
 
-  // Create a trading order
+  // Create a trading order (listing) with signed order
   const createTradingOrder = async (nftId: string, type: "buy" | "sell", price: number) => {
     try {
-      if (!account) {
+      if (!account || !account.address) {
         alert("Please connect your wallet first")
         return
       }
 
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/orders`, {
+      // Get NFT details to get assetId
+      const nftResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/nfts`)
+      if (!nftResponse.ok) {
+        throw new Error("Failed to fetch NFT details")
+      }
+      const nftData = await nftResponse.json()
+      const nft = nftData.nfts?.find((n: NFT) => n.id === nftId)
+      
+      if (!nft || !nft.assetId) {
+        alert("NFT not found or not minted")
+        return
+      }
+
+      // Create order payload
+      const orderPayload = {
+        marketplaceId: params.marketplaceId,
+        nftId,
+        assetId: nft.assetId,
+        sellerAddress: account.address,
+        price,
+        currency: "ALGO",
+        expiresInSeconds: 7 * 24 * 60 * 60, // 7 days
+      }
+
+      // Create order payload and sign it
+      const { createOrderPayload, serializeOrderPayload } = await import("@/lib/trading/order-signing")
+      
+      // Create order payload
+      const orderPayloadObj = createOrderPayload({
+        marketplaceId: params.marketplaceId,
+        nftId,
+        assetId: nft.assetId,
+        sellerAddress: account.address,
+        price,
+        currency: "ALGO",
+        expiresInSeconds: 7 * 24 * 60 * 60, // 7 days
+      })
+
+      // Serialize for signing
+      const payloadString = serializeOrderPayload(orderPayloadObj)
+
+      // Sign the order with wallet
+      try {
+        // Use wallet's signMessage to sign the order
+        // Note: In production, you might want to use a transaction-based signature
+        // for better security, but signMessage works for off-chain orderbook
+        const signature = await signMessage(payloadString)
+        
+        // Create signed order
+        const signedOrder = {
+          ...orderPayloadObj,
+          signature,
+          orderId: `order-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+        }
+
+        // Submit signed order to API
+        const response = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ signedOrder }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("Trading order created:", data)
+          // Refresh orders and NFTs
+          fetchTradingOrders()
+          if (selectedCollection) {
+            fetchNFTs(selectedCollection.id)
+          }
+          setShowCreateOrder(false)
+          setSelectedNFT(null)
+          alert("Listing created successfully!")
+        } else {
+          const error = await response.json()
+          alert(`Failed to create order: ${error.error}`)
+        }
+      } catch (signError: any) {
+        console.error("Error signing order:", signError)
+        alert(`Failed to sign order: ${signError.message || "Unknown error"}`)
+      }
+    } catch (error: any) {
+      console.error("Error creating trading order:", error)
+      alert(`Failed to create trading order: ${error.message || "Unknown error"}`)
+    }
+  }
+
+  // Execute trade (buy NFT from listing)
+  const executeTrade = async (orderId: string) => {
+    try {
+      if (!account || !account.address) {
+        alert("Please connect your wallet first")
+        return
+      }
+
+      // Step 1: Prepare trade transaction group
+      const prepareResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/execute`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          nftId,
-          type,
-          price,
-          currency: "ALGO",
-          userAddress: account,
+          orderId,
+          buyerAddress: account.address,
         }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log("Trading order created:", data)
-        // Refresh orders
-        fetchTradingOrders()
-        setShowCreateOrder(false)
-        setSelectedNFT(null)
-      } else {
-        const error = await response.json()
-        alert(`Failed to create order: ${error.error}`)
+      if (!prepareResponse.ok) {
+        const error = await prepareResponse.json()
+        throw new Error(error.error || "Failed to prepare trade")
       }
-    } catch (error) {
-      console.error("Error creating trading order:", error)
-      alert("Failed to create trading order")
+
+      const prepareData = await prepareResponse.json()
+      const {
+        transactions,
+        buyerTransactionIndices,
+        sellerTransactionIndices,
+        transactionInfo,
+        transactionGroup,
+      } = prepareData
+
+      // Step 2: Sign buyer transactions
+      try {
+        // Only sign transactions that the buyer needs to sign
+        const buyerTransactions = buyerTransactionIndices.map(
+          (idx: number) => transactions[idx]
+        )
+
+        const signedBuyerTransactions = await signTransactions(buyerTransactions)
+
+        // Reconstruct full transaction array with signed buyer transactions
+        const allSignedTransactions = [...transactions]
+        buyerTransactionIndices.forEach((idx: number, i: number) => {
+          allSignedTransactions[idx] = signedBuyerTransactions[i]
+        })
+
+        // Step 3: Submit trade
+        const executeResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/trading/execute`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId,
+            signedTransactions: allSignedTransactions,
+            buyerWalletAddress: account.address,
+            transactionGroup: transactions, // Original unsigned transactions
+            buyerTransactionIndices,
+            sellerTransactionIndices,
+          }),
+        })
+
+        if (executeResponse.ok) {
+          const executeData = await executeResponse.json()
+          console.log("Trade executed:", executeData)
+          alert(`Trade successful! Transaction: ${executeData.transactionId}`)
+          // Refresh data
+          fetchTradingOrders()
+          if (selectedCollection) {
+            fetchNFTs(selectedCollection.id)
+          }
+        } else {
+          const error = await executeResponse.json()
+          throw new Error(error.error || "Failed to execute trade")
+        }
+      } catch (signError: any) {
+        console.error("Error signing transactions:", signError)
+        alert(`Failed to sign transactions: ${signError.message || "Unknown error"}`)
+      }
+    } catch (error: any) {
+      console.error("Error executing trade:", error)
+      alert(`Failed to execute trade: ${error.message || "Unknown error"}`)
     }
   }
 
@@ -821,23 +967,27 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                          className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
                         >
-                          <div className="aspect-square relative">
-                            <Image
-                              src={nft.image}
-                              alt={nft.name}
-                              fill
-                              className="object-cover"
-                            />
+                          <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}/trade/${nft.id}`}>
+                            <div className="aspect-square relative cursor-pointer">
+                              <Image
+                                src={nft.image}
+                                alt={nft.name}
+                                fill
+                                className="object-cover"
+                              />
                             {nft.rarityScore && (
                               <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                                 #{nft.rarityScore}
               </div>
                               )}
                             </div>
+                          </Link>
                           <div className="p-3">
-                            <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">{nft.name}</h3>
+                            <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}/trade/${nft.id}`}>
+                              <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate hover:text-blue-500 cursor-pointer">{nft.name}</h3>
+                            </Link>
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-blue-500 font-semibold">
                                 {formatPrice(nft.price)}
@@ -848,28 +998,59 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           </div>
                             {isConnected && (
                               <div className="flex gap-2 mt-3">
-                  <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="flex-1 text-xs"
-                                  onClick={() => {
-                                    setSelectedNFT(nft)
-                                    setShowCreateOrder(true)
-                                  }}
-                                >
-                                  Buy
-                  </Button>
-                  <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="flex-1 text-xs"
-                                  onClick={() => {
-                                    setSelectedNFT(nft)
-                                    setShowCreateOrder(true)
-                                  }}
-                                >
-                                  Sell
-                  </Button>
+                                {(() => {
+                                  // Find active listing for this NFT
+                                  const activeListing = tradingOrders.find(
+                                    (order: any) =>
+                                      order.nftId === nft.id &&
+                                      order.status === "active" &&
+                                      order.type === "sell" &&
+                                      order.sellerAddress?.toLowerCase() !== account?.address?.toLowerCase()
+                                  )
+                                  
+                                  if (activeListing) {
+                                    // Show Buy button with listing price
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        className="flex-1 text-xs"
+                                        onClick={() => executeTrade(activeListing.id)}
+                                      >
+                                        Buy {formatPrice(activeListing.price)}
+                                      </Button>
+                                    )
+                                  } else {
+                                    // No active listing - show Buy button that opens dialog
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 text-xs"
+                                        onClick={() => {
+                                          setSelectedNFT(nft)
+                                          setShowCreateOrder(true)
+                                        }}
+                                        disabled
+                                      >
+                                        No Listing
+                                      </Button>
+                                    )
+                                  }
+                                })()}
+                                {account?.address?.toLowerCase() === nft.owner?.toLowerCase() && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 text-xs"
+                                    onClick={() => {
+                                      setSelectedNFT(nft)
+                                      setShowCreateOrder(true)
+                                    }}
+                                  >
+                                    {nft.listed ? "Update" : "List"}
+                                  </Button>
+                                )}
                         </div>
                             )}
               </div>
@@ -887,16 +1068,20 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                           className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
                         >
                             <div className="flex items-center gap-4">
-                              <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                                <Image
-                                src={nft.image}
-                                alt={nft.name}
-                                  fill
-                                  className="object-cover"
-                                />
-                              </div>
+                              <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}/trade/${nft.id}`}>
+                                <div className="relative w-16 h-16 rounded-lg overflow-hidden cursor-pointer">
+                                  <Image
+                                  src={nft.image}
+                                  alt={nft.name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              </Link>
                             <div className="flex-1">
-                              <h3 className="font-medium text-gray-900 dark:text-white">{nft.name}</h3>
+                              <Link href={`/marketplace/${params.merchantId}/${params.marketplaceId}/trade/${nft.id}`}>
+                                <h3 className="font-medium text-gray-900 dark:text-white hover:text-blue-500 cursor-pointer">{nft.name}</h3>
+                              </Link>
                               <p className="text-gray-500 dark:text-gray-400 text-sm">#{nft.id.slice(-4)}</p>
                               </div>
                               <div className="text-right">
@@ -908,28 +1093,55 @@ export default function TradePage({ params }: { params: { merchantId: string; ma
                               </div>
                               {isConnected && (
                                 <div className="flex gap-2 mt-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs"
-                                    onClick={() => {
-                                      setSelectedNFT(nft)
-                                      setShowCreateOrder(true)
-                                    }}
-                                  >
-                                    Buy
-                </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs"
-                                    onClick={() => {
-                                      setSelectedNFT(nft)
-                                      setShowCreateOrder(true)
-                                    }}
-                                  >
-                                    Sell
-                                  </Button>
+                                  {(() => {
+                                    // Find active listing for this NFT
+                                    const activeListing = tradingOrders.find(
+                                      (order: any) =>
+                                        order.nftId === nft.id &&
+                                        order.status === "active" &&
+                                        order.type === "sell" &&
+                                        order.sellerAddress?.toLowerCase() !== account?.address?.toLowerCase()
+                                    )
+                                    
+                                    if (activeListing) {
+                                      // Show Buy button with listing price
+                                      return (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          className="text-xs"
+                                          onClick={() => executeTrade(activeListing.id)}
+                                        >
+                                          Buy {formatPrice(activeListing.price)}
+                                        </Button>
+                                      )
+                                    } else {
+                                      // No active listing
+                                      return (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs"
+                                          disabled
+                                        >
+                                          No Listing
+                                        </Button>
+                                      )
+                                    }
+                                  })()}
+                                  {account?.address?.toLowerCase() === nft.owner?.toLowerCase() && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-xs"
+                                      onClick={() => {
+                                        setSelectedNFT(nft)
+                                        setShowCreateOrder(true)
+                                      }}
+                                    >
+                                      {nft.listed ? "Update" : "List"}
+                                    </Button>
+                                  )}
               </div>
                                 )}
                               </div>

@@ -221,7 +221,16 @@ export default function NFTManagementPage() {
                     <div>
                       <CardTitle className="text-lg">{event.title}</CardTitle>
                       <CardDescription>
-                        {event.category} • {event.date}
+                        {event.category} • {(() => {
+                          const date = event.date as any
+                          if (typeof date === 'string') {
+                            return date
+                          }
+                          if (date && typeof date === 'object' && '_seconds' in date) {
+                            return new Date(date._seconds * 1000).toLocaleDateString()
+                          }
+                          return date || 'N/A'
+                        })()}
                       </CardDescription>
                     </div>
                     {getStatusBadge(event)}
@@ -275,7 +284,19 @@ export default function NFTManagementPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Created:</span>
-                            <span>{event.nftCreatedAt || 'N/A'}</span>
+                            <span>
+                              {(() => {
+                                const createdAt = event.nftCreatedAt as any
+                                if (!createdAt) return 'N/A'
+                                if (typeof createdAt === 'string') {
+                                  return new Date(createdAt).toLocaleString()
+                                }
+                                if (createdAt && typeof createdAt === 'object' && '_seconds' in createdAt) {
+                                  return new Date(createdAt._seconds * 1000).toLocaleString()
+                                }
+                                return 'N/A'
+                              })()}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Royalty:</span>

@@ -148,7 +148,7 @@ export class DutchMintContract {
         sender: callerAddress,
         suggestedParams,
         appIndex: appId,
-        appArgs: [new Uint8Array([0x69, 0x6e, 0x69, 0x74])], // "init"
+        appArgs: [new Uint8Array(Buffer.from("init"))], // "init" as ASCII bytes
       })
 
       const signedTxn = initTxn.signTxn(callerPrivateKey)
@@ -164,18 +164,64 @@ export class DutchMintContract {
   }
 
   /**
+   * Check if account has opted in to the application
+   */
+  static async isOptedIn(userAddress: string, appId: number): Promise<boolean> {
+    try {
+      const accountInfo = await algodClient.accountInformation(userAddress).do()
+      const apps = accountInfo.appsLocalState || []
+      const isOptedIn = apps.some((app: any) => app.id === appId)
+      console.log(`Opt-in check for ${userAddress} to app ${appId}: ${isOptedIn}`)
+      return isOptedIn
+    } catch (error: any) {
+      console.error('Error checking opt-in status:', error)
+      // If account doesn't exist or other error, assume not opted in
+      // But log the error for debugging
+      if (error.message && error.message.includes('does not exist')) {
+        return false
+      }
+      // For other errors, throw to surface the issue
+      throw new Error(`Failed to check opt-in status: ${error.message || error}`)
+    }
+  }
+
+  /**
+   * Create opt-in transaction for the application
+   */
+  static async createOptInTransaction(userAddress: string, appId: number): Promise<algosdk.Transaction> {
+    try {
+      const suggestedParams = await algodClient.getTransactionParams().do()
+      const optInTxn = algosdk.makeApplicationOptInTxnFromObject({
+        sender: userAddress,
+        appIndex: appId,
+        suggestedParams,
+      })
+      return optInTxn
+    } catch (error) {
+      console.error('Error creating opt-in transaction:', error)
+      throw new Error('Failed to create opt-in transaction')
+    }
+  }
+
+  /**
    * Join the minting queue
    */
   static async joinQueue(params: JoinQueueParams): Promise<{
     transactions: algosdk.Transaction[]
     groupId: string
+    needsOptIn: boolean
   }> {
     try {
+      // Check if account has opted in
+      const isOptedIn = await this.isOptedIn(params.userAddress, params.appId)
+      
       // Check account balance before creating transactions
       const accountInfo = await algodClient.accountInformation(params.userAddress).do()
       const accountBalance = Number(accountInfo.amount)
       
-      // Calculate required balance: payment amount + transaction fees (2000 microAlgos for 2 transactions)
+      // Calculate required balance: payment amount + transaction fees
+      // If not opted in, need fees for 3 transactions (opt-in + app call + payment)
+      // If opted in, need fees for 2 transactions (app call + payment)
       const suggestedParams = await algodClient.getTransactionParams().do()
 
       // Get effective cost - use provided value or read from contract
@@ -192,12 +238,13 @@ export class DutchMintContract {
       }
 
       const paymentAmount = effectiveCostMicroAlgos * params.requestCount
-      const minRequiredBalance = paymentAmount + 2000 // Payment + fees for 2 transactions
+      const transactionFee = isOptedIn ? 2000 : 3000 // 2 or 3 transactions
+      const minRequiredBalance = paymentAmount + transactionFee
       
       if (accountBalance < minRequiredBalance) {
         throw new Error(
           `Insufficient balance. Account has ${accountBalance / 1000000} ALGO but needs at least ${minRequiredBalance / 1000000} ALGO ` +
-          `(${paymentAmount / 1000000} ALGO for payment + 0.002 ALGO for fees). ` +
+          `(${paymentAmount / 1000000} ALGO for payment + ${transactionFee / 1000000} ALGO for fees). ` +
           `Please fund your account with testnet ALGO from https://testnet.algoexplorer.io/dispenser`
         )
       }
@@ -215,16 +262,26 @@ export class DutchMintContract {
         }
       }
 
+      // Create transactions array
+      const transactions: algosdk.Transaction[] = []
+
+      // Add opt-in transaction if needed
+      if (!isOptedIn) {
+        const optInTxn = await this.createOptInTransaction(params.userAddress, params.appId)
+        transactions.push(optInTxn)
+      }
+
       // Create application call transaction
       const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
         sender: params.userAddress,
         suggestedParams,
         appIndex: params.appId,
         appArgs: [
-          new Uint8Array([0x6a, 0x6f, 0x69, 0x6e]), // "join_queue"
+          new Uint8Array(Buffer.from("join_queue")), // "join_queue" as ASCII bytes
           algosdk.encodeUint64(params.requestCount),
         ],
       })
+      transactions.push(appCallTxn)
 
       // Create payment transaction to escrow
       const paymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -234,14 +291,16 @@ export class DutchMintContract {
         suggestedParams,
         note: new TextEncoder().encode(`Dutch Mint Queue: ${params.requestCount} assets`),
       })
+      transactions.push(paymentTxn)
 
-      // Group transactions
-      algosdk.assignGroupID([appCallTxn, paymentTxn])
-      const groupId = Buffer.from(appCallTxn.group!).toString('base64')
+      // Group all transactions
+      algosdk.assignGroupID(transactions)
+      const groupId = Buffer.from(transactions[0].group!).toString('base64')
 
       return {
-        transactions: [appCallTxn, paymentTxn],
+        transactions,
         groupId,
+        needsOptIn: !isOptedIn,
       }
     } catch (error) {
       console.error('Error creating join queue transaction:', error)
@@ -273,7 +332,7 @@ export class DutchMintContract {
         sender: params.callerAddress,
         suggestedParams,
         appIndex: params.appId,
-        appArgs: [new Uint8Array([0x74, 0x72, 0x69, 0x67])], // "trigger_mint"
+        appArgs: [new Uint8Array(Buffer.from("trigger_mint"))], // "trigger_mint" as ASCII bytes
       })
 
       // Create payment transaction from escrow to platform
@@ -327,7 +386,7 @@ export class DutchMintContract {
         sender: params.userAddress,
         suggestedParams,
         appIndex: params.appId,
-        appArgs: [new Uint8Array([0x72, 0x65, 0x66, 0x75])], // "refund"
+        appArgs: [new Uint8Array(Buffer.from("refund"))], // "refund" as ASCII bytes
       })
 
       // Create payment transaction from escrow to user

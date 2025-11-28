@@ -4,8 +4,8 @@ import { requireRole } from "@/lib/auth/middleware"
 import algosdk from "algosdk"
 import { adminDb } from "@/lib/firebase/admin"
 
-// Get queue status
-export const GET = requireRole(["user", "merchant"])(async (
+// Get queue status (public - no auth required for read-only access)
+export const GET = async (
   request: NextRequest,
   { params }: { params: { id: string } }
 ) => {
@@ -31,17 +31,42 @@ export const GET = requireRole(["user", "merchant"])(async (
     // Get queue status from contract
     const queueStatus = await DutchMintContract.getQueueStatus(dutchMintAppId)
 
-    // Get user's escrowed amount if authenticated
+    // Get user's escrowed amount if authenticated (optional)
     const auth = (request as any).auth
     let userEscrowed = 0
-    if (auth?.uid) {
-      const user = await adminDb.collection('users').doc(auth.uid).get()
-      const userData = user.data()
-      if (userData?.walletAddress) {
+    let userEscrowedAlgos = 0
+    
+    // Try to get wallet address from query params or auth
+    const walletAddress = request.nextUrl.searchParams.get('walletAddress')
+    
+    if (walletAddress) {
+      // If wallet address is provided in query, use it directly
+      try {
         userEscrowed = await DutchMintContract.getUserEscrowedAmount(
-          userData.walletAddress,
+          walletAddress,
           dutchMintAppId
         )
+        userEscrowedAlgos = userEscrowed / 1000000
+      } catch (error) {
+        // User might not have opted in yet, which is fine
+        console.warn("Could not get user escrowed amount:", error)
+      }
+    } else if (auth?.userId || auth?.uid) {
+      // Try to get from authenticated user
+      try {
+        const userId = auth.uid || auth.userId
+        const user = await adminDb.collection('users').doc(userId).get()
+        const userData = user.data()
+        if (userData?.walletAddress) {
+          userEscrowed = await DutchMintContract.getUserEscrowedAmount(
+            userData.walletAddress,
+            dutchMintAppId
+          )
+          userEscrowedAlgos = userEscrowed / 1000000
+        }
+      } catch (error) {
+        // User might not exist or not have wallet, which is fine
+        console.warn("Could not get user escrowed amount from auth:", error)
       }
     }
 
@@ -50,7 +75,7 @@ export const GET = requireRole(["user", "merchant"])(async (
       queueStatus: {
         ...queueStatus,
         userEscrowed,
-        userEscrowedAlgos: userEscrowed / 1000000,
+        userEscrowedAlgos,
       },
     })
   } catch (error: any) {
@@ -59,7 +84,7 @@ export const GET = requireRole(["user", "merchant"])(async (
       error: error.message || "Failed to get queue status",
     }, { status: 500 })
   }
-})
+}
 
 // Join queue
 export const POST = requireRole(["user", "merchant"])(async (
@@ -111,6 +136,22 @@ export const POST = requireRole(["user", "merchant"])(async (
       }, { status: 404 })
     }
 
+    // Prevent marketplace owner/creator from joining the queue
+    const marketplaceWalletAddress = marketplace?.walletAddress
+    const platformAddress = dutchMintConfig?.platformAddress
+    const configEscrowAddress = dutchMintConfig?.escrowAddress
+
+    // Check if user is the marketplace owner or contract addresses
+    if (
+      userWalletAddress === marketplaceWalletAddress ||
+      userWalletAddress === platformAddress ||
+      userWalletAddress === configEscrowAddress
+    ) {
+      return NextResponse.json({
+        error: "Marketplace owners and contract addresses cannot join the Dutch mint queue",
+      }, { status: 403 })
+    }
+
     // Get effective cost from contract, fallback to config if contract state not available
     let effectiveCost: number
     try {
@@ -132,7 +173,7 @@ export const POST = requireRole(["user", "merchant"])(async (
       escrowAddress = await DutchMintContract.getEscrowAddress(dutchMintAppId)
     } catch (error) {
       // Fallback to config value
-      escrowAddress = dutchMintConfig?.escrowAddress
+      escrowAddress = configEscrowAddress
       // Only log if config is also missing
       if (!escrowAddress) {
         console.warn("Escrow address not found in contract state or config")
@@ -145,8 +186,27 @@ export const POST = requireRole(["user", "merchant"])(async (
       }, { status: 500 })
     }
 
+    // Check opt-in status and record in database
+    const isOptedIn = await DutchMintContract.isOptedIn(userWalletAddress, dutchMintAppId)
+    
+    // Record opt-in status in database (create or update user opt-in record)
+    try {
+      const optInRef = adminDb.collection('dutch_mint_opt_ins').doc(`${userWalletAddress}_${dutchMintAppId}`)
+      await optInRef.set({
+        userAddress: userWalletAddress,
+        appId: dutchMintAppId,
+        marketplaceId,
+        isOptedIn,
+        lastChecked: new Date(),
+        userId: auth?.uid || null,
+      }, { merge: true })
+    } catch (optInError) {
+      console.warn("Failed to record opt-in status in database:", optInError)
+      // Don't fail the request if database update fails
+    }
+
     // Create join queue transaction with effective cost and escrow address
-    const { transactions, groupId } = await DutchMintContract.joinQueue({
+    const { transactions, groupId, needsOptIn } = await DutchMintContract.joinQueue({
       userAddress: userWalletAddress,
       requestCount,
       appId: dutchMintAppId,
@@ -164,6 +224,8 @@ export const POST = requireRole(["user", "merchant"])(async (
       status: 'pending',
       createdAt: new Date(),
       groupId,
+      needsOptIn,
+      isOptedIn, // Record the opt-in status at time of request
     })
 
     // Encode transactions for client
@@ -176,7 +238,10 @@ export const POST = requireRole(["user", "merchant"])(async (
       queueRequestId: queueRequestRef.id,
       transactions: encodedTransactions,
       groupId,
-      message: "Queue request created. Please sign transactions to join the queue.",
+      needsOptIn, // Inform frontend if opt-in transaction is included
+      message: needsOptIn 
+        ? "Queue request created. Please sign transactions to opt-in and join the queue."
+        : "Queue request created. Please sign transactions to join the queue.",
     })
   } catch (error: any) {
     console.error("Error joining queue:", error)
@@ -213,8 +278,103 @@ export const PUT = requireRole(["user", "merchant"])(async (
       new Uint8Array(Buffer.from(tx, 'base64'))
     )
 
-    const result = await algodClient.sendRawTransaction(signedTxns).do()
-    const txId = result.txid
+    let result
+    let txId
+    try {
+      result = await algodClient.sendRawTransaction(signedTxns).do()
+      txId = result.txid
+    } catch (submitError: any) {
+      // Check if error is due to account already opted in
+      const errorMessage = submitError.message || submitError.body?.message || JSON.stringify(submitError)
+      
+      if (errorMessage.includes('already opted in') || errorMessage.includes('has already opted in')) {
+        console.log("Account already opted in, retrying without opt-in transaction...")
+        
+        // Get queue request to check if it had opt-in
+        if (queueRequestId) {
+          const queueRequestDoc = await adminDb.collection('dutch_mint_queue').doc(queueRequestId).get()
+          if (queueRequestDoc.exists) {
+            const queueRequest = queueRequestDoc.data()
+            const marketplaceId = queueRequest?.marketplaceId
+            const userAddress = queueRequest?.userAddress
+            const requestCount = queueRequest?.requestCount
+            const nftIds = queueRequest?.nftIds || []
+            
+            if (marketplaceId && userAddress && requestCount) {
+              // Get marketplace config
+              const marketplaceDoc = await adminDb.collection('marketplaces').doc(marketplaceId).get()
+              if (marketplaceDoc.exists) {
+                const marketplace = marketplaceDoc.data()
+                const dutchMintAppId = marketplace?.dutchMintAppId
+                const dutchMintConfig = marketplace?.dutchMintConfig
+                
+                if (dutchMintAppId) {
+                  // Get effective cost and escrow address
+                  let effectiveCost: number
+                  try {
+                    effectiveCost = await DutchMintContract.getEffectiveCost(dutchMintAppId)
+                  } catch (error) {
+                    effectiveCost = dutchMintConfig?.effectiveCost 
+                      ? Math.round(dutchMintConfig.effectiveCost * 1000000)
+                      : 7000
+                  }
+                  
+                  let escrowAddress: string | undefined
+                  try {
+                    escrowAddress = await DutchMintContract.getEscrowAddress(dutchMintAppId)
+                  } catch (error) {
+                    escrowAddress = dutchMintConfig?.escrowAddress
+                  }
+                  
+                  if (escrowAddress) {
+                    // Create new transaction group without opt-in
+                    const { transactions: newTransactions, groupId: newGroupId } = await DutchMintContract.joinQueue({
+                      userAddress,
+                      requestCount,
+                      appId: dutchMintAppId,
+                      effectiveCost,
+                      escrowAddress,
+                    })
+                    
+                    // Update queue request with new group ID
+                    await adminDb.collection('dutch_mint_queue').doc(queueRequestId).update({
+                      groupId: newGroupId,
+                      needsOptIn: false,
+                      isOptedIn: true,
+                      retryReason: 'already_opted_in',
+                    })
+                    
+                    // Return new transactions to client
+                    const encodedTransactions = newTransactions.map(txn => ({
+                      txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64'),
+                    }))
+                    
+                    return NextResponse.json({
+                      success: true,
+                      queueRequestId,
+                      transactions: encodedTransactions,
+                      groupId: newGroupId,
+                      needsOptIn: false,
+                      message: "Account is already opted in. Please sign the updated transactions to join the queue.",
+                      retry: true,
+                    }, { status: 200 })
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // If we can't retry, return error
+        return NextResponse.json({
+          error: "Account is already opted in to this application. Please try again.",
+          retry: true,
+        }, { status: 400 })
+      }
+      
+      // Re-throw other errors
+      throw submitError
+    }
 
     // Wait for confirmation
     await algosdk.waitForConfirmation(algodClient, txId, 4)

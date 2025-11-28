@@ -101,6 +101,7 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const [isTransactionPending, setIsTransactionPending] = useState(false)
   const [showDutchDialog, setShowDutchDialog] = useState(false)
   const [selectedForDutch, setSelectedForDutch] = useState<DraftNFT[]>([])
+  const [marketplaceData, setMarketplaceData] = useState<any>(null)
 
   const { isConnected, account, connect, disconnect } = useWallet()
   const { toast } = useToast()
@@ -386,7 +387,9 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
   const fetchDutchQueueStatus = async () => {
     setLoadingQueueStatus(true)
     try {
-      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`)
+      // Include wallet address in query if connected to get user's escrowed amount
+      const walletParam = account?.address ? `?walletAddress=${account.address}` : ''
+      const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue${walletParam}`)
       if (response.ok) {
         const data = await response.json()
         setDutchQueueStatus(data.queueStatus)
@@ -404,9 +407,25 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
   useEffect(() => {
     fetchDutchQueueStatus()
-    // Poll every 10 seconds for queue updates
-    const interval = setInterval(fetchDutchQueueStatus, 10000)
+    // Poll every 5 seconds for queue updates (more frequent for real-time feel)
+    const interval = setInterval(fetchDutchQueueStatus, 5000)
     return () => clearInterval(interval)
+  }, [params.marketplaceId, account?.address]) // Re-fetch when wallet address changes
+
+  // Fetch marketplace data to check owner status
+  useEffect(() => {
+    const fetchMarketplace = async () => {
+      try {
+        const response = await fetch(`/api/marketplaces/${params.marketplaceId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setMarketplaceData(data.marketplace)
+        }
+      } catch (error) {
+        console.error("Failed to fetch marketplace data:", error)
+      }
+    }
+    fetchMarketplace()
   }, [params.marketplaceId])
 
   // Cleanup: Stop playing media when unmounting
@@ -645,6 +664,50 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         throw new Error('Wallet address is required')
       }
 
+      // Fetch marketplace data to check owner status (backend will also validate)
+      let marketplaceInfo: any = null
+      try {
+        const marketplaceRes = await fetch(`/api/marketplaces/${params.marketplaceId}`)
+        if (marketplaceRes.ok) {
+          const marketplaceData = await marketplaceRes.json()
+          marketplaceInfo = marketplaceData.marketplace
+        }
+      } catch (error) {
+        console.error("Failed to fetch marketplace data:", error)
+      }
+
+      // Prevent marketplace owner/creator from joining the queue (frontend check)
+      if (marketplaceInfo?.walletAddress && account.address === marketplaceInfo.walletAddress) {
+        toast({
+          title: "Cannot Join Queue",
+          description: "Marketplace owners cannot join the Dutch mint queue.",
+          variant: "destructive"
+        })
+        setJoiningQueue(false)
+        setIsTransactionPending(false)
+        return
+      }
+
+      // Also check against contract addresses if available
+      if (marketplaceInfo?.dutchMintConfig) {
+        const platformAddress = marketplaceInfo.dutchMintConfig.platformAddress
+        const escrowAddress = marketplaceInfo.dutchMintConfig.escrowAddress
+        
+        if (
+          (platformAddress && account.address === platformAddress) ||
+          (escrowAddress && account.address === escrowAddress)
+        ) {
+          toast({
+            title: "Cannot Join Queue",
+            description: "Contract addresses cannot join the Dutch mint queue.",
+            variant: "destructive"
+          })
+          setJoiningQueue(false)
+          setIsTransactionPending(false)
+          return
+        }
+      }
+
       const response = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -660,28 +723,82 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         throw new Error(error.error || 'Failed to join queue')
       }
 
-      const data = await response.json()
+      let data = await response.json()
       
-      // Sign all transactions as a group (Pera Wallet requires the complete group)
-      // The transactions are already grouped with assignGroupID on the backend
-      const transactionStrings = data.transactions.map((tx: any) => tx.txn)
-      const signedTransactions = await transactionSigner.signTransactions(
-        transactionStrings,
-        account.address
-      )
+      // Handle retry case (when account is already opted in)
+      let retryCount = 0
+      const maxRetries = 2
+      
+      while (retryCount <= maxRetries) {
+        // Sign all transactions as a group (Pera Wallet requires the complete group)
+        // The transactions are already grouped with assignGroupID on the backend
+        const transactionStrings = data.transactions.map((tx: any) => tx.txn)
+        const signedTransactions = await transactionSigner.signTransactions(
+          transactionStrings,
+          account.address
+        )
 
-      // Submit signed transactions
-      const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          signedTransactions,
-          queueRequestId: data.queueRequestId,
-        }),
-      })
+        // Submit signed transactions
+        const submitResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            signedTransactions,
+            queueRequestId: data.queueRequestId,
+          }),
+        })
 
-      if (!submitResponse.ok) {
-        throw new Error('Failed to submit transactions')
+        const submitData = await submitResponse.json()
+
+        if (submitResponse.ok && !submitData.retry) {
+          // Success, exit retry loop
+          break
+        }
+
+        // Check if backend returned new transactions for retry (account already opted in)
+        if (submitResponse.ok && submitData.retry && submitData.transactions) {
+          toast({
+            title: "Retrying",
+            description: submitData.message || "Account is already opted in. Retrying with updated transactions...",
+          })
+          // Use the new transactions from the backend response
+          data = {
+            ...data,
+            transactions: submitData.transactions,
+            groupId: submitData.groupId,
+            needsOptIn: submitData.needsOptIn || false,
+          }
+          retryCount++
+          continue
+        }
+
+        // If not ok, check if we should retry by fetching new transactions
+        if (!submitResponse.ok && submitData.retry && retryCount < maxRetries) {
+          toast({
+            title: "Retrying",
+            description: "Account is already opted in. Fetching new transactions...",
+          })
+          
+          // Fetch new transactions from backend
+          const retryResponse = await fetch(`/api/marketplaces/${params.marketplaceId}/mint/dutch-queue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nftIds: selectedForDutch.map(nft => nft.id),
+              requestCount: selectedForDutch.length,
+              walletAddress: account.address,
+            }),
+          })
+          
+          if (retryResponse.ok) {
+            data = await retryResponse.json()
+            retryCount++
+            continue
+          }
+        }
+        
+        // If no retry or retry failed, throw error
+        throw new Error(submitData.error || 'Failed to submit transactions')
       }
 
       toast({
@@ -691,7 +808,13 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
 
       setShowDutchDialog(false)
       setSelectedForDutch([])
+      
+      // Immediately refresh queue status and wait a bit for blockchain confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for confirmation
       await fetchDutchQueueStatus()
+      
+      // Also refresh draft NFTs in case any were affected
+      await fetchDraftNFTs()
     } catch (error: any) {
       console.error("Error joining queue:", error)
       
@@ -773,6 +896,8 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         description: "Batch minting has been triggered. NFTs will be minted shortly.",
       })
 
+      // Immediately refresh all data
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for confirmation
       await fetchDutchQueueStatus()
       await fetchDraftNFTs()
       await fetchUserNFTs()
@@ -855,6 +980,8 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
         description: `Successfully refunded ${data.refundAmountAlgos.toFixed(6)} ALGO.`,
       })
 
+      // Immediately refresh queue status
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds for confirmation
       await fetchDutchQueueStatus()
     } catch (error: any) {
       console.error("Error requesting refund:", error)
@@ -1222,18 +1349,29 @@ export default function MintPage({ params }: { params: { merchantId: string; mar
                                 </div>
                               ) : (
                                 <>
-                                  <Button
-                                    onClick={() => {
-                                      setSelectedForDutch(selectedNFTs)
-                                      setShowDutchDialog(true)
-                                    }}
-                                    disabled={selectedNFTs.length === 0}
-                                    style={getButtonStyle('primary')}
-                                    className="flex-1"
-                                  >
-                                    <Zap className="w-4 h-4 mr-2" />
-                                    Join Queue ({selectedNFTs.length} selected)
-                                  </Button>
+                                  {marketplaceData?.walletAddress && account?.address === marketplaceData.walletAddress ? (
+                                    <div className="flex-1 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                                      <div className="flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                        <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+                                          Marketplace owners cannot join the Dutch mint queue.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedForDutch(selectedNFTs)
+                                        setShowDutchDialog(true)
+                                      }}
+                                      disabled={selectedNFTs.length === 0}
+                                      style={getButtonStyle('primary')}
+                                      className="flex-1"
+                                    >
+                                      <Zap className="w-4 h-4 mr-2" />
+                                      Join Queue ({selectedNFTs.length} selected)
+                                    </Button>
+                                  )}
                                   {dutchQueueStatus.canTrigger && (
                                     <Button
                                       onClick={handleTriggerDutchMint}

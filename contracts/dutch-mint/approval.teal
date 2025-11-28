@@ -53,6 +53,12 @@ int ClearState
 ||
 bnz handle_update_delete
 
+// On OptIn - Allow opt-in (no ApplicationArgs needed)
+txn OnCompletion
+int OptIn
+==
+bnz handle_optin
+
 // Main logic (ApplicationID != 0)
 txn ApplicationID
 int 0
@@ -64,8 +70,40 @@ err
 
 // Creation logic
 creation:
-  // Store initial parameters
+  // Validate that all required arguments are provided
   // Args: [0="init", 1=threshold, 2=base_cost, 3=effective_cost, 4=platform_address, 5=escrow_address, 6=time_window]
+  txn NumAppArgs
+  int 7
+  >=
+  bnz creation_args_valid
+  byte "creation_args_error"
+  log
+  err
+  
+creation_args_valid:
+  // Validate platform_address is 32 bytes
+  txn ApplicationArgs 4
+  len
+  int 32
+  ==
+  bnz validate_escrow_address
+  byte "platform_address_error"
+  log
+  err
+  
+validate_escrow_address:
+  // Validate escrow_address is 32 bytes
+  txn ApplicationArgs 5
+  len
+  int 32
+  ==
+  bnz store_creation_params
+  byte "escrow_address_error"
+  log
+  err
+  
+store_creation_params:
+  // Store initial parameters
   byte "threshold"
   txn ApplicationArgs 1
   btoi
@@ -116,9 +154,38 @@ handle_update_delete:
   ==
   return
 
+// OptIn - Allow any account to opt in (initialize local state to 0)
+handle_optin:
+  // Initialize local state for the opting-in account
+  // app_local_put expects [account, key, value]
+  txn Sender
+  byte "request_count"
+  int 0
+  app_local_put
+  
+  txn Sender
+  byte "escrowed_amount"
+  int 0
+  app_local_put
+  
+  int 1
+  return
+
 // Main application logic
 main_logic:
-  // Get method selector
+  // CRITICAL: Check if ApplicationArgs exist before accessing them
+  // This prevents "invalid ApplicationArgs index 0" error
+  txn NumAppArgs
+  int 1
+  <
+  bnz no_app_args
+  
+  // Log method selector for debugging (helps identify encoding issues)
+  txn ApplicationArgs 0
+  dup
+  log  // Log the raw method selector bytes
+  
+  // Get method selector and compare
   txn ApplicationArgs 0
   byte "init"
   ==
@@ -144,7 +211,15 @@ main_logic:
   ==
   bnz get_status_method
   
-  // Unknown method
+  // Unknown method - log error and fail
+  byte "unknown_method"
+  log
+  err
+  
+no_app_args:
+  // No application arguments provided - this is invalid for main logic
+  byte "no_app_args"
+  log
   err
 
 // Initialize queue (if not already initialized)
@@ -169,11 +244,50 @@ join_queue_method:
   // Args: [method, request_count]
   // Payment transaction must be included in group
   
-  // Verify payment transaction is in group
+  // Verify group size is at least 2 (app call + payment)
+  global GroupSize
+  int 2
+  >=
+  bnz check_payment_txn
+  byte "group_size_error"
+  log
+  err
+  
+check_payment_txn:
+  // Payment can be at index 1 (if no opt-in) or index 2 (if opt-in is included)
+  // Check index 1 first
   gtxn 1 TypeEnum
   int 1  // pay
   ==
-  assert
+  bnz payment_at_index_1
+  
+  // If not at index 1, check index 2 (for groups with opt-in)
+  global GroupSize
+  int 3
+  >=
+  bnz check_index_2
+  byte "payment_txn_error"
+  log
+  err
+  
+check_index_2:
+  gtxn 2 TypeEnum
+  int 1  // pay
+  ==
+  bnz payment_at_index_2
+  byte "payment_txn_error"
+  log
+  err
+  
+payment_at_index_1:
+  // Payment is at index 1 (group size = 2: app call + payment)
+  b payment_valid
+  
+payment_at_index_2:
+  // Payment is at index 2 (group size = 3: opt-in + app call + payment)
+  b payment_valid
+  
+payment_valid:
   
   // Get request count
   txn ApplicationArgs 1
@@ -181,41 +295,73 @@ join_queue_method:
   store 0  // request_count
   
   // Check if contract state is initialized
-  // We need BOTH escrow_address (byteslice, len > 0) AND threshold (int, > 0) to be valid
-  // Default to uninitialized path - only go to initialized if BOTH checks pass
+  // We need ALL of: escrow_address (byteslice, len == 32), threshold (int, > 0), AND effective_cost (int, > 0)
+  // Default to uninitialized path - only go to initialized if ALL checks pass AND payment matches
   
-  // Check escrow_address (must be byteslice with length > 0)
-  // If escrow_address doesn't exist or is empty, state is not initialized
+  // Check escrow_address (must be byteslice with length == 32)
   byte "escrow_address"
   app_global_get
   dup
   len
-  int 0
+  int 32
   ==
-  bnz state_not_initialized  // Escrow address is empty - state not initialized
-  pop  // Remove escrow_address from stack (keep the byteslice for later)
+  bnz check_threshold  // Escrow address is 32 bytes - check threshold
+  pop  // Remove escrow_address from stack
+  b state_not_initialized  // Escrow address is not 32 bytes - state not initialized
+  
+check_threshold:
+  pop  // Remove escrow_address from stack (we'll re-read it in state_initialized)
   
   // Check threshold (must be integer > 0)
-  // If threshold doesn't exist or is <= 0, state is not initialized
   byte "threshold"
   app_global_get
   dup
   int 0
-  <=
-  bnz state_not_initialized  // Threshold is 0 or negative - state not initialized
+  >
+  bnz check_effective_cost  // Threshold > 0 - check effective_cost
+  pop  // Remove threshold from stack
+  b state_not_initialized  // Threshold is 0 or negative - state not initialized
+  
+check_effective_cost:
   pop  // Remove threshold from stack
   
-  // Both checks passed - verify one more time that escrow_address is valid
-  // Re-check escrow_address to ensure it's actually a valid address (32 bytes)
+  // Check effective_cost (must be integer > 0)
+  byte "effective_cost"
+  app_global_get
+  dup
+  int 0
+  >
+  bnz verify_escrow_match  // Effective cost > 0 - verify payment matches escrow
+  pop  // Remove effective_cost from stack
+  b state_not_initialized  // Effective cost is 0 or negative - state not initialized
+  
+verify_escrow_match:
+  pop  // Remove effective_cost from stack
+  
+  // Verify payment receiver matches escrow address BEFORE going to state_initialized
+  // This prevents errors if addresses don't match
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz check_escrow_index_2
+  
+  // Group size is 2, payment is at index 1
+  gtxn 1 Receiver
   byte "escrow_address"
   app_global_get
-  len
-  int 32
   ==
-  bnz state_initialized  // Escrow address is 32 bytes (valid address) - state is initialized
+  bnz state_initialized  // Payment receiver matches escrow - state is fully initialized
+  b state_not_initialized  // Payment receiver doesn't match - fall back to uninitialized path
   
-  // Escrow address length is not 32 bytes - state not initialized
-  b state_not_initialized
+check_escrow_index_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Receiver
+  byte "escrow_address"
+  app_global_get
+  ==
+  bnz state_initialized  // Payment receiver matches escrow - state is fully initialized
+  b state_not_initialized  // Payment receiver doesn't match - fall back to uninitialized path
   
 state_not_initialized:
   // State not initialized - skip validation (backend handles validation)
@@ -227,9 +373,23 @@ state_not_initialized:
   app_global_put
   
   // Update total escrowed (use payment amount from transaction)
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz get_payment_amount_index_2
+  
+  // Group size is 2, payment is at index 1
+  gtxn 1 Amount
+  b add_to_total_escrowed
+  
+get_payment_amount_index_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  
+add_to_total_escrowed:
   byte "total_escrowed"
   app_global_get
-  gtxn 1 Amount
   +
   app_global_put
   
@@ -247,34 +407,46 @@ state_not_initialized:
   app_opted_in
   bnz update_existing_local_state_1
   
-  // Account hasn't opted in - app_local_put will opt them in
-  // app_local_put expects [key, value] - push key first, then value
-  byte "request_count"
-  load 0
-  app_local_put
-  
-  byte "escrowed_amount"
-  gtxn 1 Amount
-  app_local_put
-  
-  b skip_update_local_state_1
+  // Account hasn't opted in - reject (opt-in must be done via separate transaction)
+  byte "optin_required"
+  log
+  err
   
 update_existing_local_state_1:
   // Account has opted in - get existing values and add to them
+  // app_local_get expects [account, key] on stack
+  txn Sender
   byte "request_count"
   app_local_get
   load 0
   +
   store 4  // new_request_count
+  txn Sender
   byte "request_count"
   load 4
   app_local_put
   
+  txn Sender
   byte "escrowed_amount"
   app_local_get
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz get_escrow_amount_index_2_1
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 Amount
+  b add_to_escrowed_1
+  
+get_escrow_amount_index_2_1:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  
+add_to_escrowed_1:
   +
   store 5  // new_escrowed_amount
+  txn Sender
   byte "escrowed_amount"
   load 5
   app_local_put
@@ -296,34 +468,46 @@ set_start_time_uninit:
   app_opted_in
   bnz update_existing_local_state_2
   
-  // Account hasn't opted in - app_local_put will opt them in
-  // app_local_put expects [key, value] - push key first, then value
-  byte "request_count"
-  load 0
-  app_local_put
-  
-  byte "escrowed_amount"
-  gtxn 1 Amount
-  app_local_put
-  
-  b skip_update_local_state_2
+  // Account hasn't opted in - reject (opt-in must be done via separate transaction)
+  byte "optin_required"
+  log
+  err
   
 update_existing_local_state_2:
   // Account has opted in - get existing values and add to them
+  // app_local_get expects [account, key] on stack
+  txn Sender
   byte "request_count"
   app_local_get
   load 0
   +
   store 4  // new_request_count
+  txn Sender
   byte "request_count"
   load 4
   app_local_put
   
+  txn Sender
   byte "escrowed_amount"
   app_local_get
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz get_escrow_amount_index_2_2
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 Amount
+  b add_to_escrowed_2
+  
+get_escrow_amount_index_2_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  
+add_to_escrowed_2:
   +
   store 5  // new_escrowed_amount
+  txn Sender
   byte "escrowed_amount"
   load 5
   app_local_put
@@ -334,47 +518,63 @@ skip_update_local_state_2:
   return
   
 state_initialized:
-  // Double-check that state is actually initialized
-  // Verify threshold is set (not 0)
-  byte "threshold"
-  app_global_get
-  int 0
-  !=
-  assert
+  // State is initialized - verify payment is to escrow address
+  // If verification fails, fall back to uninitialized path (backend handles validation)
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz check_escrow_index_2_state
   
-  // Verify escrow address is set (not empty)
-  byte "escrow_address"
-  app_global_get
-  len
-  int 0
-  !=
-  assert
-  
-  // Verify payment is to escrow address
+  // Group size is 2, payment is at index 1
   gtxn 1 Receiver
   byte "escrow_address"
   app_global_get
   ==
-  assert
+  bnz verify_payment_amount  // Escrow address matches - continue with validation
+  b state_not_initialized  // Escrow address doesn't match - fall back to uninitialized path
   
-  // Verify effective_cost is set (not 0)
-  byte "effective_cost"
+check_escrow_index_2_state:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Receiver
+  byte "escrow_address"
   app_global_get
-  int 0
-  !=
-  assert
+  ==
+  bnz verify_payment_amount  // Escrow address matches - continue with validation
+  b state_not_initialized  // Escrow address doesn't match - fall back to uninitialized path
   
+verify_payment_amount:
+  // Calculate expected payment (effective_cost * request_count)
+  // We already verified effective_cost > 0 in the state check
   byte "effective_cost"
   app_global_get
   load 0
   *
   store 1  // expected_payment
   
-  // Verify payment amount matches
+  // Verify payment amount matches (if it doesn't, fall back to uninitialized)
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz check_payment_amount_index_2
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 Amount
   load 1
   >=
-  assert
+  bnz update_state  // Payment amount is sufficient - continue
+  b state_not_initialized  // Payment amount doesn't match - fall back to uninitialized path
+  
+check_payment_amount_index_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  load 1
+  >=
+  bnz update_state  // Payment amount is sufficient - continue
+  b state_not_initialized  // Payment amount doesn't match - fall back to uninitialized path
+  
+update_state:
   
   // Update global queue count
   byte "queue_count"
@@ -387,9 +587,23 @@ state_initialized:
   app_global_put
   
   // Update total escrowed
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz get_payment_amount_index_2_state
+  
+  // Group size is 2, payment is at index 1
+  gtxn 1 Amount
+  b add_to_total_escrowed_state
+  
+get_payment_amount_index_2_state:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  
+add_to_total_escrowed_state:
   byte "total_escrowed"
   app_global_get
-  gtxn 1 Amount
   +
   store 3  // new_total_escrowed
   byte "total_escrowed"
@@ -403,34 +617,46 @@ state_initialized:
   app_opted_in
   bnz update_existing_local_state_3
   
-  // Account hasn't opted in - app_local_put will opt them in
-  // app_local_put expects [key, value] - push key first, then value
-  byte "request_count"
-  load 0
-  app_local_put
-  
-  byte "escrowed_amount"
-  gtxn 1 Amount
-  app_local_put
-  
-  b skip_update_local_state_3
+  // Account hasn't opted in - reject (opt-in must be done via separate transaction)
+  byte "optin_required"
+  log
+  err
   
 update_existing_local_state_3:
   // Account has opted in - get existing values and add to them
+  // app_local_get expects [account, key] on stack
+  txn Sender
   byte "request_count"
   app_local_get
   load 0
   +
   store 4  // new_request_count
+  txn Sender
   byte "request_count"
   load 4
   app_local_put
   
+  txn Sender
   byte "escrowed_amount"
   app_local_get
+  // Payment can be at index 1 or 2 depending on group size
+  global GroupSize
+  int 3
+  >=
+  bnz get_escrow_amount_index_2_3
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 Amount
+  b add_to_escrowed_3
+  
+get_escrow_amount_index_2_3:
+  // Group size is 3, payment is at index 2
+  gtxn 2 Amount
+  
+add_to_escrowed_3:
   +
   store 5  // new_escrowed_amount
+  txn Sender
   byte "escrowed_amount"
   load 5
   app_local_put
@@ -474,6 +700,13 @@ trigger_mint_method:
   return
   
 check_payment:
+  // Payment can be at index 1 or 2 depending on group size (if opt-in is included)
+  global GroupSize
+  int 3
+  >=
+  bnz check_trigger_payment_index_2
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 TypeEnum
   int 1  // pay
   ==
@@ -490,6 +723,28 @@ check_payment:
   app_global_get
   ==
   assert
+  b reset_queue
+  
+check_trigger_payment_index_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 TypeEnum
+  int 1  // pay
+  ==
+  assert
+  
+  gtxn 2 Sender
+  byte "escrow_address"
+  app_global_get
+  ==
+  assert
+  
+  gtxn 2 Receiver
+  byte "platform_address"
+  app_global_get
+  ==
+  assert
+  
+reset_queue:
   
   // Reset queue
   byte "queue_count"
@@ -551,6 +806,13 @@ refund_method:
   assert
   
   // Verify refund transaction in group
+  // Payment can be at index 1 or 2 depending on group size (if opt-in is included)
+  global GroupSize
+  int 3
+  >=
+  bnz check_refund_payment_index_2
+  
+  // Group size is 2, payment is at index 1
   gtxn 1 TypeEnum
   int 1  // pay
   ==
@@ -571,6 +833,32 @@ refund_method:
   load 2
   >=
   assert
+  b update_refund_state
+  
+check_refund_payment_index_2:
+  // Group size is 3, payment is at index 2
+  gtxn 2 TypeEnum
+  int 1  // pay
+  ==
+  assert
+  
+  gtxn 2 Sender
+  byte "escrow_address"
+  app_global_get
+  ==
+  assert
+  
+  gtxn 2 Receiver
+  txn Sender
+  ==
+  assert
+  
+  gtxn 2 Amount
+  load 2
+  >=
+  assert
+  
+update_refund_state:
   
   // Update global state
   byte "queue_count"

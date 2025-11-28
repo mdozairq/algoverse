@@ -23,7 +23,10 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      merchant: merchant,
+      merchant: {
+        ...merchant,
+        permissions: merchant.permissions || {},
+      },
     })
   } catch (error: any) {
     console.error("Error fetching merchant data:", error)

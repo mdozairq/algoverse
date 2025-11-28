@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import AuthGuard from "@/components/auth-guard"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +21,14 @@ interface Merchant {
   isApproved: boolean
   status?: 'pending' | 'approved' | 'rejected'
   createdAt?: any
+  permissions?: {
+    allowMarketplace?: boolean
+    allowMint?: boolean
+    allowDutchMint?: boolean
+    allowAIGenerated?: boolean
+    allowTrade?: boolean
+    allowSwap?: boolean
+  }
 }
 
 export default function AdminMerchantsPage() {
@@ -89,30 +98,33 @@ export default function AdminMerchantsPage() {
     <Table>
       <TableHeader>
         <TableRow className="border-gray-200 dark:border-gray-700">
-          <TableHead className="text-gray-600 dark:text-gray-400">Merchant</TableHead>
-          <TableHead className="text-gray-600 dark:text-gray-400">Category</TableHead>
-          <TableHead className="text-gray-600 dark:text-gray-400">Wallet</TableHead>
-          <TableHead className="text-gray-600 dark:text-gray-400">Status</TableHead>
-          {showActions && <TableHead className="text-gray-600 dark:text-gray-400">Actions</TableHead>}
+                      <TableHead className="text-gray-600 dark:text-gray-400">Merchant</TableHead>
+                      <TableHead className="text-gray-600 dark:text-gray-400">Category</TableHead>
+                      <TableHead className="text-gray-600 dark:text-gray-400">Wallet</TableHead>
+                      <TableHead className="text-gray-600 dark:text-gray-400">Status</TableHead>
+                      <TableHead className="text-gray-600 dark:text-gray-400">Permissions</TableHead>
+                      {showActions && <TableHead className="text-gray-600 dark:text-gray-400">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading ? (
           <TableRow className="border-gray-200 dark:border-gray-700">
-            <TableCell colSpan={showActions ? 5 : 4} className="text-center py-8 text-gray-500">Loading...</TableCell>
+            <TableCell colSpan={showActions ? 6 : 5} className="text-center py-8 text-gray-500">Loading...</TableCell>
           </TableRow>
         ) : merchantsList.length === 0 ? (
           <TableRow className="border-gray-200 dark:border-gray-700">
-            <TableCell colSpan={showActions ? 5 : 4} className="text-center py-8 text-gray-500">No merchants found</TableCell>
+            <TableCell colSpan={showActions ? 6 : 5} className="text-center py-8 text-gray-500">No merchants found</TableCell>
           </TableRow>
         ) : (
           merchantsList.map((m) => (
             <TableRow key={m.id} className="border-gray-200 dark:border-gray-700">
               <TableCell>
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">{m.businessName}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">{m.email}</div>
-                </div>
+                <Link href={`/dashboard/admin/merchants/${m.id}`} className="hover:underline">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">{m.businessName}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{m.email}</div>
+                  </div>
+                </Link>
               </TableCell>
               <TableCell className="text-gray-900 dark:text-gray-300">{m.category}</TableCell>
               <TableCell className="text-gray-900 dark:text-gray-300 truncate max-w-[180px]">{m.walletAddress || "-"}</TableCell>
@@ -126,6 +138,16 @@ export default function AdminMerchantsPage() {
                 {getMerchantStatus(m) === 'rejected' && (
                   <Badge className="bg-red-100 text-red-800 border-red-500/20 dark:bg-red-900 dark:text-red-400">Rejected</Badge>
                 )}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {m.permissions?.allowMarketplace && <Badge variant="outline" className="text-xs">Marketplace</Badge>}
+                  {m.permissions?.allowMint && <Badge variant="outline" className="text-xs">Mint</Badge>}
+                  {m.permissions?.allowTrade && <Badge variant="outline" className="text-xs">Trade</Badge>}
+                  {m.permissions?.allowDutchMint && <Badge variant="outline" className="text-xs">Dutch</Badge>}
+                  {m.permissions?.allowAIGenerated && <Badge variant="outline" className="text-xs">AI</Badge>}
+                  {m.permissions?.allowSwap && <Badge variant="outline" className="text-xs">Swap</Badge>}
+                </div>
               </TableCell>
               {showActions && (
                 <TableCell>

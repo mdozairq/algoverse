@@ -43,7 +43,7 @@ export async function verifyAuthToken(
 
 // Basic auth middleware
 export function requireAuth(handler: Function, requiredRole?: string) {
-  return async (request: NextRequest) => {
+  return async (request: NextRequest, context?: any) => {
     const auth = await verifyAuthToken(request)
 
     if (!auth) {
@@ -56,7 +56,7 @@ export function requireAuth(handler: Function, requiredRole?: string) {
     // Add auth info to request
     ;(request as any).auth = auth
 
-    return handler(request)
+    return handler(request, context)
   }
 }
 

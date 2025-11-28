@@ -1,4 +1,4 @@
-# AlgoVerse - NFT Marketplace Platform
+# AlgoVerse - NFT Marketplace Launchpad Platform
 
 ![Blockchain-Powered NFT System](docs/screenshots/home.png)
 

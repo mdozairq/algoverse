@@ -1,0 +1,236 @@
+#pragma version 8
+
+// Token Liquidity Pool Manager Smart Contract
+// Manages liquidity pools for marketplace tokens across multiple DEXs
+
+// Global State Schema
+// Byteslices (1):
+//   0: platform_address (32 bytes)
+// Ints (7):
+//   0: token_asset_id
+//   1: tinyman_pool_id (0 if not created)
+//   2: pact_pool_id (0 if not created)
+//   3: total_liquidity (in microAlgos)
+//   4: token_reserve
+//   5: algo_reserve
+//   6: status (0=pending, 1=active, 2=paused)
+
+// On creation
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+==
+&&
+bnz initialization
+
+// Handle different application calls
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+txn OnCompletion
+int OptIn
+==
+bnz handle_optin
+
+int 1
+return
+
+initialization:
+  // Verify we have the required arguments
+  // arg 0: token_asset_id (uint64)
+  // arg 1: platform_address (32 bytes)
+  
+  // Store token_asset_id (global int 0)
+  txn ApplicationArgs 0
+  btoi
+  int 0
+  app_global_put
+  
+  // Store platform_address (global byteslice 0)
+  txn ApplicationArgs 1
+  bytec_0  // "platform_address"
+  app_global_put
+  
+  // Initialize default values
+  int 0  // tinyman_pool_id (global int 1)
+  int 1
+  app_global_put
+  
+  int 0  // pact_pool_id (global int 2)
+  int 2
+  app_global_put
+  
+  int 0  // total_liquidity (global int 3)
+  int 3
+  app_global_put
+  
+  int 0  // token_reserve (global int 4)
+  int 4
+  app_global_put
+  
+  int 0  // algo_reserve (global int 5)
+  int 5
+  app_global_put
+  
+  int 0  // status = pending (global int 6)
+  int 6
+  app_global_put
+  
+  int 1
+  return
+
+handle_optin:
+  // Allow opt-in from any address
+  int 1
+  return
+
+handle_noop:
+  // Verify platform address
+  txn Sender
+  bytec_0  // "platform_address"
+  app_global_get
+  ==
+  assert
+  
+  // Get method selector
+  txn ApplicationArgs 0
+  bytec_1  // "register_pool"
+  ==
+  bz check_update_reserves
+  
+  // register_pool method
+  // arg 1: dex_type (0=Tinyman, 1=Pact)
+  // arg 2: pool_id
+  // arg 3: pool_address (32 bytes)
+  
+  txn ApplicationArgs 1
+  btoi
+  int 0
+  ==
+  bz register_pact_pool
+  
+  // Register Tinyman pool (global int 1)
+  txn ApplicationArgs 2
+  btoi
+  int 1
+  app_global_put
+  
+  // Update status to active (global int 6)
+  int 1  // active
+  int 6
+  app_global_put
+  
+  int 1
+  return
+  
+register_pact_pool:
+  // Register Pact pool (global int 2)
+  txn ApplicationArgs 2
+  btoi
+  int 2
+  app_global_put
+  
+  // Update status to active (global int 6)
+  int 1  // active
+  int 6
+  app_global_put
+  
+  int 1
+  return
+
+check_update_reserves:
+  txn ApplicationArgs 0
+  bytec_2  // "update_reserves"
+  ==
+  bz check_get_status
+  
+  // update_reserves method
+  // arg 1: dex_type (0=Tinyman, 1=Pact)
+  // arg 2: token_reserve
+  // arg 3: algo_reserve
+  
+  // Store token_reserve (global int 4)
+  txn ApplicationArgs 2
+  btoi
+  int 4
+  app_global_put
+  
+  // Store algo_reserve (global int 5)
+  txn ApplicationArgs 3
+  btoi
+  int 5
+  app_global_put
+  
+  // Calculate and update total_liquidity (simplified: token_reserve * price + algo_reserve)
+  // For now, just store algo_reserve as total_liquidity (global int 3)
+  txn ApplicationArgs 3
+  btoi
+  int 3
+  app_global_put
+  
+  int 1
+  return
+
+check_get_status:
+  txn ApplicationArgs 0
+  bytec_3  // "get_status"
+  ==
+  bz invalid_method
+  
+  // get_status method - return status via logs
+  int 0
+  app_global_get  // token_asset_id
+  itob
+  log
+  
+  int 1
+  app_global_get  // tinyman_pool_id
+  itob
+  log
+  
+  int 2
+  app_global_get  // pact_pool_id
+  itob
+  log
+  
+  int 3
+  app_global_get  // total_liquidity
+  itob
+  log
+  
+  int 4
+  app_global_get  // token_reserve
+  itob
+  log
+  
+  int 5
+  app_global_get  // algo_reserve
+  itob
+  log
+  
+  int 6
+  app_global_get  // status
+  itob
+  log
+  
+  int 1
+  return
+
+invalid_method:
+  int 0
+  return
+
+// String constants
+bytec_0:
+  byte "platform_address"
+bytec_1:
+  byte "register_pool"
+bytec_2:
+  byte "update_reserves"
+bytec_3:
+  byte "get_status"
+
