@@ -8,6 +8,8 @@
 
 A comprehensive, decentralized NFT marketplace platform for event tickets, digital collectibles, and experiences, built on the Algorand blockchain. AlgoVerse provides white-label marketplace solutions that enable anyone to launch their own branded NFT marketplace without writing a single line of code. With our template-based system, atomic swaps, Dutch mint bulk pricing, launchpad functionality, and complete ecosystem, you can go from idea to live marketplace in minutes.
 
+📺 **[View Presentation](https://app.presentations.ai/view/54tY9oNKn2)**
+
 ## 🚀 Why AlgoVerse?
 
 ### **No-Code Marketplace Creation**
